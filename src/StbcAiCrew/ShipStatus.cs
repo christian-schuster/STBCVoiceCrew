@@ -18,6 +18,103 @@ namespace StbcAiCrew
         public string ShieldState = "?";
         public int TorpedoesFore = -1, TorpedoesAft = -1;
 
+        // Aus dem "Schwarzen Brett" der Bot-Crew (CommandManager.JOMJCMPJGEK): Zustand und offene Befehle
+        public float Speed = -1f;
+        public bool FullStop, Evading, WarpPreparing, WarpEngaged, ImpulsePreparing, ImpulseEngaged;
+        public int PowerPhasers = -1, PowerShields = -1, PowerEngines = -1;
+        public string RepairTarget;
+        public string TargetName;
+        public readonly System.Collections.Generic.Dictionary<Station, System.Collections.Generic.List<string>> PendingOrders =
+            new System.Collections.Generic.Dictionary<Station, System.Collections.Generic.List<string>>();
+
+        // Offene Befehle an die Stationen: das Spiel setzt das Flag, wenn ein Befehl erteilt ist, der Bot löscht es nach Ausführung
+        static readonly object[][] OrderFlags =
+        {
+            new object[] { AI.IAHDEGHOPAK.CanRaiseShields, Station.Tactical, "Schilde hoch" },
+            new object[] { AI.IAHDEGHOPAK.CanLowerShields, Station.Tactical, "Schilde runter" },
+            new object[] { AI.IAHDEGHOPAK.CanArmTorpedoes, Station.Tactical, "Torpedos scharf machen" },
+            new object[] { AI.IAHDEGHOPAK.CanDisarmTorpedoes, Station.Tactical, "Torpedos entschärfen" },
+            new object[] { AI.IAHDEGHOPAK.CanFirePhasersOnTarget, Station.Tactical, "Phaser auf das Ziel feuern" },
+            new object[] { AI.IAHDEGHOPAK.CanFireTorpedoesOnTarget, Station.Tactical, "Torpedos auf das Ziel feuern" },
+            new object[] { AI.IAHDEGHOPAK.CanScanTarget, Station.Tactical, "Ziel scannen" },
+            new object[] { AI.IAHDEGHOPAK.CanModulateShields, Station.Tactical, "Schildfrequenz modulieren" },
+            new object[] { AI.IAHDEGHOPAK.CanMoveToTarget, Station.Helm, "Ziel anfliegen" },
+            new object[] { AI.IAHDEGHOPAK.CanSetYaw, Station.Helm, "Kurs ändern" },
+            new object[] { AI.IAHDEGHOPAK.CanSetImpulseTarget, Station.Helm, "Impulssprung-Ziel setzen" },
+            new object[] { AI.IAHDEGHOPAK.CanSetWarpDirection, Station.Helm, "Warpkurs setzen" },
+            new object[] { AI.IAHDEGHOPAK.CanSetPhaserPower, Station.Engineering, "Energie auf Phaser" },
+            new object[] { AI.IAHDEGHOPAK.CanSetShieldPower, Station.Engineering, "Energie auf Schilde" },
+            new object[] { AI.IAHDEGHOPAK.CanSetEnginePower, Station.Engineering, "Energie auf Antrieb" },
+            new object[] { AI.IAHDEGHOPAK.CanRepairSystems, Station.Engineering, "Reparatur" },
+            new object[] { AI.IAHDEGHOPAK.CanTeleportTarget, Station.Engineering, "Transporter" },
+        };
+
+        static System.Reflection.FieldInfo _crewOrdersField;
+
+        void ReadBlackboard()
+        {
+            var bb = AI.CommandManager.JOMJCMPJGEK;
+            var d = bb != null ? bb.AACGBEMCAGH : null;
+            if (d == null) return;
+            Func<AI.IAHDEGHOPAK, AI.OJADMPIBCFG> get = k => { AI.OJADMPIBCFG v; return d.TryGetValue(k, out v) ? v : null; };
+            Func<AI.IAHDEGHOPAK, bool> flag = k => { var v = get(k); return v != null && v.bVal; };
+
+            var speed = get(AI.IAHDEGHOPAK.MoveSpeed);
+            if (speed != null) Speed = speed.fVal;
+            FullStop = flag(AI.IAHDEGHOPAK.FullStop);
+            Evading = flag(AI.IAHDEGHOPAK.IsEvading);
+            WarpPreparing = flag(AI.IAHDEGHOPAK.PrepareWarp);
+            WarpEngaged = flag(AI.IAHDEGHOPAK.EngageWarp);
+            ImpulsePreparing = flag(AI.IAHDEGHOPAK.PrepareImpulse);
+            ImpulseEngaged = flag(AI.IAHDEGHOPAK.EngageImpulse);
+            var pp = get(AI.IAHDEGHOPAK.PhaserPowerLevel); if (pp != null) PowerPhasers = pp.iVal;
+            var ps = get(AI.IAHDEGHOPAK.ShieldPowerLevel); if (ps != null) PowerShields = ps.iVal;
+            var pe = get(AI.IAHDEGHOPAK.EnginePowerLevel); if (pe != null) PowerEngines = pe.iVal;
+            var rt = get(AI.IAHDEGHOPAK.RepairTarget);
+            if (rt != null && rt.subsystem != BaseSpacecraft.HGKJKJMPFMB.EMPTY && rt.subsystem != BaseSpacecraft.HGKJKJMPFMB.CHOOSE)
+                RepairTarget = SubsystemDe(rt.subsystem);
+
+            foreach (var o in OrderFlags)
+            {
+                if (!flag((AI.IAHDEGHOPAK)o[0])) continue;
+                var st = (Station)o[1];
+                System.Collections.Generic.List<string> list;
+                if (!PendingOrders.TryGetValue(st, out list)) PendingOrders[st] = list = new System.Collections.Generic.List<string>();
+                list.Add((string)o[2]);
+            }
+        }
+
+        void ReadTarget()
+        {
+            var crew = GameBridge.Crew;
+            if (crew == null) return;
+            if (_crewOrdersField == null) _crewOrdersField = HarmonyLib.AccessTools.Field(typeof(AI.USSAegisCrew), "NPKHBJCCMAE");
+            var orders = _crewOrdersField != null ? _crewOrdersField.GetValue(crew) as AI.MNIJEDINGOI : null;
+            var target = orders != null ? orders.Target : null;
+            if (target == null) return;
+            string name = GameBridge.StripLocId(target.AKDKEDEMFDJ);
+            TargetName = string.IsNullOrEmpty(name) ? "unbekanntes Objekt" : name;
+        }
+
+        static string SubsystemDe(BaseSpacecraft.HGKJKJMPFMB s)
+        {
+            switch (s)
+            {
+                case BaseSpacecraft.HGKJKJMPFMB.Engines: return "Antrieb";
+                case BaseSpacecraft.HGKJKJMPFMB.Shields: return "Schilde";
+                case BaseSpacecraft.HGKJKJMPFMB.Phasers: return "Phaser";
+                case BaseSpacecraft.HGKJKJMPFMB.Lauchers: return "Torpedorampen";
+                case BaseSpacecraft.HGKJKJMPFMB.Sensors: return "Sensoren";
+                case BaseSpacecraft.HGKJKJMPFMB.Hull: return "Hülle";
+                case BaseSpacecraft.HGKJKJMPFMB.Warpcore: return "Warpkern";
+                case BaseSpacecraft.HGKJKJMPFMB.TransporterRoom: return "Transporter";
+                case BaseSpacecraft.HGKJKJMPFMB.ComputerCore: return "Computerkern";
+                case BaseSpacecraft.HGKJKJMPFMB.Sickbay: return "Krankenstation";
+                case BaseSpacecraft.HGKJKJMPFMB.ScienceLab: return "Wissenschaftslabor";
+                default: return s.ToString();
+            }
+        }
+
         public static ShipStatus Read()
         {
             var ship = GameBridge.PlayerShip as OBIMAHNLBCJ;
@@ -35,6 +132,8 @@ namespace StbcAiCrew
             try { s.ShieldState = ship.HBLINKJLOKB != null ? ship.HBLINKJLOKB.statusReport().ToString() : "?"; } catch { }
             try { s.TorpedoesFore = ship.HGGDEFFGBKA != null ? ship.HGGDEFFGBKA.TotalAmmo : -1; } catch { }
             try { s.TorpedoesAft = ship.OAPDHHGKBLJ != null ? ship.OAPDHHGKBLJ.TotalAmmo : -1; } catch { }
+            try { s.ReadBlackboard(); } catch { }
+            try { s.ReadTarget(); } catch { }
             return s;
         }
 
@@ -53,7 +152,8 @@ namespace StbcAiCrew
             switch (st)
             {
                 case Station.Tactical:
-                    sb.Append("Schilde ").Append(P(Shields)).Append(" (").Append(ShieldStateDe()).Append(')')
+                    sb.Append("Ziel: ").Append(TargetName ?? "keins gewählt")
+                      .Append(", Schilde ").Append(P(Shields)).Append(" (").Append(ShieldStateDe()).Append(')')
                       .Append(", Phaser ").Append(P(Phasers))
                       .Append(", Torpedos vorn ").Append(N(TorpedoesFore)).Append(" / achtern ").Append(N(TorpedoesAft));
                     break;
@@ -62,12 +162,37 @@ namespace StbcAiCrew
                       .Append(", Antrieb ").Append(P(Engines))
                       .Append(", Warpkern ").Append(P(WarpCore))
                       .Append(", Phaser ").Append(P(Phasers));
+                    if (PowerEngines >= 0 || PowerShields >= 0 || PowerPhasers >= 0)
+                        sb.Append(", Energiestufen Antrieb/Schilde/Phaser ").Append(N(PowerEngines)).Append('/').Append(N(PowerShields)).Append('/').Append(N(PowerPhasers));
+                    if (RepairTarget != null) sb.Append(", Reparatur läuft an: ").Append(RepairTarget);
+                    if (WarpPreparing) sb.Append(", Warpkern wird geladen");
                     break;
                 case Station.Helm:
-                    sb.Append("Antrieb ").Append(P(Engines));
+                    sb.Append("Ziel: ").Append(TargetName ?? "keins gewählt")
+                      .Append(", Antrieb ").Append(P(Engines))
+                      .Append(", Geschwindigkeit ").Append(FullStop ? "Stopp" : SpeedText());
+                    if (Evading) sb.Append(", Ausweichmanöver aktiv");
+                    if (ImpulsePreparing) sb.Append(", Impulssprung wird vorbereitet");
+                    if (ImpulseEngaged) sb.Append(", Impulssprung läuft");
+                    if (WarpPreparing) sb.Append(", Warp wird vorbereitet");
+                    if (WarpEngaged) sb.Append(", Warp aktiv");
                     break;
             }
             return sb.ToString();
+        }
+
+        string SpeedText()
+        {
+            if (Speed < 0f) return "?";
+            if (Speed <= 1.05f) return Mathf.RoundToInt(Speed * 100f) + " % Impuls";
+            return Speed.ToString("0.0");
+        }
+
+        /// <summary>Befehle, die an diese Station erteilt und noch nicht ausgeführt sind (so zeigt sie auch ihre Konsole).</summary>
+        public string PendingFor(Station st)
+        {
+            System.Collections.Generic.List<string> list;
+            return PendingOrders.TryGetValue(st, out list) && list.Count > 0 ? string.Join(", ", list.ToArray()) : null;
         }
 
         static string N(int v) => v >= 0 ? v.ToString() : "?";

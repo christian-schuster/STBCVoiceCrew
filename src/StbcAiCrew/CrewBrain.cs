@@ -53,6 +53,10 @@ namespace StbcAiCrew
         /// <summary>Zeitpunkt (Echtzeit), zu dem zuletzt ein Mensch gesprochen hat.</summary>
         public float LastHumanSpeech { get; private set; } = -9999f;
 
+        /// <summary>Letzte Worte des Captains und wann (Echtzeit), für Befehlsvorschläge.</summary>
+        public string LastCaptainWords { get; private set; }
+        public float LastCaptainTime { get; private set; } = -9999f;
+
         /// <summary>Niemand spricht und nichts wartet aufs Sprechen.</summary>
         public bool FloorFree => _speech.Count == 0 && Time.time >= _floorFreeAt && (Player == null || !Player.Playing);
 
@@ -184,7 +188,12 @@ namespace StbcAiCrew
             string who = isCaptain ? "Captain" : "Mensch an " + OfficerAgent.StationDe(speaker);
             AddLine(who, text);
             LastHumanSpeech = Time.realtimeSinceStartup;
-            if (isCaptain) Banter.OnCaptainSpeech(text);
+            if (isCaptain)
+            {
+                Banter.OnCaptainSpeech(text);
+                LastCaptainWords = text;
+                LastCaptainTime = Time.realtimeSinceStartup;
+            }
             if (!InMission) return;
 
             var addressed = new List<OfficerAgent>();

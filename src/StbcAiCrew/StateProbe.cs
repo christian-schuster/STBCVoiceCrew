@@ -39,6 +39,29 @@ namespace StbcAiCrew
                 }
             }
 
+            // Schwarzes Brett der Bot-Crew: alle Einträge mit allen Feldern (zur Prüfung der Deutung)
+            try
+            {
+                var bb = AI.CommandManager.JOMJCMPJGEK;
+                if (bb != null && bb.AACGBEMCAGH != null)
+                {
+                    sb.Append("\n## Schwarzes Brett (CommandManager.JOMJCMPJGEK)\n");
+                    foreach (var kv in bb.AACGBEMCAGH)
+                    {
+                        var v = kv.Value;
+                        if (v == null) continue;
+                        sb.Append(kv.Key).Append(": bVal=").Append(v.bVal).Append(" iVal=").Append(v.iVal).Append(" fVal=").Append(v.fVal)
+                          .Append(" subsystem=").Append(v.subsystem).Append(" moveMode=").Append(v.moveMode)
+                          .Append(" targetable=").Append(v.targetable != null ? "ja" : "nein").Append(" body=").Append(v.body != null ? v.body.AKDKEDEMFDJ : "-").Append('\n');
+                    }
+                }
+                var st = ShipStatus.Read();
+                if (st != null)
+                    foreach (var s in new[] { Station.Helm, Station.Tactical, Station.Engineering })
+                        sb.Append("\n## Konsole ").Append(s).Append(": ").Append(st.ForStation(s)).Append(" | offen: ").Append(st.PendingFor(s) ?? "-");
+            }
+            catch (Exception e) { sb.Append("\nSchwarzes Brett nicht lesbar: ").Append(e.Message).Append('\n'); }
+
             Directory.CreateDirectory(dir);
             string path = Path.Combine(dir, "zustand_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".txt");
             File.WriteAllText(path, sb.ToString(), Encoding.UTF8);

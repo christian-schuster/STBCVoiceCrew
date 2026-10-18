@@ -132,6 +132,7 @@ namespace StbcAiCrew
             sb.Append("- Schreib so, wie man wirklich spricht: Füllwörter und Laute (äh, hm, puh, pff), Pausen mit …, Betonung mit ! oder ?!. Sparsam und passend zu deiner Figur.\n");
             sb.Append("- Lachen (lautmalerisch) nur, wenn etwas wirklich lustig ist, nie bei Gefahr. Keine Regieanweisungen in Klammern oder Sternchen: Alles in \"say\" wird laut gesprochen.\n");
 
+            sb.Append('\n').Append(BridgeManual.Text);
             sb.Append("\nDEINE BEFEHLE (nur deine Station; Befehle mit Ziel wirken auf das Ziel, das der Captain gewählt hat)\n");
             foreach (var c in CrewCommands.ForOfficer(Station))
                 sb.Append("- ").Append(c.Name).Append(": ").Append(c.Description).Append(c.Major ? " [weitreichend]" : "").Append('\n');
@@ -147,7 +148,17 @@ namespace StbcAiCrew
         {
             var sb = new StringBuilder();
             sb.Append("Besatzung: ").Append(_bridge.Lineup(this)).Append('\n');
-            if (status != null) sb.Append("Deine Konsole zeigt: ").Append(status.ForStation(Station)).Append('\n');
+            if (status != null)
+            {
+                sb.Append("Deine Konsole zeigt: ").Append(status.ForStation(Station)).Append('\n');
+                string pending = status.PendingFor(Station);
+                if (pending != null) sb.Append("Offene Befehle an deine Station (noch nicht ausgeführt): ").Append(pending).Append('\n');
+            }
+            if (reason == "urgent" && UnityEngine.Time.realtimeSinceStartup - _bridge.LastCaptainTime < 20f)
+            {
+                string hint = OrderHints.For(Station, _bridge.LastCaptainWords);
+                if (hint != null) sb.Append("Passend zu den Worten des Captains wäre für deine Station: ").Append(hint).Append(" (prüfe selbst, ob es zur Lage passt)\n");
+            }
             sb.Append("Zuletzt wahrgenommen:\n").Append(P.Recent(_cfg.EventsInPrompt.Value));
             if (Char.MissionNotes.Count > 0)
             {

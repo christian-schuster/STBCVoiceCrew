@@ -21,6 +21,23 @@ Agenten mit eigenem LLM-Gespräch und eigener Wahrnehmung:
 Was die Captain-Konsole zeigt, sieht kein KI-Offizier. Abstimmen können sich die Offiziere nur, indem sie
 miteinander reden („T'nar, ich brauche mehr Energie für die Schilde!“).
 
+## Was die KI-Offiziere wissen und können
+
+- **Befehle:** keine freien Tool-Calls, sondern ein per JSON-Schema erzwungener Befehlskatalog: Jeder Offizier kann nur die
+  Befehle seiner Station wählen (llama.cpp-Grammatik, dadurch auch mit einem 9B-Modell zuverlässig gültig). Ausgeführt werden
+  sie über `CommandManager.TriggerCommand`, wie früher die Watson-Sprachsteuerung. Weitreichende Befehle (Feuer, Warp, Schilde runter …)
+  sind je nach Rang an Gefahr oder Captain-Befehl gebunden.
+- **Konsole:** Jeder sieht die Werte seiner Station, zum Teil aus dem **Schwarzen Brett der Bot-Crew** (`CommandManager.JOMJCMPJGEK`):
+  - Steuer: Ziel, Antrieb, Geschwindigkeit, Ausweichmanöver, Impuls- und Warpstatus
+  - Taktik: Ziel, Schilde, Phaser, Torpedos
+  - Technik: Hülle, Subsysteme, Energiestufen, laufende Reparatur, Laden des Warpkerns
+  - dazu **offene Befehle an die eigene Station** (vom Captain erteilt, vom Bot noch nicht ausgeführt)
+- **Brückenhandbuch:** Jeder Offizier kennt Aufgaben und Fähigkeiten aller Stationen und die Abläufe (Warp, Impulssprung, Gefecht).
+  Das ist Ausbildungswissen. Was gerade auf anderen Konsolen steht, erfährt er nur, wenn es jemand sagt.
+- **Befehlsvorschläge:** Typische Captain-Worte werden je Station in Vorschläge übersetzt („Warp!“ → Technik: PrepareWarp,
+  Steuer: warten, nach „Warpkern geladen“ EngageWarp). Im Test stieg die richtige Reaktion der Technik von 3/5 auf 5/5.
+- **F10** schreibt einen Zustandsdump inklusive Schwarzem Brett, um die Deutung der Werte im Spiel zu prüfen.
+
 ## Wie es funktioniert
 
 ```
