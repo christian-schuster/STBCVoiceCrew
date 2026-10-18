@@ -45,6 +45,8 @@ namespace StbcAiCrew
 
         public string Error { get; private set; }
         public string Status = "startet …";
+        /// <summary>Stimmentwürfe nur, wenn das erlaubt ist (z. B. nicht im Einsatz: der Entwurf belegt kurz zusätzliches VRAM).</summary>
+        public Func<bool> MayDesignNow = () => true;
         public ServerState State => _server.State;
 
         public QwenTts(ManualLogSource log, string serverExe, string designExe, string baseModel, string designModel,
@@ -107,6 +109,8 @@ namespace StbcAiCrew
             // Immer nur ein Entwurf gleichzeitig (VoiceDesign-Modell belegt kurz ca. 2 GB VRAM).
             var t = new Thread(() =>
             {
+                while (_running && !MayDesignNow()) Thread.Sleep(2000);   // erst nach der Mission
+                if (!_running) return;
                 lock (_designLock)
                 {
                     try { Design(c); }

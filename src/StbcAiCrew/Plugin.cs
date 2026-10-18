@@ -197,6 +197,7 @@ namespace StbcAiCrew
                 {
                     _qwen = new QwenTts(Log, qServer, qCli, qBase, qDesign, qCodec, QwenPort.Value,
                                         Path.Combine(_dataDir, "stimmen"), QwenLanguage.Value, _tts);
+                    _qwen.MayDesignNow = () => !GameBridge.InMission;
                     _qwen.Start();
                     foreach (var c in _roster.All) _qwen.Prepare(c, false);   // fehlende Stimmen gleich entwerfen
                 }
