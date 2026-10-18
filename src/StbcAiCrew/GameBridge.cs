@@ -2,6 +2,7 @@ using System;
 using AI;
 using Sector.Spacecraft;
 using UI;
+using UnityEngine;
 
 namespace StbcAiCrew
 {
@@ -104,6 +105,36 @@ namespace StbcAiCrew
                 case FLCHMJJDKDL.Engineering: return Station.Engineering;
             }
             return null;
+        }
+
+        /// <summary>Audio-Ausgabegerät, das das Spiel (Wwise) bei Oculus nutzt; leer = Windows-Standard.</summary>
+        public static string GameAudioOutId
+        {
+            get { try { return AkInitializer.OculusAudioOutID ?? ""; } catch { return ""; } }
+        }
+
+        /// <summary>Mikrofon, das das Spiel bei Oculus nutzt; leer = Windows-Standard.</summary>
+        public static string GameAudioInId
+        {
+            get { try { return AkInitializer.OculusAudioInID ?? ""; } catch { return ""; } }
+        }
+
+        /// <summary>
+        /// Lautstärke für Stimmen laut Optionsmenü: Master × Sprachchat (wie menschliche Mitspieler), 0–1.
+        /// </summary>
+        public static float GameVoiceVolume
+        {
+            get
+            {
+                try
+                {
+                    var core = SVR.Network.NetworkCore.IEFBKOMBFGO;
+                    var opt = core != null && core.CMDONECIBMP != null ? core.CMDONECIBMP.Options : null;
+                    if (opt == null) return 1f;
+                    return Mathf.Clamp01(opt.MasterVolume / 100f) * Mathf.Clamp01(opt.ChatVolume / 100f);
+                }
+                catch { return 1f; }
+            }
         }
 
         /// <summary>Entfernt das Lokalisierungs-Präfix "1234|" aus Spieltexten.</summary>

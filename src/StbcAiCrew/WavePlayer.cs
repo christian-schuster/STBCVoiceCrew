@@ -14,11 +14,17 @@ namespace StbcAiCrew
         IntPtr _hWaveOut = IntPtr.Zero;
         IntPtr _hdr = IntPtr.Zero, _data = IntPtr.Zero;
         int _openRate;
+        uint _openDevice = uint.MaxValue;
         DateTime _endsAt = DateTime.MinValue;
 
+        /// <summary>Nur für Sonderfälle: Teil des Gerätenamens. Leer = dasselbe Gerät wie das Spiel.</summary>
         public string DeviceFilter = "";
-        public float Volume = 0.9f;
-        public string DeviceName { get; private set; } = "Windows-Standard";
+        /// <summary>Faktor auf die Lautstärke des Spiels.</summary>
+        public float Volume = 1f;
+        /// <summary>Liefert das Gerät des Spiels und die Lautstärke aus dessen Optionen (im Hauptthread abgefragt).</summary>
+        public Func<string> GameDeviceId = () => "";
+        public Func<float> GameVolume = () => 1f;
+        public string DeviceName { get; private set; } = "–";
         public string Error { get; private set; }
 
         public bool Playing => DateTime.UtcNow < _endsAt;
@@ -43,7 +49,9 @@ namespace StbcAiCrew
             try
             {
                 Stop();
-                if (_hWaveOut == IntPtr.Zero || _openRate != sampleRate) Open(sampleRate);
+                var dev = AudioDevices.ResolveOutput(DeviceFilter, GameDeviceId());
+                if (!dev.Valid) throw new Exception(dev.Name);
+                if (_hWaveOut == IntPtr.Zero || _openRate != sampleRate || _openDevice != dev.Id) Open(sampleRate, dev);
 
                 int bytes = pcm.Length * 2;
                 _data = Marshal.AllocHGlobal(bytes);
@@ -52,7 +60,7 @@ namespace StbcAiCrew
                 _hdr = Marshal.AllocHGlobal(hdrSize);
                 Marshal.StructureToPtr(new WAVEHDR { lpData = _data, dwBufferLength = bytes }, _hdr, false);
                 Check(waveOutPrepareHeader(_hWaveOut, _hdr, hdrSize), "waveOutPrepareHeader");
-                uint vol = (uint)(Math.Max(0f, Math.Min(1f, Volume)) * 0xFFFF);
+                uint vol = (uint)(Math.Max(0f, Math.Min(1f, Volume * GameVolume())) * 0xFFFF);
                 waveOutSetVolume(_hWaveOut, vol | (vol << 16));
                 Check(waveOutWrite(_hWaveOut, _hdr, hdrSize), "waveOutWrite");
 
@@ -70,25 +78,18 @@ namespace StbcAiCrew
             }
         }
 
-        void Open(int sampleRate)
+        void Open(int sampleRate, AudioDevice dev)
         {
             Close();
-            uint device = WAVE_MAPPER;
-            DeviceName = "Windows-Standard";
-            if (!string.IsNullOrEmpty(DeviceFilter))
-            {
-                var devices = ListDevices();
-                int idx = devices.FindIndex(d => d.IndexOf(DeviceFilter, StringComparison.OrdinalIgnoreCase) >= 0);
-                if (idx >= 0) { device = (uint)idx; DeviceName = devices[idx]; }
-                else if (Plugin.Log != null) Plugin.Log.LogWarning("Kein Ausgabegerät passt zu '" + DeviceFilter + "' (" + string.Join(" | ", devices.ToArray()) + "), nehme Standard.");
-            }
+            DeviceName = dev.Name + " (" + dev.Source + ")";
             var fmt = new WAVEFORMATEX
             {
                 wFormatTag = 1, nChannels = 1, nSamplesPerSec = sampleRate,
                 nAvgBytesPerSec = sampleRate * 2, nBlockAlign = 2, wBitsPerSample = 16
             };
-            Check(waveOutOpen(out _hWaveOut, new UIntPtr(device), ref fmt, IntPtr.Zero, IntPtr.Zero, 0), "waveOutOpen");
+            Check(waveOutOpen(out _hWaveOut, new UIntPtr(dev.Id), ref fmt, IntPtr.Zero, IntPtr.Zero, 0), "waveOutOpen");
             _openRate = sampleRate;
+            _openDevice = dev.Id;
         }
 
         /// <summary>Bricht den laufenden Satz ab und gibt den Puffer frei.</summary>
@@ -109,6 +110,7 @@ namespace StbcAiCrew
             Stop();
             if (_hWaveOut != IntPtr.Zero) { waveOutClose(_hWaveOut); _hWaveOut = IntPtr.Zero; }
             _openRate = 0;
+            _openDevice = uint.MaxValue;
         }
 
         /// <summary>Gerät neu wählen lassen (z. B. nachdem die Brille verbunden wurde).</summary>

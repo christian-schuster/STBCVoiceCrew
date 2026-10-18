@@ -48,20 +48,16 @@ namespace StbcAiCrew
             return list;
         }
 
-        /// <summary>Startet die Aufnahme. deviceFilter: Teil des Gerätenamens, leer = Windows-Standardgerät.</summary>
-        public bool Start(string deviceFilter)
-        {
-            var devices = ListDevices();
-            _log.LogInfo("Mikrofone: " + string.Join(" | ", devices.ToArray()));
+        /// <summary>Gerät, das gerade aufnimmt (für den Vergleich, ob ein anderes gewählt werden muss).</summary>
+        public uint DeviceId { get; private set; } = uint.MaxValue;
 
-            uint deviceId = WAVE_MAPPER;
-            DeviceName = "Windows-Standard";
-            if (!string.IsNullOrEmpty(deviceFilter))
-            {
-                int idx = devices.FindIndex(d => d.IndexOf(deviceFilter, StringComparison.OrdinalIgnoreCase) >= 0);
-                if (idx >= 0) { deviceId = (uint)idx; DeviceName = devices[idx]; }
-                else _log.LogWarning("Kein Mikrofon passt zu '" + deviceFilter + "', nehme das Windows-Standardgerät.");
-            }
+        /// <summary>Startet die Aufnahme auf dem angegebenen Gerät (siehe AudioDevices.ResolveInput).</summary>
+        public bool Start(AudioDevice device)
+        {
+            if (!device.Valid) { Error = device.Name; return false; }
+            uint deviceId = device.Id;
+            DeviceName = device.Name + " (" + device.Source + ")";
+            DeviceId = device.Id;
 
             var fmt = new WAVEFORMATEX
             {
@@ -71,7 +67,7 @@ namespace StbcAiCrew
             int res = waveInOpen(out _hWaveIn, new UIntPtr(deviceId), ref fmt, IntPtr.Zero, IntPtr.Zero, CALLBACK_NULL);
             if (res != 0)
             {
-                Error = devices.Count == 0 ? "kein Mikrofon angeschlossen" : "waveInOpen fehlgeschlagen (Code " + res + ")";
+                Error = "waveInOpen fehlgeschlagen (Code " + res + ")";
                 return false;
             }
 

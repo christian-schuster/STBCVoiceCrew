@@ -16,7 +16,10 @@ namespace StbcAiCrew
     /// <summary>Einstellungen der Spracheingabe (aus der Config, unabhängig vom Plugin testbar).</summary>
     public sealed class VoiceSettings
     {
+        /// <summary>Nur für Sonderfälle: Teil des Gerätenamens. Leer = dasselbe Mikrofon wie das Spiel.</summary>
         public string Device = "";
+        /// <summary>Mikrofon des Spiels (Oculus-Endpunkt-GUID, leer = Windows-Standard).</summary>
+        public Func<string> GameDeviceId = () => "";
         public string Language = "de";
         public float MarginDb = 12f;
         public float MinDb = -50f;
@@ -91,13 +94,19 @@ namespace StbcAiCrew
             string lastError = null;
             while (_running)
             {
+                var want = AudioDevices.ResolveInput(_cfg.Device, _cfg.GameDeviceId());
+                bool switchDevice = _mic != null && _mic.Running && want.Valid && want.Id != _mic.DeviceId;
+                if (switchDevice)
+                {
+                    _log.LogInfo("Mikrofon wechselt zu " + want.Name + " (" + want.Source + ").");
+                    _mic.Dispose();
+                }
                 if (_mic == null || !_mic.Running)
                 {
                     if (_mic != null && _mic.Error != null && _mic.Error != lastError) _log.LogWarning("Mikrofon weg: " + _mic.Error);
                     var mic = new MicCapture(_log, OnSamples);
-                    if (mic.Start(_cfg.Device))
+                    if (mic.Start(want))
                     {
-                        _mic = mic;
                         lastError = null;
                         if (SttReady) State = Muted ? "stumm" : "hört zu";
                     }
@@ -105,14 +114,13 @@ namespace StbcAiCrew
                     {
                         if (mic.Error != lastError) _log.LogWarning("Mikrofon nicht verfügbar: " + mic.Error + " – neuer Versuch alle 5 s.");
                         lastError = mic.Error;
-                        _mic = mic;
                         State = "kein Mikrofon (" + mic.Error + ")";
                     }
+                    _mic = mic;
                 }
                 Thread.Sleep(5000);
             }
         }
-
         // ---------------- Sprachaktivität ----------------
 
         /// <summary>Audio einspeisen (vom Mikrofon-Thread; öffentlich für Tests).</summary>

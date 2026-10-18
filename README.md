@@ -45,6 +45,17 @@ Spiel (Unity 5.4 / Mono)                                 llama-server.exe (eigen
 - **Sprechen:** Immer nur einer spricht. Gesprochenes erscheint auf allen Konsolen (in VR sichtbar), bis die
   Sprachausgabe da ist. Die vorgefertigten Bot-Sprachzeilen sind standardmäßig stumm.
 
+## Audiogeräte und Lautstärke: wie das Spiel
+
+Der Mod nutzt dieselben Kanäle wie das Spiel und braucht normalerweise keine eigene Einstellung:
+
+- **Geräte:** Läuft die Oculus-Runtime, nimmt das Spiel (Wwise) das in der Oculus-App gewählte Audiogerät
+  (`AkInitializer.OculusAudioOutID` bzw. `OculusAudioInID`). Der Mod liest diese Werte aus und nutzt dasselbe
+  Mikrofon und denselben Lautsprecher. Ohne Oculus nehmen beide das Windows-Standardgerät. Ein Wechsel des
+  Standardgeräts während des Spiels wird erkannt: beim Lautsprecher mit dem nächsten Satz, beim Mikrofon nach spätestens 5 s.
+- **Lautstärke:** Die Crew folgt den Reglern **Master × Sprachchat** im Optionsmenü des Spiels, wie menschliche Mitspieler.
+- Die Config-Einträge `[Sprache] Mikrofon` und `[Stimme] Lautsprecher` sind nur für Sonderfälle gedacht und bleiben normalerweise leer.
+
 ## Spracheingabe (dauerhaftes Zuhören)
 
 - Das Mikrofon wird direkt über die Windows-Audio-API aufgenommen, nicht über Unity, damit es nicht mit dem
@@ -55,7 +66,7 @@ Spiel (Unity 5.4 / Mono)                                 llama-server.exe (eigen
 - Typische Whisper-Halluzinationen bei Rauschen („Untertitel im Auftrag des ZDF“, „Vielen Dank.“) werden verworfen.
 - **F5** schaltet das Zuhören stumm, etwa wenn du mit jemandem im Raum sprichst.
 - Wird die Brille erst später verbunden oder getrennt, findet der Mod das Mikrofon von selbst wieder (alle 5 s).
-- Bestimmtes Mikrofon wählen: `[Sprache] Mikrofon` = Teil des Gerätenamens (z. B. `Oculus`). Die verfügbaren Geräte stehen im Log.
+
 - Sitzt du nicht auf dem Captain-Stuhl: `[Sprache] MeineStation`. Dann gelten deine Worte nicht als Befehl, sondern als Wort eines Kollegen.
 
 ## Sprachausgabe (eigene Stimme je Charakter)
@@ -66,8 +77,8 @@ Spiel (Unity 5.4 / Mono)                                 llama-server.exe (eigen
   Brannok spricht „wütend“) und mls mit 236 Sprechern. Neu Angeworbene bekommen automatisch einen eigenen mls-Sprecher.
 - **Tempo und Tonhöhe** je Charakter. Die Tonhöhe ändert sich, ohne dass sich das Tempo ändert.
 - Dienstgrade werden wie in der deutschen Synchronisation ausgesprochen („Käptn“, „Lutenant“, „Kommander“).
-- Wiedergabe direkt über Windows, unabhängig von der Audio-Engine des Spiels. Gerät wählbar über `[Stimme] Lautsprecher`
-  (z. B. `Oculus`). Fehlt ein Ausgabegerät, spricht die Crew als Text und versucht es beim nächsten Satz erneut.
+- Wiedergabe über dasselbe Gerät und mit derselben Lautstärke wie das Spiel (siehe oben). Fehlt ein Ausgabegerät,
+  spricht die Crew als Text und versucht es beim nächsten Satz erneut.
 - **Kein Echo:** Solange die Crew spricht, ignoriert das Mikrofon alles (`MikroTaubWennCrewSpricht`).
   Sonst würde es die Crew aus den Brillenlautsprechern als Captain erkennen.
 - Im Crew-Quartier: Stimme, Sprecher, Tempo und Tonhöhe einstellen und **probehören**.

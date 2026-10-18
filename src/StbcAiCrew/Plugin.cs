@@ -153,7 +153,7 @@ namespace StbcAiCrew
             _sttServer.Start();
             var vs = new VoiceSettings
             {
-                Device = MicDevice.Value, Language = MicLanguage.Value, MarginDb = MicMarginDb.Value,
+                Device = MicDevice.Value, GameDeviceId = () => GameBridge.GameAudioInId, Language = MicLanguage.Value, MarginDb = MicMarginDb.Value,
                 MinDb = MicMinDb.Value, EndSilenceMs = MicEndSilenceMs.Value, MinSpeechMs = MicMinSpeechMs.Value
             };
             _voice = new VoiceInput(Log, vs, url, OnHeard);
@@ -171,8 +171,15 @@ namespace StbcAiCrew
                 return;
             }
             _tts.Start();
-            _player = new WavePlayer { DeviceFilter = SpeakerDevice.Value, Volume = SpeakerVolume.Value };
-            Log.LogInfo("Lautsprecher: " + string.Join(" | ", WavePlayer.ListDevices().ToArray()));
+            _player = new WavePlayer
+            {
+                DeviceFilter = SpeakerDevice.Value,
+                Volume = SpeakerVolume.Value,
+                GameDeviceId = () => GameBridge.GameAudioOutId,
+                GameVolume = () => GameBridge.GameVoiceVolume
+            };
+            Log.LogInfo("Lautsprecher: " + string.Join(" | ", AudioDevices.List(false).ToArray()));
+            Log.LogInfo("Mikrofone: " + string.Join(" | ", AudioDevices.List(true).ToArray()));
             _brain.Tts = _tts;
             _brain.Player = _player;
             _brain.CrewSpeaking = secs => { if (_voice != null && DeafWhileCrewSpeaks.Value) _voice.Deafen(secs); };
@@ -212,7 +219,7 @@ namespace StbcAiCrew
             MaxTokens = Config.Bind("LLM", "MaxTokens", 300, "Maximale Antwortlänge im Einsatz.");
 
             VoiceEnabled = Config.Bind("Sprache", "Aktiv", true, "Dauerhaftes Zuhören über das Mikrofon (whisper.cpp).");
-            MicDevice = Config.Bind("Sprache", "Mikrofon", "", "Teil des Gerätenamens (z. B. 'Oculus' oder 'Headset'); leer = Windows-Standardmikrofon. Die Liste steht im Log.");
+            MicDevice = Config.Bind("Sprache", "Mikrofon", "", "Leer lassen = dasselbe Mikrofon wie das Spiel (Oculus-Einstellung bzw. Windows-Standard). Nur für Sonderfälle: Teil eines Gerätenamens aus dem Log.");
             MicLanguage = Config.Bind("Sprache", "Sprachcode", "de", "Sprache für die Erkennung (de, en, …).");
             MyStation = Config.Bind("Sprache", "MeineStation", "Captain", "An welcher Station du sitzt: Captain, Steuer, Taktik oder Technik. Nur Worte des Captains gelten als Befehl.");
             WhisperServerExe = Config.Bind("Sprache", "WhisperServerExe", @"whisper\Release\whisper-server.exe", "Pfad zu whisper-server.exe (relativ zum Plugin-Ordner oder absolut).");
@@ -253,8 +260,8 @@ namespace StbcAiCrew
             TtsEnabled = Config.Bind("Stimme", "Aktiv", true, "Crew spricht mit eigenen Stimmen (Piper). false = nur Text auf den Konsolen.");
             PiperExe = Config.Bind("Stimme", "PiperExe", @"piper\piper\piper.exe", "Pfad zu piper.exe (relativ zum Plugin-Ordner oder absolut).");
             PiperVoiceDir = Config.Bind("Stimme", "StimmenOrdner", @"piper\voices", "Ordner mit Piper-Stimmen (*.onnx + *.onnx.json).");
-            SpeakerDevice = Config.Bind("Stimme", "Lautsprecher", "", "Teil des Namens des Ausgabegeräts (z. B. 'Oculus' oder 'Kopfhörer'); leer = Windows-Standard. Liste im Log.");
-            SpeakerVolume = Config.Bind("Stimme", "Lautstaerke", 0.9f, "Lautstärke der Crew (0–1).");
+            SpeakerDevice = Config.Bind("Stimme", "Lautsprecher", "", "Leer lassen = dasselbe Ausgabegerät wie das Spiel (Oculus-Einstellung bzw. Windows-Standard). Nur für Sonderfälle: Teil eines Gerätenamens aus dem Log.");
+            SpeakerVolume = Config.Bind("Stimme", "LautstaerkeFaktor", 1f, "Faktor auf die Lautstärke aus dem Optionsmenü des Spiels (Master × Sprachchat). 1 = genau wie Mitspieler.");
             DeafWhileCrewSpeaks = Config.Bind("Stimme", "MikroTaubWennCrewSpricht", true, "Mikrofon ignorieren, solange die Crew spricht (verhindert, dass die Crew sich selbst als Captain hört).");
 
             KeyMute = Config.Bind("Tasten", "MikrofonStumm", KeyCode.F5, "Dauerhaftes Zuhören stumm schalten / wieder an.");
