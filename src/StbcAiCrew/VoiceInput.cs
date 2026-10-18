@@ -51,6 +51,15 @@ namespace StbcAiCrew
         volatile bool _running;
 
         public volatile bool Muted;
+        long _deafUntilTicks;
+
+        /// <summary>Mikrofon für n Sekunden ignorieren, solange die Crew spricht (sonst hört es sie als Captain).</summary>
+        public void Deafen(float seconds)
+        {
+            Interlocked.Exchange(ref _deafUntilTicks, DateTime.UtcNow.AddSeconds(seconds).Ticks);
+        }
+
+        bool Deaf => DateTime.UtcNow.Ticks < Interlocked.Read(ref _deafUntilTicks);
         public volatile bool SttReady;
         public float LevelDb { get; private set; } = -90f;
         public float NoiseDb => _noiseDb;
@@ -131,12 +140,13 @@ namespace StbcAiCrew
             LevelDb = db;
 
             var copy = (short[])_frame.Clone();
-            if (Muted || !SttReady)
+            if (Muted || !SttReady || Deaf)
             {
                 ResetUtterance();
-                State = Muted ? "stumm" : "Spracherkennung startet …";
+                State = Muted ? "stumm" : !SttReady ? "Spracherkennung startet …" : "Crew spricht …";
                 return;
             }
+            if (State == "Crew spricht …") State = "hört zu";
 
             bool voiced = db > Math.Max(_noiseDb + _cfg.MarginDb, _cfg.MinDb);
 

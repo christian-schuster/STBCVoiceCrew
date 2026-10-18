@@ -58,6 +58,20 @@ Spiel (Unity 5.4 / Mono)                                 llama-server.exe (eigen
 - Bestimmtes Mikrofon wählen: `[Sprache] Mikrofon` = Teil des Gerätenamens (z. B. `Oculus`). Die verfügbaren Geräte stehen im Log.
 - Sitzt du nicht auf dem Captain-Stuhl: `[Sprache] MeineStation`. Dann gelten deine Worte nicht als Befehl, sondern als Wort eines Kollegen.
 
+## Sprachausgabe (eigene Stimme je Charakter)
+
+- **Piper** (lokal, CPU, keine GPU-Last) erzeugt einen Satz in ca. 0,4 s. Er wird schon vorbereitet, während
+  der vorige Kollege noch spricht. Je Stimme läuft ein dauerhafter piper-Prozess.
+- 8 deutsche Stimmen: thorsten, kerstin, karlsson, ramona, pavoque, eva_k, thorsten_emotional (8 Gefühlslagen,
+  Brannok spricht „wütend“) und mls mit 236 Sprechern. Neu Angeworbene bekommen automatisch einen eigenen mls-Sprecher.
+- **Tempo und Tonhöhe** je Charakter. Die Tonhöhe ändert sich, ohne dass sich das Tempo ändert.
+- Dienstgrade werden wie in der deutschen Synchronisation ausgesprochen („Käptn“, „Lutenant“, „Kommander“).
+- Wiedergabe direkt über Windows, unabhängig von der Audio-Engine des Spiels. Gerät wählbar über `[Stimme] Lautsprecher`
+  (z. B. `Oculus`). Fehlt ein Ausgabegerät, spricht die Crew als Text und versucht es beim nächsten Satz erneut.
+- **Kein Echo:** Solange die Crew spricht, ignoriert das Mikrofon alles (`MikroTaubWennCrewSpricht`).
+  Sonst würde es die Crew aus den Brillenlautsprechern als Captain erkennen.
+- Im Crew-Quartier: Stimme, Sprecher, Tempo und Tonhöhe einstellen und **probehören**.
+
 ## Charaktere, Erfahrung, Lernen
 
 - Die Charaktere liegen als JSON in `BepInEx\config\StbcAiCrew\crew\`. Beim ersten Start entsteht eine
@@ -93,7 +107,9 @@ Im Spiel, zum Beispiel im Hauptmenü, als Fenster auf dem Desktop:
 5. whisper.cpp für Windows (CUDA) nach `BepInEx\plugins\StbcAiCrew\whisper\` entpacken (`whisper\Release\whisper-server.exe`)
    und `ggml-large-v3-turbo-q5_0.bin` daneben legen. Auf RTX-50-Karten dauert der allererste Start ca. 30 s, weil
    der Treiber den GPU-Code übersetzt. Der Mod wärmt das beim Start vor.
-6. Spiel starten. Die Config liegt in `BepInEx\config\de.schuster.stbc.aicrew.cfg`.
+6. Piper für Windows nach `BepInEx\plugins\StbcAiCrew\piper\` entpacken (`piper\piper\piper.exe`) und die
+   Stimmen (`*.onnx` + `*.onnx.json` von huggingface.co/rhasspy/piper-voices) nach `piper\voices\` legen.
+7. Spiel starten. Die Config liegt in `BepInEx\config\de.schuster.stbc.aicrew.cfg`.
 
 ## Tasten
 
@@ -124,7 +140,7 @@ Spielpfad bei Bedarf überschreiben: `-p:GameDir="D:\...\Star Trek Bridge Crew"`
 - [x] Schiffswerte (Hülle, Schilde, Subsysteme, Torpedos) aus dem Spielcode
 - [ ] Im Spiel testen: Hooks, Befehle, Besetzungserkennung (Bot oder Mensch)
 - [x] Spracheingabe mit dauerhaftem Zuhören (whisper.cpp), Stations-Routing über Fachbegriffe
-- [ ] Sprachausgabe (TTS) mit eigener Stimme je Charakter
+- [x] Sprachausgabe mit eigener Stimme, Tempo und Tonhöhe je Charakter (Piper), Echo-Sperre fürs Mikrofon
 - [ ] Aussehen und Namensschild der Bots an den Charakter anpassen (Avatar-System des Spiels erschließen)
 - [ ] Weitere Konsolenwerte: Ziele/Kontakte für Taktik, Kurs/Geschwindigkeit für die Steuer, Energieverteilung für Technik
 - [ ] NPCs bei Rufen (Hailing) per LLM

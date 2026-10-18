@@ -13,6 +13,9 @@ namespace StbcAiCrew
         readonly Plugin _cfg;
         readonly Roster _roster;
         readonly LlmClient _llm;
+        readonly CrewBrain _brain;
+        readonly PiperTts _tts;
+        List<KeyValuePair<string, int>> _voices;
 
         public bool Visible;
         Rect _rect = new Rect(0, 0, 820, 600);
@@ -31,11 +34,13 @@ namespace StbcAiCrew
 
         List<Character> _dismissed;
 
-        public CrewPanel(Plugin cfg, Roster roster, LlmClient llm)
+        public CrewPanel(Plugin cfg, Roster roster, LlmClient llm, CrewBrain brain, PiperTts tts)
         {
             _cfg = cfg;
             _roster = roster;
             _llm = llm;
+            _brain = brain;
+            _tts = tts;
         }
 
         /// <summary>Solange im Fenster getippt wird, sollen keine Mod-Tasten auslösen.</summary>
@@ -142,6 +147,7 @@ namespace StbcAiCrew
             c.Background = Area("Hintergrund", c.Background);
             c.Appearance = Area("Aussehen", c.Appearance);
             GUILayout.Label("<i>Das Aussehen wird gespeichert, aber im Spiel noch nicht angewendet.</i>");
+            VoiceEditor(c);
 
             GUILayout.BeginHorizontal();
             GUILayout.Label("Stationen", GUILayout.Width(110));
@@ -200,6 +206,47 @@ namespace StbcAiCrew
                     _confirmDismiss = false;
                 }
                 if (GUILayout.Button("Nein", GUILayout.Width(60))) _confirmDismiss = false;
+            }
+            GUILayout.EndHorizontal();
+        }
+
+        void VoiceEditor(Character c)
+        {
+            if (_tts == null) { GUILayout.Label("Stimme: Sprachausgabe nicht verfügbar (Piper fehlt oder ist abgeschaltet)."); return; }
+            if (_voices == null) _voices = new List<KeyValuePair<string, int>>(_tts.Voices());
+            if (_voices.Count == 0) { GUILayout.Label("Stimme: keine Piper-Stimmen installiert."); return; }
+
+            var spec = c.VoiceSpec;
+            int idx = Math.Max(0, _voices.FindIndex(v => v.Key == spec.Model));
+            int speakers = _voices[idx].Value;
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Stimme", GUILayout.Width(110));
+            if (GUILayout.Button("◄", GUILayout.Width(30))) { idx = (idx + _voices.Count - 1) % _voices.Count; spec.Speaker = 0; }
+            GUILayout.Label(_voices[idx].Key.Replace("de_DE-", ""), GUILayout.Width(220));
+            if (GUILayout.Button("►", GUILayout.Width(30))) { idx = (idx + 1) % _voices.Count; spec.Speaker = 0; }
+            speakers = _voices[idx].Value;
+            if (speakers > 1)
+            {
+                GUILayout.Label("Sprecher", GUILayout.Width(60));
+                if (GUILayout.Button("–", GUILayout.Width(24))) spec.Speaker = (spec.Speaker + speakers - 1) % speakers;
+                GUILayout.Label(spec.Speaker + " / " + (speakers - 1), GUILayout.Width(60));
+                if (GUILayout.Button("+", GUILayout.Width(24))) spec.Speaker = (spec.Speaker + 1) % speakers;
+            }
+            GUILayout.EndHorizontal();
+            c.Voice = _voices[idx].Key + (speakers > 1 ? "#" + Math.Min(spec.Speaker, speakers - 1) : "");
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Tempo", GUILayout.Width(110));
+            c.VoiceSpeed = (float)Math.Round(GUILayout.HorizontalSlider(c.VoiceSpeed, 0.7f, 1.4f, GUILayout.Width(150)), 2);
+            GUILayout.Label(c.VoiceSpeed.ToString("0.00"), GUILayout.Width(40));
+            GUILayout.Label("Tonhöhe", GUILayout.Width(60));
+            c.VoicePitch = (float)Math.Round(GUILayout.HorizontalSlider(c.VoicePitch, 0.8f, 1.25f, GUILayout.Width(150)), 2);
+            GUILayout.Label(c.VoicePitch.ToString("0.00"), GUILayout.Width(40));
+            if (GUILayout.Button("Probehören", GUILayout.Width(100)))
+            {
+                string station = c.Stations.Count > 0 ? OfficerAgent.StationDe(c.Stations[0]) : "Brücke";
+                _brain.Preview(c, "Hier spricht " + c.Rank + " " + c.Name + ", " + station + ". Bereit für Ihre Befehle, Captain.");
             }
             GUILayout.EndHorizontal();
         }

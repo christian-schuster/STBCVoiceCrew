@@ -46,6 +46,14 @@ namespace StbcAiCrew
         public ConfigEntry<int> MicEndSilenceMs;
         public ConfigEntry<int> MicMinSpeechMs;
 
+        // ---- Sprachausgabe ----
+        public ConfigEntry<bool> TtsEnabled;
+        public ConfigEntry<string> PiperExe;
+        public ConfigEntry<string> PiperVoiceDir;
+        public ConfigEntry<string> SpeakerDevice;
+        public ConfigEntry<float> SpeakerVolume;
+        public ConfigEntry<bool> DeafWhileCrewSpeaks;
+
         // ---- Besetzung ----
         public ConfigEntry<string> CrewHelm;
         public ConfigEntry<string> CrewTactical;
@@ -82,6 +90,8 @@ namespace StbcAiCrew
 
         ServerHost _server;
         ServerHost _sttServer;
+        PiperTts _tts;
+        WavePlayer _player;
         VoiceInput _voice;
         bool _voiceWarmed;
         LlmClient _llm;
@@ -124,7 +134,8 @@ namespace StbcAiCrew
             _roster = new Roster(Path.Combine(_dataDir, "crew"));
             _roster.Load();
             _brain = new CrewBrain(_llm, this, _roster);
-            _panel = new CrewPanel(this, _roster, _llm);
+            if (TtsEnabled.Value) StartTts(pluginDir);
+            _panel = new CrewPanel(this, _roster, _llm, _brain, _tts);
 
             GamePatches.Apply(new Harmony(Guid));
             _server.Start();
@@ -147,6 +158,24 @@ namespace StbcAiCrew
             };
             _voice = new VoiceInput(Log, vs, url, OnHeard);
             _voice.Start();
+        }
+
+        void StartTts(string pluginDir)
+        {
+            _tts = new PiperTts(Log, ResolvePath(pluginDir, PiperExe.Value), ResolvePath(pluginDir, PiperVoiceDir.Value),
+                                Path.Combine(Path.GetTempPath(), "StbcAiCrew_tts"));
+            if (!_tts.Available)
+            {
+                Log.LogWarning("Piper oder Stimmen nicht gefunden (" + PiperExe.Value + ", " + PiperVoiceDir.Value + ") – Crew spricht nur als Text.");
+                _tts = null;
+                return;
+            }
+            _tts.Start();
+            _player = new WavePlayer { DeviceFilter = SpeakerDevice.Value, Volume = SpeakerVolume.Value };
+            Log.LogInfo("Lautsprecher: " + string.Join(" | ", WavePlayer.ListDevices().ToArray()));
+            _brain.Tts = _tts;
+            _brain.Player = _player;
+            _brain.CrewSpeaking = secs => { if (_voice != null && DeafWhileCrewSpeaks.Value) _voice.Deafen(secs); };
         }
 
         /// <summary>Erkannter Satz vom Mikrofon (Hauptthread).</summary>
@@ -220,6 +249,13 @@ namespace StbcAiCrew
             NotesMax = Config.Bind("Lernen", "NotizenProMission", 10, "Notizen, die sich ein Charakter während einer Mission machen kann.");
             MinActiveSecForDebrief = Config.Bind("Lernen", "MinDienstzeitSek", 60, "Nachbesprechung und XP erst ab so viel Dienstzeit an einer Bot-Station.");
             DebriefLogChars = Config.Bind("Lernen", "ProtokollZeichen", 10000, "Maximale Länge des Missionsprotokolls in der Nachbesprechung.");
+
+            TtsEnabled = Config.Bind("Stimme", "Aktiv", true, "Crew spricht mit eigenen Stimmen (Piper). false = nur Text auf den Konsolen.");
+            PiperExe = Config.Bind("Stimme", "PiperExe", @"piper\piper\piper.exe", "Pfad zu piper.exe (relativ zum Plugin-Ordner oder absolut).");
+            PiperVoiceDir = Config.Bind("Stimme", "StimmenOrdner", @"piper\voices", "Ordner mit Piper-Stimmen (*.onnx + *.onnx.json).");
+            SpeakerDevice = Config.Bind("Stimme", "Lautsprecher", "", "Teil des Namens des Ausgabegeräts (z. B. 'Oculus' oder 'Kopfhörer'); leer = Windows-Standard. Liste im Log.");
+            SpeakerVolume = Config.Bind("Stimme", "Lautstaerke", 0.9f, "Lautstärke der Crew (0–1).");
+            DeafWhileCrewSpeaks = Config.Bind("Stimme", "MikroTaubWennCrewSpricht", true, "Mikrofon ignorieren, solange die Crew spricht (verhindert, dass die Crew sich selbst als Captain hört).");
 
             KeyMute = Config.Bind("Tasten", "MikrofonStumm", KeyCode.F5, "Dauerhaftes Zuhören stumm schalten / wieder an.");
             KeyCrewPanel = Config.Bind("Tasten", "CrewQuartier", KeyCode.F6, "Crew-Quartier: Charaktere auswählen, anwerben, bearbeiten, entlassen.");
@@ -330,6 +366,9 @@ namespace StbcAiCrew
                 string bar = new string('|', Mathf.Clamp(Mathf.RoundToInt((_voice.LevelDb + 70f) / 3f), 0, 20));
                 GUILayout.Label("Mikro (" + _voice.Device + "): " + stt + "  " + bar + (_voice.Speaking ? " ●" : ""));
             }
+            if (_player != null)
+                GUILayout.Label("Stimme: " + _player.DeviceName + (_player.Playing ? "  ♪" : "") +
+                                (_tts.Error != null ? "  Fehler: " + _tts.Error : _player.Error != null ? "  Fehler: " + _player.Error : ""));
 
             // Nur Gesprochenes: das hört jeder auf der Brücke
             int from = Math.Max(0, _brain.Transcript.Count - 8);
@@ -382,6 +421,8 @@ namespace StbcAiCrew
             _shutDown = true;
             if (_brain != null && _brain.InMission) _brain.SaveForShutdown();
             if (_voice != null) _voice.Dispose();
+            if (_player != null) _player.Dispose();
+            if (_tts != null) _tts.Dispose();
             if (_sttServer != null) _sttServer.Dispose();
             if (_server != null) _server.Dispose();
         }

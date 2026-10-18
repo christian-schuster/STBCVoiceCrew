@@ -64,7 +64,9 @@ namespace StbcAiCrew
         public string SpeechStyle = "";
         public string Background = "";
         public string Appearance = "";        // Beschreibung; im Spiel angewendet, sobald das Avatar-System erschlossen ist
-        public string Voice = "";             // für spätere Sprachausgabe
+        public string Voice = "";             // Piper-Stimme: "modell" oder "modell#sprecher"
+        public float VoiceSpeed = 1f;         // Sprechtempo (>1 schneller)
+        public float VoicePitch = 1f;         // Tonhöhe (>1 höher)
         public List<string> Stations = new List<string>();   // helm | tactical | engineering, bevorzugte zuerst
         public Dictionary<string, int> Traits = Traits0();    // 0..10, siehe TraitNames
 
@@ -141,6 +143,8 @@ namespace StbcAiCrew
             c.Background = Json.Str(o, "background") ?? "";
             c.Appearance = Json.Str(o, "appearance") ?? "";
             c.Voice = Json.Str(o, "voice") ?? "";
+            c.VoiceSpeed = Float(o, "voiceSpeed", 1f);
+            c.VoicePitch = Float(o, "voicePitch", 1f);
             Strings(Json.Get(o, "stations"), c.Stations);
             var traits = Json.Obj(Json.Get(o, "traits"));
             if (traits != null)
@@ -194,7 +198,7 @@ namespace StbcAiCrew
                 {
                     { "id", Id }, { "name", Name }, { "species", Species }, { "pronouns", Pronouns },
                     { "personality", Personality }, { "speechStyle", SpeechStyle }, { "background", Background },
-                    { "appearance", Appearance }, { "voice", Voice }, { "stations", Stations }, { "traits", Traits },
+                    { "appearance", Appearance }, { "voice", Voice }, { "voiceSpeed", VoiceSpeed }, { "voicePitch", VoicePitch }, { "stations", Stations }, { "traits", Traits },
                     { "rank", Rank }, // nur zur Info, maßgeblich ist xp
                     { "xp", Xp }, { "missions", Missions }, { "commendations", Commendations },
                     { "lastPlayed", LastPlayed }, { "promotionNews", PromotionNews },
@@ -229,6 +233,14 @@ namespace StbcAiCrew
             {
                 Plugin.Log.LogError(Name + ": Speichern fehlgeschlagen: " + e.Message);
             }
+        }
+
+        public VoiceSpec VoiceSpec => StbcAiCrew.VoiceSpec.Parse(Voice, VoiceSpeed, VoicePitch);
+
+        static float Float(object o, string key, float fallback)
+        {
+            var v = Json.Get(o, key);
+            return v is double ? (float)(double)v : fallback;
         }
 
         static int Int(object o, string key)

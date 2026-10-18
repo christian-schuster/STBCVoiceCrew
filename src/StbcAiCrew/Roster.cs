@@ -25,7 +25,47 @@ namespace StbcAiCrew
                 try { All.Add(Character.Load(f)); }
                 catch (Exception e) { Plugin.Log.LogError("Charakter " + Path.GetFileName(f) + " unlesbar: " + e.Message); }
             }
+            foreach (var c in All)
+                if (string.IsNullOrEmpty(c.Voice)) { AssignVoice(c); c.Save(); }
             Plugin.Log.LogInfo("Crew-Liste: " + All.Count + " Charaktere.");
+        }
+
+        // Stammbesetzung: feste Stimmen. Tempo und Tonhöhe passend zum Charakter.
+        static readonly Dictionary<string, object[]> DefaultVoices = new Dictionary<string, object[]>
+        {
+            { "rao",      new object[] { "de_DE-thorsten-medium", 1.00f, 1.00f } },
+            { "hoyle",    new object[] { "de_DE-kerstin-low", 1.05f, 1.00f } },
+            { "tnar",     new object[] { "de_DE-pavoque-low", 0.92f, 0.97f } },
+            { "zhal",     new object[] { "de_DE-ramona-low", 1.10f, 1.06f } },
+            { "kerrigan", new object[] { "de_DE-karlsson-low", 1.00f, 0.93f } },
+            { "venn",     new object[] { "de_DE-eva_k-x_low", 1.08f, 1.08f } },
+            { "brannok",  new object[] { "de_DE-thorsten_emotional-medium#1", 0.95f, 0.86f } },   // Sprecher 1 = "angry"
+        };
+
+        /// <summary>
+        /// Gibt einem Charakter ohne Stimme eine: Stammbesetzung fest, alle anderen einen eigenen
+        /// Sprecher aus dem Mehrsprecher-Modell (236 Stimmen), Tempo nach Beredsamkeit und Gelassenheit.
+        /// </summary>
+        public void AssignVoice(Character c)
+        {
+            object[] def;
+            if (DefaultVoices.TryGetValue(c.Id, out def))
+            {
+                c.Voice = (string)def[0];
+                c.VoiceSpeed = (float)def[1];
+                c.VoicePitch = (float)def[2];
+                return;
+            }
+            var used = new HashSet<string>();
+            foreach (var o in All) if (o != c && !string.IsNullOrEmpty(o.Voice)) used.Add(o.Voice);
+            int seed = Math.Abs((c.Id + c.Name).GetHashCode());
+            for (int i = 0; i < 236; i++)
+            {
+                string v = "de_DE-mls-medium#" + ((seed + i * 37) % 236);
+                if (!used.Contains(v)) { c.Voice = v; break; }
+            }
+            c.VoiceSpeed = 0.95f + (c.Trait("Beredsamkeit") - 5) * 0.02f - (c.Trait("Gelassenheit") - 5) * 0.01f;
+            c.VoicePitch = 1f;
         }
 
         string DismissedDir => Path.Combine(_dir, "entlassen");
@@ -38,6 +78,7 @@ namespace StbcAiCrew
             for (int i = 2; Find(id) != null || File.Exists(Path.Combine(DismissedDir, id + ".json")); i++) id = baseId + i;
             c.Id = id;
             c.FilePath = Path.Combine(_dir, id + ".json");
+            if (string.IsNullOrEmpty(c.Voice)) AssignVoice(c);
             c.Save();
             All.Add(c);
             return c;
@@ -180,6 +221,7 @@ namespace StbcAiCrew
                 var kv = pair.Split('=');
                 c.SetTrait(kv[0], int.Parse(kv[1]));
             }
+            AssignVoice(c);
             c.Save();
         }
     }

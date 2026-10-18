@@ -25,7 +25,23 @@ namespace StbcAiCrew
         public readonly List<CrewLine> Transcript = new List<CrewLine>();
         public readonly List<string> Notices = new List<string>();
 
-        readonly Queue<KeyValuePair<OfficerAgent, string>> _speech = new Queue<KeyValuePair<OfficerAgent, string>>();
+        sealed class SpeechItem
+        {
+            public OfficerAgent Agent;
+            public string Text;
+            public short[] Pcm;
+            public int Rate;
+            public bool Ready;
+            public float QueuedAt;
+        }
+
+        readonly Queue<SpeechItem> _speech = new Queue<SpeechItem>();
+
+        /// <summary>Sprachausgabe (null = nur Text auf den Konsolen).</summary>
+        public PiperTts Tts;
+        public WavePlayer Player;
+        /// <summary>Wird aufgerufen, wenn die Crew für n Sekunden spricht (Mikrofon so lange taub stellen).</summary>
+        public Action<float> CrewSpeaking;
         float _floorFreeAt;
         float _nextSnapshot;
         public bool InMission { get; private set; }
@@ -136,24 +152,45 @@ namespace StbcAiCrew
             }
         }
 
+        /// <summary>Satz vormerken; die Stimme wird sofort im Hintergrund erzeugt, damit sie bereitliegt.</summary>
         public void Say(OfficerAgent speaker, string text)
         {
-            _speech.Enqueue(new KeyValuePair<OfficerAgent, string>(speaker, text));
+            var item = new SpeechItem { Agent = speaker, Text = text, QueuedAt = Time.time };
+            _speech.Enqueue(item);
+            if (Tts != null && speaker.Char != null)
+                Tts.Speak(speaker.Char.VoiceSpec, text, (pcm, rate) => { item.Pcm = pcm; item.Rate = rate; item.Ready = true; });
+            else item.Ready = true;
         }
 
-        /// <summary>Immer nur einer spricht; die Dauer richtet sich nach der Textlänge.</summary>
+        /// <summary>Stimme probehören (Crew-Quartier).</summary>
+        public void Preview(Character c, string text)
+        {
+            if (Tts == null || Player == null) return;
+            Tts.Speak(c.VoiceSpec, text, (pcm, rate) => { if (pcm != null) Player.Play(pcm, rate); });
+        }
+
+        /// <summary>Immer nur einer spricht; die Dauer richtet sich nach der Sprachausgabe bzw. Textlänge.</summary>
         void ReleaseSpeech()
         {
-            if (_speech.Count == 0 || Time.time < _floorFreeAt) return;
-            var item = _speech.Dequeue();
-            var speaker = item.Key;
-            string text = item.Value;
+            if (_speech.Count == 0 || Time.time < _floorFreeAt || (Player != null && Player.Playing)) return;
+            var item = _speech.Peek();
+            if (!item.Ready && Time.time - item.QueuedAt < 4f) return;   // Stimme ist gleich fertig
+            _speech.Dequeue();
+            var speaker = item.Agent;
+            string text = item.Text;
             if (speaker.Char == null) return;
 
             string name = speaker.Char.Title;
             AddLine(name + " (" + OfficerAgent.StationDe(speaker.Station) + ")", text);
             GameBridge.ShowOnAllConsoles(speaker.Char.Name + ": " + text, _cfg.MessageSeconds.Value);
-            _floorFreeAt = Time.time + 1.2f + text.Length / 15f;
+            float seconds = 0f;
+            if (item.Pcm != null && Player != null) seconds = Player.Play(item.Pcm, item.Rate);
+            if (seconds > 0f)
+            {
+                _floorFreeAt = Time.time + seconds + 0.35f;
+                if (CrewSpeaking != null) CrewSpeaking(seconds + 0.4f);
+            }
+            else _floorFreeAt = Time.time + 1.2f + text.Length / 15f;
 
             foreach (var other in Agents)
             {

@@ -6,3 +6,6 @@ obj/
 lib/
 *.gguf
 dist/
+
+# Hörproben
+*.wav
