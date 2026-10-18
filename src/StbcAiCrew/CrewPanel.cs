@@ -15,6 +15,7 @@ namespace StbcAiCrew
         readonly LlmClient _llm;
         readonly CrewBrain _brain;
         readonly PiperTts _tts;
+        readonly QwenTts _qwen;
         List<KeyValuePair<string, int>> _voices;
 
         public bool Visible;
@@ -34,8 +35,9 @@ namespace StbcAiCrew
 
         List<Character> _dismissed;
 
-        public CrewPanel(Plugin cfg, Roster roster, LlmClient llm, CrewBrain brain, PiperTts tts)
+        public CrewPanel(Plugin cfg, Roster roster, LlmClient llm, CrewBrain brain, PiperTts tts, QwenTts qwen)
         {
+            _qwen = qwen;
             _cfg = cfg;
             _roster = roster;
             _llm = llm;
@@ -214,6 +216,17 @@ namespace StbcAiCrew
 
         void VoiceEditor(Character c)
         {
+            if (_qwen != null)
+            {
+                c.VoiceDesign = Area("Stimmbeschreibung", c.VoiceDesign);
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("", GUILayout.Width(110));
+                GUILayout.Label(_qwen.HasVoice(c) ? "<i>Stimme fertig.</i>" : "<i>Stimme wird entworfen bzw. fehlt noch (bis dahin spricht Piper).</i>", GUILayout.Width(330));
+                if (GUILayout.Button("Stimme neu entwerfen", GUILayout.Width(160))) { c.Save(); _qwen.Prepare(c, true); _message = "Neue Stimme für " + c.Name + " wird entworfen …"; }
+                if (GUILayout.Button("Probehören", GUILayout.Width(100))) PreviewVoice(c);
+                GUILayout.EndHorizontal();
+                GUILayout.Label("<i>Englisch funktioniert am besten, z. B. \"Male, around 50, deep gravelly voice, calm, slight Scottish accent.\" Darunter: Piper-Ersatzstimme.</i>");
+            }
             if (_tts == null) { GUILayout.Label("Stimme: Sprachausgabe nicht verfügbar (Piper fehlt oder ist abgeschaltet)."); return; }
             if (_voices == null) _voices = new List<KeyValuePair<string, int>>(_tts.Voices());
             if (_voices.Count == 0) { GUILayout.Label("Stimme: keine Piper-Stimmen installiert."); return; }
@@ -245,12 +258,14 @@ namespace StbcAiCrew
             GUILayout.Label("Tonhöhe", GUILayout.Width(60));
             c.VoicePitch = (float)Math.Round(GUILayout.HorizontalSlider(c.VoicePitch, 0.8f, 1.25f, GUILayout.Width(150)), 2);
             GUILayout.Label(c.VoicePitch.ToString("0.00"), GUILayout.Width(40));
-            if (GUILayout.Button("Probehören", GUILayout.Width(100)))
-            {
-                string station = c.Stations.Count > 0 ? OfficerAgent.StationDe(c.Stations[0]) : "Brücke";
-                _brain.Preview(c, "Hier spricht " + c.Rank + " " + c.Name + ", " + station + ". Bereit für Ihre Befehle, Captain.");
-            }
+            if (_qwen == null && GUILayout.Button("Probehören", GUILayout.Width(100))) PreviewVoice(c);
             GUILayout.EndHorizontal();
+        }
+
+        void PreviewVoice(Character c)
+        {
+            string station = c.Stations.Count > 0 ? OfficerAgent.StationDe(c.Stations[0]) : "Brücke";
+            _brain.Preview(c, "Hier spricht " + c.Rank + " " + c.Name + ", " + station + ". Bereit für Ihre Befehle, Captain. " + (c.Laugh ?? ""));
         }
 
         static string Field(string label, string value)
@@ -328,11 +343,11 @@ namespace StbcAiCrew
                 { "properties", new Dictionary<string, object>
                     {
                         { "name", shortStr }, { "species", shortStr }, { "pronouns", pronouns },
-                        { "personality", str }, { "speechStyle", str }, { "background", str }, { "appearance", str }, { "laugh", shortStr },
+                        { "personality", str }, { "speechStyle", str }, { "background", str }, { "appearance", str }, { "laugh", shortStr }, { "voiceDesign", str },
                         { "traits", new Dictionary<string, object> { { "type", "object" }, { "properties", traitProps }, { "required", traitReq } } }
                     }
                 },
-                { "required", new List<object> { "name", "species", "pronouns", "personality", "speechStyle", "background", "appearance", "laugh", "traits" } }
+                { "required", new List<object> { "name", "species", "pronouns", "personality", "speechStyle", "background", "appearance", "laugh", "voiceDesign", "traits" } }
             };
 
             var names = new List<string>();
@@ -346,7 +361,7 @@ namespace StbcAiCrew
                 "Erfinde einen eigenständigen Charakter (keine bekannte Serienfigur), mit glaubwürdiger Spezies aus dem Star-Trek-Universum. " +
                 "Felder: name (Vor- und/oder Nachname passend zur Spezies, nicht einer von: " + string.Join(", ", names.ToArray()) + "), species, " +
                 "pronouns (sie/ihr, er/ihm oder leer), personality (2 kurze Sätze), speechStyle (1 Satz), background (1–2 Sätze, frisch von der Akademie oder Quereinsteiger), " +
-                "appearance (1–2 Sätze, passend zur Spezies laut Star Trek), laugh (wie die Person lacht, lautmalerisch und ganz eigen, z. B. Har har har! oder Hihihi! oder Bwahaha!; leer, wenn sie nie lacht), traits als ganze Zahlen 0–10: " + traitList +
+                "appearance (1–2 Sätze, passend zur Spezies laut Star Trek), laugh (wie die Person lacht, lautmalerisch und ganz eigen, z. B. Har har har! oder Hihihi! oder Bwahaha!; leer, wenn sie nie lacht), voiceDesign (die Stimme auf ENGLISCH als kurze Stichworte für eine Sprachsynthese: Geschlecht, Alter, Tonlage, Klangfarbe, Tempo, Wirkung, z. B. Male, around 30, bright tenor, fast and cheerful, slightly nasal), traits als ganze Zahlen 0–10: " + traitList +
                 "Die Werte sollen zur Beschreibung passen und ruhig Ecken und Kanten haben. Schreib auf " + _cfg.Language.Value + ".";
 
             _message = "Sternenflottenkommando prüft die Bewerbung …";
@@ -367,6 +382,7 @@ namespace StbcAiCrew
                         Background = Json.Str(o, "background") ?? "",
                         Appearance = Json.Str(o, "appearance") ?? "",
                         Laugh = Json.Str(o, "laugh"),
+                        VoiceDesign = Json.Str(o, "voiceDesign"),
                         Xp = 0
                     };
                     foreach (var s in stations) c.Stations.Add((string)s);
@@ -375,6 +391,7 @@ namespace StbcAiCrew
                         foreach (var kv in traits)
                             if (kv.Value is double) c.SetTrait(kv.Key, (int)Math.Round((double)kv.Value));
                     _sel = _roster.Add(c);
+                    if (_qwen != null) _qwen.Prepare(c, false);
                     _tab = 1;
                     _recruitText = "";
                     _message = "Willkommen an Bord, Fähnrich " + c.Name + "! (" + latency.ToString("0.0") + " s)";

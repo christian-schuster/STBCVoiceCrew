@@ -71,6 +71,14 @@ Der Mod nutzt dieselben Kanäle wie das Spiel und braucht normalerweise keine ei
 
 ## Sprachausgabe (eigene Stimme je Charakter)
 
+- **Qwen3-TTS** (Standard, [qwentts.cpp](https://github.com/ServeurpersoCom/qwentts.cpp), GPU, 24 kHz): Jeder Charakter hat eine
+  **Stimmbeschreibung** (z. B. Kerrigan: „Male, around 55, warm and gravelly deep voice, jovial and hearty, gentle Irish lilt“).
+  Daraus entwirft das VoiceDesign-Modell einmalig eine Referenzaufnahme (`BepInEx\config\StbcAiCrew\stimmen\`, ca. 3 s je Charakter).
+  Ein dauerhaft laufender `tts-server` klont diese Stimme für jede Zeile (ca. 0,5–1,8 s pro Satz, Echtzeitfaktor ca. 0,17).
+  Bei neuen Charakteren schreibt das LLM die Stimmbeschreibung gleich mit. Im Crew-Quartier lässt sie sich ändern, neu entwerfen und probehören.
+- **VRAM:** tts-server ca. 4,5 GB (1.7B-Base Q8). Zusammen mit dem Sprachmodell (ca. 5,6 GB) und Whisper (ca. 1 GB) sind das rund 11 GB
+  plus Spiel. Wird es eng: `[Stimme] QwenBaseModell` auf die Q4_K_M-Variante stellen oder `Engine = piper` wählen.
+- **Piper** ist der Rückfall: Er spricht, solange eine Stimme noch entworfen wird, der Server lädt oder ausfällt.
 - **Piper** (lokal, CPU, keine GPU-Last) erzeugt einen Satz in ca. 0,4 s. Er wird schon vorbereitet, während
   der vorige Kollege noch spricht. Je Stimme läuft ein dauerhafter piper-Prozess.
 - 8 deutsche Stimmen: thorsten, kerstin, karlsson, ramona, pavoque, eva_k, thorsten_emotional (8 Gefühlslagen,
@@ -139,9 +147,13 @@ Im Spiel, zum Beispiel im Hauptmenü, als Fenster auf dem Desktop:
 5. whisper.cpp für Windows (CUDA) nach `BepInEx\plugins\StbcAiCrew\whisper\` entpacken (`whisper\Release\whisper-server.exe`)
    und `ggml-large-v3-turbo-q5_0.bin` daneben legen. Auf RTX-50-Karten dauert der allererste Start ca. 30 s, weil
    der Treiber den GPU-Code übersetzt. Der Mod wärmt das beim Start vor.
-6. Piper für Windows nach `BepInEx\plugins\StbcAiCrew\piper\` entpacken (`piper\piper\piper.exe`) und die
+6. Qwen3-TTS: `tools\build-qwentts.cmd` baut qwentts.cpp (Visual Studio 2026, Windows-SDK, CUDA 13.4). Die Programme und
+   `ggml*.dll` sowie die CUDA-13-Laufzeit-DLLs kommen nach `BepInEx\plugins\StbcAiCrew\qwentts\`, die Modelle
+   (`qwen-talker-1.7b-base-Q8_0.gguf`, `qwen-talker-1.7b-voicedesign-Q8_0.gguf`, `qwen-tokenizer-12hz-Q8_0.gguf`
+   von huggingface.co/Serveurperso/Qwen3-TTS-GGUF) nach `qwentts\models\`.
+7. Piper für Windows nach `BepInEx\plugins\StbcAiCrew\piper\` entpacken (`piper\piper\piper.exe`) und die
    Stimmen (`*.onnx` + `*.onnx.json` von huggingface.co/rhasspy/piper-voices) nach `piper\voices\` legen.
-7. Spiel starten. Die Config liegt in `BepInEx\config\de.schuster.stbc.aicrew.cfg`.
+8. Spiel starten. Die Config liegt in `BepInEx\config\de.schuster.stbc.aicrew.cfg`.
 
 ## Tasten
 
@@ -172,7 +184,7 @@ Spielpfad bei Bedarf überschreiben: `-p:GameDir="D:\...\Star Trek Bridge Crew"`
 - [x] Schiffswerte (Hülle, Schilde, Subsysteme, Torpedos) aus dem Spielcode
 - [ ] Im Spiel testen: Hooks, Befehle, Besetzungserkennung (Bot oder Mensch)
 - [x] Spracheingabe mit dauerhaftem Zuhören (whisper.cpp), Stations-Routing über Fachbegriffe
-- [x] Sprachausgabe mit eigener Stimme, Tempo und Tonhöhe je Charakter (Piper), Echo-Sperre fürs Mikrofon
+- [x] Sprachausgabe: entworfene Stimme je Charakter mit Qwen3-TTS (GPU, 24 kHz), Piper als Rückfall, Echo-Sperre fürs Mikrofon
 - [ ] Aussehen und Namensschild der Bots an den Charakter anpassen (Avatar-System des Spiels erschließen)
 - [ ] Weitere Konsolenwerte: Ziele/Kontakte für Taktik, Kurs/Geschwindigkeit für die Steuer, Energieverteilung für Technik
 - [ ] NPCs bei Rufen (Hailing) per LLM

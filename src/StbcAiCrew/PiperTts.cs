@@ -41,7 +41,7 @@ namespace StbcAiCrew
     /// Die Tonhöhe wird ohne Tempoänderung verschoben: Piper spricht um den Faktor langsamer, und die
     /// Wiedergabe wird um denselben Faktor beschleunigt.
     /// </summary>
-    public sealed class PiperTts : IDisposable
+    public sealed class PiperTts : ISpeechEngine
     {
         sealed class Job
         {
@@ -106,6 +106,8 @@ namespace StbcAiCrew
             }
             return d;
         }
+
+        public void Speak(Character c, string text, Action<short[], int> done) => Speak(c.VoiceSpec, text, done);
 
         /// <summary>Erzeugt einen Satz; done(pcm, sampleRate) läuft im Unity-Hauptthread (pcm = null bei Fehler).</summary>
         public void Speak(VoiceSpec voice, string text, Action<short[], int> done)
@@ -217,7 +219,7 @@ namespace StbcAiCrew
             try { if (!e.Proc.HasExited) e.Proc.Kill(); } catch { }
         }
 
-        static string CleanForSpeech(string text)
+        public static string CleanForSpeech(string text)
         {
             var sb = new StringBuilder(text.Length);
             foreach (char c in text)

@@ -48,6 +48,14 @@ namespace StbcAiCrew
 
         // ---- Sprachausgabe ----
         public ConfigEntry<bool> TtsEnabled;
+        public ConfigEntry<string> TtsEngine;
+        public ConfigEntry<string> QwenServerExe;
+        public ConfigEntry<string> QwenTtsExe;
+        public ConfigEntry<string> QwenBaseModel;
+        public ConfigEntry<string> QwenDesignModel;
+        public ConfigEntry<string> QwenCodec;
+        public ConfigEntry<int> QwenPort;
+        public ConfigEntry<string> QwenLanguage;
         public ConfigEntry<string> PiperExe;
         public ConfigEntry<string> PiperVoiceDir;
         public ConfigEntry<string> SpeakerDevice;
@@ -99,6 +107,7 @@ namespace StbcAiCrew
         ServerHost _server;
         ServerHost _sttServer;
         PiperTts _tts;
+        QwenTts _qwen;
         WavePlayer _player;
         VoiceInput _voice;
         bool _voiceWarmed;
@@ -143,7 +152,7 @@ namespace StbcAiCrew
             _roster.Load();
             _brain = new CrewBrain(_llm, this, _roster, _dataDir);
             if (TtsEnabled.Value) StartTts(pluginDir);
-            _panel = new CrewPanel(this, _roster, _llm, _brain, _tts);
+            _panel = new CrewPanel(this, _roster, _llm, _brain, _tts, _qwen);
 
             GamePatches.Apply(new Harmony(Guid));
             _server.Start();
@@ -172,13 +181,28 @@ namespace StbcAiCrew
         {
             _tts = new PiperTts(Log, ResolvePath(pluginDir, PiperExe.Value), ResolvePath(pluginDir, PiperVoiceDir.Value),
                                 Path.Combine(Path.GetTempPath(), "StbcAiCrew_tts"));
-            if (!_tts.Available)
+            if (_tts.Available) _tts.Start();
+            else
             {
-                Log.LogWarning("Piper oder Stimmen nicht gefunden (" + PiperExe.Value + ", " + PiperVoiceDir.Value + ") – Crew spricht nur als Text.");
+                Log.LogWarning("Piper oder Stimmen nicht gefunden (" + PiperExe.Value + ", " + PiperVoiceDir.Value + ").");
                 _tts = null;
-                return;
             }
-            _tts.Start();
+
+            // Qwen3-TTS: eigene, entworfene Stimme je Charakter in 24 kHz; Piper springt ein, solange eine Stimme fehlt
+            string qServer = ResolvePath(pluginDir, QwenServerExe.Value), qCli = ResolvePath(pluginDir, QwenTtsExe.Value);
+            string qBase = ResolvePath(pluginDir, QwenBaseModel.Value), qDesign = ResolvePath(pluginDir, QwenDesignModel.Value), qCodec = ResolvePath(pluginDir, QwenCodec.Value);
+            if (TtsEngine.Value.Equals("qwen", StringComparison.OrdinalIgnoreCase))
+            {
+                if (QwenTts.FilesPresent(qServer, qCli, qBase, qDesign, qCodec))
+                {
+                    _qwen = new QwenTts(Log, qServer, qCli, qBase, qDesign, qCodec, QwenPort.Value,
+                                        Path.Combine(_dataDir, "stimmen"), QwenLanguage.Value, _tts);
+                    _qwen.Start();
+                    foreach (var c in _roster.All) _qwen.Prepare(c, false);   // fehlende Stimmen gleich entwerfen
+                }
+                else Log.LogWarning("Qwen3-TTS-Dateien fehlen (qwentts-Ordner) – nutze Piper.");
+            }
+            if (_qwen == null && _tts == null) { Log.LogWarning("Keine Sprachausgabe verfügbar – Crew spricht nur als Text."); return; }
             _player = new WavePlayer
             {
                 DeviceFilter = SpeakerDevice.Value,
@@ -188,7 +212,7 @@ namespace StbcAiCrew
             };
             Log.LogInfo("Lautsprecher: " + string.Join(" | ", AudioDevices.List(false).ToArray()));
             Log.LogInfo("Mikrofone: " + string.Join(" | ", AudioDevices.List(true).ToArray()));
-            _brain.Tts = _tts;
+            _brain.Tts = (ISpeechEngine)_qwen ?? _tts;
             _brain.Player = _player;
             _brain.CrewSpeaking = secs => { if (_voice != null && DeafWhileCrewSpeaks.Value) _voice.Deafen(secs); };
         }
@@ -272,7 +296,15 @@ namespace StbcAiCrew
             MinActiveSecForDebrief = Config.Bind("Lernen", "MinDienstzeitSek", 60, "Nachbesprechung und XP erst ab so viel Dienstzeit an einer Bot-Station.");
             DebriefLogChars = Config.Bind("Lernen", "ProtokollZeichen", 10000, "Maximale Länge des Missionsprotokolls in der Nachbesprechung.");
 
-            TtsEnabled = Config.Bind("Stimme", "Aktiv", true, "Crew spricht mit eigenen Stimmen (Piper). false = nur Text auf den Konsolen.");
+            TtsEnabled = Config.Bind("Stimme", "Aktiv", true, "Crew spricht mit eigenen Stimmen. false = nur Text auf den Konsolen.");
+            TtsEngine = Config.Bind("Stimme", "Engine", "qwen", "qwen = Qwen3-TTS (hochwertig, entworfene Stimme je Charakter, GPU), piper = Piper (schnell, CPU, einfacher Klang).");
+            QwenServerExe = Config.Bind("Stimme", "QwenServerExe", @"qwentts\tts-server.exe", "qwentts.cpp-Server.");
+            QwenTtsExe = Config.Bind("Stimme", "QwenTtsExe", @"qwentts\qwen-tts.exe", "qwentts.cpp-Kommandozeile (für den Stimmentwurf).");
+            QwenBaseModel = Config.Bind("Stimme", "QwenBaseModell", @"qwentts\models\qwen-talker-1.7b-base-Q8_0.gguf", "Qwen3-TTS-Base-Modell (Sprachausgabe mit geklonter Stimme).");
+            QwenDesignModel = Config.Bind("Stimme", "QwenDesignModell", @"qwentts\models\qwen-talker-1.7b-voicedesign-Q8_0.gguf", "Qwen3-TTS-VoiceDesign-Modell (Stimmentwurf aus Beschreibung).");
+            QwenCodec = Config.Bind("Stimme", "QwenCodec", @"qwentts\models\qwen-tokenizer-12hz-Q8_0.gguf", "Qwen3-TTS-Tokenizer.");
+            QwenPort = Config.Bind("Stimme", "QwenPort", 8091, "Lokaler Port des tts-server.");
+            QwenLanguage = Config.Bind("Stimme", "QwenSprache", "german", "Sprache für Qwen3-TTS (german, english, …).");
             PiperExe = Config.Bind("Stimme", "PiperExe", @"piper\piper\piper.exe", "Pfad zu piper.exe (relativ zum Plugin-Ordner oder absolut).");
             PiperVoiceDir = Config.Bind("Stimme", "StimmenOrdner", @"piper\voices", "Ordner mit Piper-Stimmen (*.onnx + *.onnx.json).");
             SpeakerDevice = Config.Bind("Stimme", "Lautsprecher", "", "Leer lassen = dasselbe Ausgabegerät wie das Spiel (Oculus-Einstellung bzw. Windows-Standard). Nur für Sonderfälle: Teil eines Gerätenamens aus dem Log.");
@@ -389,8 +421,11 @@ namespace StbcAiCrew
                 GUILayout.Label("Mikro (" + _voice.Device + "): " + stt + "  " + bar + (_voice.Speaking ? " ●" : ""));
             }
             if (_player != null)
-                GUILayout.Label("Stimme: " + _player.DeviceName + (_player.Playing ? "  ♪" : "") +
-                                (_tts.Error != null ? "  Fehler: " + _tts.Error : _player.Error != null ? "  Fehler: " + _player.Error : ""));
+            {
+                string engine = _qwen != null ? "Qwen3-TTS (" + (_qwen.State == ServerState.Ready ? _qwen.Status : _qwen.State.ToString()) + ")" : "Piper";
+                string err = _qwen != null && _qwen.Error != null ? _qwen.Error : _tts != null && _tts.Error != null ? _tts.Error : _player.Error;
+                GUILayout.Label("Stimme: " + engine + " → " + _player.DeviceName + (_player.Playing ? "  ♪" : "") + (err != null ? "  Fehler: " + err : ""));
+            }
 
             // Nur Gesprochenes: das hört jeder auf der Brücke
             int from = Math.Max(0, _brain.Transcript.Count - 8);
@@ -444,6 +479,7 @@ namespace StbcAiCrew
             if (_brain != null && _brain.InMission) _brain.SaveForShutdown();
             if (_voice != null) _voice.Dispose();
             if (_player != null) _player.Dispose();
+            if (_qwen != null) _qwen.Dispose();
             if (_tts != null) _tts.Dispose();
             if (_sttServer != null) _sttServer.Dispose();
             if (_server != null) _server.Dispose();

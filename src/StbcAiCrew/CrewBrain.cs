@@ -40,7 +40,7 @@ namespace StbcAiCrew
         readonly Queue<SpeechItem> _speech = new Queue<SpeechItem>();
 
         /// <summary>Sprachausgabe (null = nur Text auf den Konsolen).</summary>
-        public PiperTts Tts;
+        public ISpeechEngine Tts;
         public WavePlayer Player;
         /// <summary>Wird aufgerufen, wenn die Crew für n Sekunden spricht (Mikrofon so lange taub stellen).</summary>
         public Action<float> CrewSpeaking;
@@ -214,7 +214,7 @@ namespace StbcAiCrew
             var item = new SpeechItem { Char = c, Station = station, Text = text, OnSpoken = onSpoken, QueuedAt = Time.time };
             _speech.Enqueue(item);
             if (Tts != null)
-                Tts.Speak(c.VoiceSpec, text, (pcm, rate) => { item.Pcm = pcm; item.Rate = rate; item.Ready = true; });
+                Tts.Speak(c, text, (pcm, rate) => { item.Pcm = pcm; item.Rate = rate; item.Ready = true; });
             else item.Ready = true;
         }
 
@@ -222,7 +222,7 @@ namespace StbcAiCrew
         public void Preview(Character c, string text)
         {
             if (Tts == null || Player == null) return;
-            Tts.Speak(c.VoiceSpec, text, (pcm, rate) => { if (pcm != null) Player.Play(pcm, rate); });
+            Tts.Speak(c, text, (pcm, rate) => { if (pcm != null) Player.Play(pcm, rate); });
         }
 
         /// <summary>Immer nur einer spricht; die Dauer richtet sich nach der Sprachausgabe bzw. Textlänge.</summary>

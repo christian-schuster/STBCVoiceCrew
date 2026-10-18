@@ -30,6 +30,7 @@ namespace StbcAiCrew
                 bool changed = false;
                 if (string.IsNullOrEmpty(c.Voice)) { AssignVoice(c); changed = true; }
                 if (c.Laugh == null) { AssignLaugh(c); changed = true; }
+                if (c.VoiceDesign == null) { AssignVoiceDesign(c); changed = true; }
                 if (changed) c.Save();
             }
             Plugin.Log.LogInfo("Crew-Liste: " + All.Count + " Charaktere.");
@@ -58,6 +59,36 @@ namespace StbcAiCrew
             { "venn", "Hihihihi!" },
             { "brannok", "Hrmpf. Har har har." },
         };
+
+        // Stimmbeschreibungen für den Stimmentwurf (Qwen3-TTS VoiceDesign versteht Englisch am besten)
+        static readonly Dictionary<string, string> DefaultVoiceDesigns = new Dictionary<string, string>
+        {
+            { "rao", "Male, around 35, calm and precise baritone, clear diction, composed and steady, a starship helmsman." },
+            { "hoyle", "Female, around 40, firm and alert alto voice, direct and clipped delivery, confident security officer." },
+            { "tnar", "Male, middle-aged, low and perfectly even voice, emotionless and precise, slow measured pace, cool and logical." },
+            { "zhal", "Female, young adult, energetic and fiery voice, fast and passionate, slightly raspy, proud warrior attitude." },
+            { "kerrigan", "Male, around 55, warm and gravelly deep voice, jovial and hearty, gentle Irish lilt, relaxed storyteller." },
+            { "venn", "Female, around 22, soft and bright voice, gentle and slightly shy, warm and empathetic, a little hesitant." },
+            { "brannok", "Male, middle-aged, very deep, gruff and growly voice, grumpy and argumentative, gravelly and blunt." },
+        };
+
+        /// <summary>Stimmbeschreibung: Stammbesetzung fest, sonst aus Pronomen, Rang und Charakterzügen abgeleitet.</summary>
+        public static void AssignVoiceDesign(Character c)
+        {
+            string v;
+            if (DefaultVoiceDesigns.TryGetValue(c.Id, out v)) { c.VoiceDesign = v; return; }
+            string p = (c.Pronouns ?? "").ToLowerInvariant();
+            string who = p.StartsWith("sie") ? "Female" : p.StartsWith("er") ? "Male" : "Adult";
+            string age = Ranks.Index(c.Xp) == 0 ? "young adult" : Ranks.Index(c.Xp) >= 3 ? "middle-aged" : "around 30";
+            var parts = new List<string> { who + ", " + age };
+            parts.Add(c.Trait("Gelassenheit") >= 7 ? "calm and steady voice" : c.Trait("Gelassenheit") <= 3 ? "tense, quick-tempered voice" : "natural voice");
+            parts.Add(c.Trait("Beredsamkeit") >= 7 ? "talkative, lively pace" : c.Trait("Beredsamkeit") <= 3 ? "terse and slow" : "moderate pace");
+            if (c.Trait("Humor") >= 7) parts.Add("cheerful and playful");
+            if (c.Trait("Mut") <= 3) parts.Add("a little nervous");
+            if (c.Trait("Aggressivität") >= 7) parts.Add("forceful");
+            if (c.Trait("Empathie") >= 8) parts.Add("warm and gentle");
+            c.VoiceDesign = string.Join(", ", parts.ToArray()) + ".";
+        }
 
         /// <summary>Lachen für einen Charakter ohne eigenes: Stammbesetzung fest, sonst nach Humor.</summary>
         public static void AssignLaugh(Character c)
@@ -106,6 +137,7 @@ namespace StbcAiCrew
             c.FilePath = Path.Combine(_dir, id + ".json");
             if (string.IsNullOrEmpty(c.Voice)) AssignVoice(c);
             if (c.Laugh == null) AssignLaugh(c);
+            if (c.VoiceDesign == null) AssignVoiceDesign(c);
             c.Save();
             All.Add(c);
             return c;
@@ -250,6 +282,7 @@ namespace StbcAiCrew
             }
             AssignVoice(c);
             AssignLaugh(c);
+            AssignVoiceDesign(c);
             c.Save();
         }
     }

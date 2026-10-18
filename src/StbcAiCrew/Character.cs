@@ -67,6 +67,7 @@ namespace StbcAiCrew
         public string Voice = "";             // Piper-Stimme: "modell" oder "modell#sprecher"
         public float VoiceSpeed = 1f;         // Sprechtempo (>1 schneller)
         public float VoicePitch = 1f;         // Tonhöhe (>1 höher)
+        public string VoiceDesign;            // Stimmbeschreibung für Qwen3-TTS (englisch am zuverlässigsten); null = wird abgeleitet
         public string Laugh;                  // wie die Figur lacht, lautmalerisch ("Har har har!"); "" = lacht nie, null = noch nicht festgelegt
         public List<string> Stations = new List<string>();   // helm | tactical | engineering, bevorzugte zuerst
         public Dictionary<string, int> Traits = Traits0();    // 0..10, siehe TraitNames
@@ -146,7 +147,8 @@ namespace StbcAiCrew
             c.Voice = Json.Str(o, "voice") ?? "";
             c.VoiceSpeed = Float(o, "voiceSpeed", 1f);
             c.VoicePitch = Float(o, "voicePitch", 1f);
-            c.Laugh = Json.Get(o, "laugh") as string;   // fehlt = null, dann vergibt der Roster eines
+            c.Laugh = Json.Get(o, "laugh") as string;
+            c.VoiceDesign = Json.Get(o, "voiceDesign") as string;   // fehlt = null, dann vergibt der Roster eines
             Strings(Json.Get(o, "stations"), c.Stations);
             var traits = Json.Obj(Json.Get(o, "traits"));
             if (traits != null)
@@ -200,7 +202,7 @@ namespace StbcAiCrew
                 {
                     { "id", Id }, { "name", Name }, { "species", Species }, { "pronouns", Pronouns },
                     { "personality", Personality }, { "speechStyle", SpeechStyle }, { "background", Background },
-                    { "appearance", Appearance }, { "voice", Voice }, { "voiceSpeed", VoiceSpeed }, { "voicePitch", VoicePitch }, { "laugh", Laugh }, { "stations", Stations }, { "traits", Traits },
+                    { "appearance", Appearance }, { "voice", Voice }, { "voiceSpeed", VoiceSpeed }, { "voicePitch", VoicePitch }, { "laugh", Laugh }, { "voiceDesign", VoiceDesign }, { "stations", Stations }, { "traits", Traits },
                     { "rank", Rank }, // nur zur Info, maßgeblich ist xp
                     { "xp", Xp }, { "missions", Missions }, { "commendations", Commendations },
                     { "lastPlayed", LastPlayed }, { "promotionNews", PromotionNews },
