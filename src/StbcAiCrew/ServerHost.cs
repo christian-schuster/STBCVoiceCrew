@@ -11,14 +11,16 @@ namespace StbcAiCrew
     public enum ServerState { Stopped, Starting, Ready, Failed }
 
     /// <summary>
-    /// Startet llama.cpp (llama-server.exe) als Kindprozess des Spiels und beendet ihn wieder.
-    /// Bewusst ein eigener Prozess statt In-Process: Ein CUDA-/Treiberfehler reißt so nicht das Spiel mit,
-    /// und das Spiel (Mono 2.x) muss keine nativen llama.cpp-Strukturen marshallen.
+    /// Startet einen lokalen KI-Server (llama-server.exe, whisper-server.exe) als Kindprozess des Spiels
+    /// und beendet ihn wieder. Bewusst ein eigener Prozess statt In-Process: Ein CUDA-/Treiberfehler reißt
+    /// so nicht das Spiel mit, und das Spiel (Mono 2.x) muss keine nativen Strukturen marshallen.
     /// Über ein Windows-Job-Objekt stirbt der Server automatisch mit, falls das Spiel abstürzt.
     /// </summary>
-    public sealed class LlamaServerHost : IDisposable
+    public sealed class ServerHost : IDisposable
     {
         readonly ManualLogSource _log;
+        readonly string _name;
+        readonly string _healthPath;
         readonly string _exePath;
         readonly string _arguments;
         readonly string _baseUrl;
@@ -32,9 +34,11 @@ namespace StbcAiCrew
         public string Error => _error;
         public string BaseUrl => _baseUrl;
 
-        public LlamaServerHost(ManualLogSource log, string exePath, string arguments, string baseUrl, int startupTimeoutSec)
+        public ServerHost(ManualLogSource log, string name, string exePath, string arguments, string baseUrl, string healthPath, int startupTimeoutSec)
         {
             _log = log;
+            _name = name;
+            _healthPath = healthPath;
             _exePath = exePath;
             _arguments = arguments;
             _baseUrl = baseUrl.TrimEnd('/');
@@ -45,7 +49,7 @@ namespace StbcAiCrew
         public void Start()
         {
             _state = ServerState.Starting;
-            var t = new Thread(StartWorker) { IsBackground = true, Name = "StbcAiCrew.LlamaStart" };
+            var t = new Thread(StartWorker) { IsBackground = true, Name = "StbcAiCrew.Start." + _name };
             t.Start();
         }
 
@@ -56,7 +60,7 @@ namespace StbcAiCrew
                 if (!string.IsNullOrEmpty(_exePath))
                 {
                     if (!File.Exists(_exePath))
-                        throw new FileNotFoundException("llama-server nicht gefunden: " + _exePath);
+                        throw new FileNotFoundException(_name + " nicht gefunden: " + _exePath);
 
                     var psi = new ProcessStartInfo(_exePath, _arguments)
                     {
@@ -64,35 +68,35 @@ namespace StbcAiCrew
                         CreateNoWindow = true,
                         WorkingDirectory = Path.GetDirectoryName(_exePath)
                     };
-                    _log.LogInfo("Starte llama-server: \"" + _exePath + "\" " + _arguments);
+                    _log.LogInfo("Starte " + _name + ": \"" + _exePath + "\" " + _arguments);
                     _process = Process.Start(psi);
                     AttachToKillOnCloseJob(_process.Id);
                 }
                 else
                 {
-                    _log.LogInfo("Kein llama-server-Pfad gesetzt – nutze bereits laufenden Server unter " + _baseUrl);
+                    _log.LogInfo("Kein Pfad für " + _name + " gesetzt – nutze bereits laufenden Server unter " + _baseUrl);
                 }
 
                 var deadline = DateTime.UtcNow.AddSeconds(_startupTimeoutSec);
                 while (DateTime.UtcNow < deadline)
                 {
                     if (_process != null && _process.HasExited)
-                        throw new Exception("llama-server wurde beendet (Exit-Code " + _process.ExitCode + "). Details im llama-Log.");
+                        throw new Exception(_name + " wurde beendet (Exit-Code " + _process.ExitCode + "). Details im Log des Servers.");
                     if (IsHealthy())
                     {
                         _state = ServerState.Ready;
-                        _log.LogInfo("llama-server bereit: " + _baseUrl);
+                        _log.LogInfo(_name + " bereit: " + _baseUrl);
                         return;
                     }
                     Thread.Sleep(1000);
                 }
-                throw new TimeoutException("llama-server nicht innerhalb von " + _startupTimeoutSec + " s bereit.");
+                throw new TimeoutException(_name + " nicht innerhalb von " + _startupTimeoutSec + " s bereit.");
             }
             catch (Exception e)
             {
                 _error = e.Message;
                 _state = ServerState.Failed;
-                _log.LogError("llama-server-Start fehlgeschlagen: " + e);
+                _log.LogError(_name + "-Start fehlgeschlagen: " + e);
             }
         }
 
@@ -100,7 +104,7 @@ namespace StbcAiCrew
         {
             try
             {
-                var req = (HttpWebRequest)WebRequest.Create(_baseUrl + "/health");
+                var req = (HttpWebRequest)WebRequest.Create(_baseUrl + _healthPath);
                 req.Timeout = 2000;
                 req.Proxy = null;
                 using (var resp = (HttpWebResponse)req.GetResponse())
@@ -119,14 +123,14 @@ namespace StbcAiCrew
             {
                 if (_process != null && !_process.HasExited)
                 {
-                    _log.LogInfo("Beende llama-server.");
+                    _log.LogInfo("Beende " + _name + ".");
                     _process.Kill();
                     _process.WaitForExit(3000);
                 }
             }
             catch (Exception e)
             {
-                _log.LogWarning("llama-server ließ sich nicht sauber beenden: " + e.Message);
+                _log.LogWarning(_name + " ließ sich nicht sauber beenden: " + e.Message);
             }
             if (_job != IntPtr.Zero)
             {

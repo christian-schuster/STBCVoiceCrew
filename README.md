@@ -45,6 +45,19 @@ Spiel (Unity 5.4 / Mono)                                 llama-server.exe (eigen
 - **Sprechen:** Immer nur einer spricht. Gesprochenes erscheint auf allen Konsolen (in VR sichtbar), bis die
   Sprachausgabe da ist. Die vorgefertigten Bot-Sprachzeilen sind standardmäßig stumm.
 
+## Spracheingabe (dauerhaftes Zuhören)
+
+- Das Mikrofon wird direkt über die Windows-Audio-API aufgenommen, nicht über Unity, damit es nicht mit dem
+  Sprachchat des Spiels kollidiert. Eine Sprachaktivitätserkennung lernt das Grundrauschen und schneidet Sätze heraus.
+  **whisper.cpp** (large-v3-turbo, GPU) erkennt sie in ca. 0,2–0,4 s und braucht ca. 1 GB VRAM.
+- **Wer ist gemeint?** Name („Kerrigan, …“), Station („Taktik, …“) oder Fachbegriff („Schilde hoch“ → Taktik,
+  „Kurs …“ → Steuer, „Schadensbericht“ → Technik). Ohne Treffer gilt der Satz allen. Die anderen hören mit.
+- Typische Whisper-Halluzinationen bei Rauschen („Untertitel im Auftrag des ZDF“, „Vielen Dank.“) werden verworfen.
+- **F5** schaltet das Zuhören stumm, etwa wenn du mit jemandem im Raum sprichst.
+- Wird die Brille erst später verbunden oder getrennt, findet der Mod das Mikrofon von selbst wieder (alle 5 s).
+- Bestimmtes Mikrofon wählen: `[Sprache] Mikrofon` = Teil des Gerätenamens (z. B. `Oculus`). Die verfügbaren Geräte stehen im Log.
+- Sitzt du nicht auf dem Captain-Stuhl: `[Sprache] MeineStation`. Dann gelten deine Worte nicht als Befehl, sondern als Wort eines Kollegen.
+
 ## Charaktere, Erfahrung, Lernen
 
 - Die Charaktere liegen als JSON in `BepInEx\config\StbcAiCrew\crew\`. Beim ersten Start entsteht eine
@@ -77,15 +90,19 @@ Im Spiel, zum Beispiel im Hauptmenü, als Fenster auf dem Desktop:
 3. llama.cpp für Windows (CUDA oder Vulkan) nach `BepInEx\plugins\StbcAiCrew\llama\` entpacken.
 4. Ein GGUF-Modell als `BepInEx\plugins\StbcAiCrew\models\crew.gguf` ablegen (getestet: Qwen3.5-9B Q4_K_M,
    ca. 5,6 GB VRAM mit 3 Slots, Antwort aller drei Offiziere parallel in ca. 2–2,5 s).
-5. Spiel starten. Die Config liegt in `BepInEx\config\de.schuster.stbc.aicrew.cfg`.
+5. whisper.cpp für Windows (CUDA) nach `BepInEx\plugins\StbcAiCrew\whisper\` entpacken (`whisper\Release\whisper-server.exe`)
+   und `ggml-large-v3-turbo-q5_0.bin` daneben legen. Auf RTX-50-Karten dauert der allererste Start ca. 30 s, weil
+   der Treiber den GPU-Code übersetzt. Der Mod wärmt das beim Start vor.
+6. Spiel starten. Die Config liegt in `BepInEx\config\de.schuster.stbc.aicrew.cfg`.
 
 ## Tasten
 
 | Taste | Funktion |
 |---|---|
+| F5  | Mikrofon stumm / wieder an |
 | F6  | Crew-Quartier |
 | F7  | Overlay ein/aus (zeigt nur Gesprochenes, keine Konsolenwerte) |
-| F8  | Captain spricht zur Brücke (Text, Enter senden). Namen oder Stationen im Satz bestimmen, wer gemeint ist |
+| F8  | Text statt Sprache an die Brücke (Enter senden) |
 | F9  | Mission für beendet erklären (Nachbesprechung) |
 | F10 | Zustandsdump des Spielerschiffs (Reverse Engineering) |
 
@@ -106,7 +123,7 @@ Spielpfad bei Bedarf überschreiben: `-p:GameDir="D:\...\Star Trek Bridge Crew"`
 - [x] Charaktere mit Charakterzügen, Gedächtnis, XP, Rängen, Crew-Quartier
 - [x] Schiffswerte (Hülle, Schilde, Subsysteme, Torpedos) aus dem Spielcode
 - [ ] Im Spiel testen: Hooks, Befehle, Besetzungserkennung (Bot oder Mensch)
-- [ ] Spracheingabe (whisper.cpp), damit man in VR spricht statt F8 zu tippen
+- [x] Spracheingabe mit dauerhaftem Zuhören (whisper.cpp), Stations-Routing über Fachbegriffe
 - [ ] Sprachausgabe (TTS) mit eigener Stimme je Charakter
 - [ ] Aussehen und Namensschild der Bots an den Charakter anpassen (Avatar-System des Spiels erschließen)
 - [ ] Weitere Konsolenwerte: Ziele/Kontakte für Taktik, Kurs/Geschwindigkeit für die Steuer, Energieverteilung für Technik

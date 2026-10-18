@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace StbcAiCrew
 {
-    [BepInPlugin(Guid, "STBC AI Crew", "0.2.0")]
+    [BepInPlugin(Guid, "STBC AI Crew", "0.3.0")]
     [BepInProcess("stbc.exe")]
     public sealed class Plugin : BaseUnityPlugin
     {
@@ -30,6 +30,21 @@ namespace StbcAiCrew
         public ConfigEntry<int> RequestTimeoutSec;
         public ConfigEntry<float> Temperature;
         public ConfigEntry<int> MaxTokens;
+
+        // ---- Spracheingabe ----
+        public ConfigEntry<bool> VoiceEnabled;
+        public ConfigEntry<string> MicDevice;
+        public ConfigEntry<string> MicLanguage;
+        public ConfigEntry<string> MyStation;
+        public ConfigEntry<string> WhisperServerExe;
+        public ConfigEntry<string> WhisperModel;
+        public ConfigEntry<int> WhisperPort;
+        public ConfigEntry<bool> WhisperGpu;
+        public ConfigEntry<int> WhisperThreads;
+        public ConfigEntry<float> MicMarginDb;
+        public ConfigEntry<float> MicMinDb;
+        public ConfigEntry<int> MicEndSilenceMs;
+        public ConfigEntry<int> MicMinSpeechMs;
 
         // ---- Besetzung ----
         public ConfigEntry<string> CrewHelm;
@@ -58,13 +73,17 @@ namespace StbcAiCrew
         public ConfigEntry<int> DebriefLogChars;
 
         // ---- Tasten ----
+        public ConfigEntry<KeyCode> KeyMute;
         public ConfigEntry<KeyCode> KeyCrewPanel;
         public ConfigEntry<KeyCode> KeyOverlay;
         public ConfigEntry<KeyCode> KeyTalk;
         public ConfigEntry<KeyCode> KeyEndMission;
         public ConfigEntry<KeyCode> KeyStateDump;
 
-        LlamaServerHost _server;
+        ServerHost _server;
+        ServerHost _sttServer;
+        VoiceInput _voice;
+        bool _voiceWarmed;
         LlmClient _llm;
         Roster _roster;
         CrewBrain _brain;
@@ -100,7 +119,7 @@ namespace StbcAiCrew
                           " -np " + slots + " -c " + (ContextPerSlot.Value * slots) + " -ngl " + GpuLayers.Value +
                           " --jinja --log-file \"" + Path.Combine(pluginDir, "llama-server.log") + "\" " + ExtraServerArgs.Value;
 
-            _server = new LlamaServerHost(Log, exe, args, baseUrl, StartupTimeoutSec.Value);
+            _server = new ServerHost(Log, "llama-server", exe, args, baseUrl, "/health", StartupTimeoutSec.Value);
             _llm = new LlmClient(Log, baseUrl, RequestTimeoutSec.Value * 1000) { Temperature = Temperature.Value };
             _roster = new Roster(Path.Combine(_dataDir, "crew"));
             _roster.Load();
@@ -109,7 +128,43 @@ namespace StbcAiCrew
 
             GamePatches.Apply(new Harmony(Guid));
             _server.Start();
+            if (VoiceEnabled.Value) StartVoice(pluginDir);
             Log.LogInfo("STBC AI Crew geladen. Crew-Quartier: " + KeyCrewPanel.Value + ", Sprechen: " + KeyTalk.Value);
+        }
+
+        void StartVoice(string pluginDir)
+        {
+            string url = "http://127.0.0.1:" + WhisperPort.Value;
+            string exe = UseExternalServer.Value ? null : ResolvePath(pluginDir, WhisperServerExe.Value);
+            string args = "-m \"" + ResolvePath(pluginDir, WhisperModel.Value) + "\" --host 127.0.0.1 --port " + WhisperPort.Value +
+                          " -l " + MicLanguage.Value + " -t " + WhisperThreads.Value + (WhisperGpu.Value ? "" : " -ng");
+            _sttServer = new ServerHost(Log, "whisper-server", exe, args, url, "/", StartupTimeoutSec.Value);
+            _sttServer.Start();
+            var vs = new VoiceSettings
+            {
+                Device = MicDevice.Value, Language = MicLanguage.Value, MarginDb = MicMarginDb.Value,
+                MinDb = MicMinDb.Value, EndSilenceMs = MicEndSilenceMs.Value, MinSpeechMs = MicMinSpeechMs.Value
+            };
+            _voice = new VoiceInput(Log, vs, url, OnHeard);
+            _voice.Start();
+        }
+
+        /// <summary>Erkannter Satz vom Mikrofon (Hauptthread).</summary>
+        void OnHeard(string text)
+        {
+            if (!_brain.InMission) { Toast("Gehört (kein Einsatz): " + text); return; }
+            _brain.HumanSays(ParseStation(MyStation.Value), text);
+        }
+
+        static Station ParseStation(string s)
+        {
+            switch ((s ?? "").Trim().ToLowerInvariant())
+            {
+                case "steuer": case "helm": return Station.Helm;
+                case "taktik": case "tactical": return Station.Tactical;
+                case "technik": case "engineering": return Station.Engineering;
+                default: return Station.Captain;
+            }
         }
 
         void BindConfig()
@@ -126,6 +181,20 @@ namespace StbcAiCrew
             RequestTimeoutSec = Config.Bind("LLM", "AnfrageTimeoutSek", 60, "Zeitlimit pro LLM-Anfrage.");
             Temperature = Config.Bind("LLM", "Temperatur", 0.7f, "Kreativität der Antworten.");
             MaxTokens = Config.Bind("LLM", "MaxTokens", 300, "Maximale Antwortlänge im Einsatz.");
+
+            VoiceEnabled = Config.Bind("Sprache", "Aktiv", true, "Dauerhaftes Zuhören über das Mikrofon (whisper.cpp).");
+            MicDevice = Config.Bind("Sprache", "Mikrofon", "", "Teil des Gerätenamens (z. B. 'Oculus' oder 'Headset'); leer = Windows-Standardmikrofon. Die Liste steht im Log.");
+            MicLanguage = Config.Bind("Sprache", "Sprachcode", "de", "Sprache für die Erkennung (de, en, …).");
+            MyStation = Config.Bind("Sprache", "MeineStation", "Captain", "An welcher Station du sitzt: Captain, Steuer, Taktik oder Technik. Nur Worte des Captains gelten als Befehl.");
+            WhisperServerExe = Config.Bind("Sprache", "WhisperServerExe", @"whisper\Release\whisper-server.exe", "Pfad zu whisper-server.exe (relativ zum Plugin-Ordner oder absolut).");
+            WhisperModel = Config.Bind("Sprache", "WhisperModell", @"whisper\ggml-large-v3-turbo-q5_0.bin", "Whisper-Modell (relativ zum Plugin-Ordner oder absolut).");
+            WhisperPort = Config.Bind("Sprache", "WhisperPort", 8090, "Lokaler Port des whisper-server.");
+            WhisperGpu = Config.Bind("Sprache", "WhisperGpu", true, "Spracherkennung auf der GPU (false = CPU).");
+            WhisperThreads = Config.Bind("Sprache", "WhisperThreads", 4, "CPU-Threads für whisper-server.");
+            MicMarginDb = Config.Bind("Sprache", "SchwelleDb", 12f, "So viel lauter als das Grundrauschen muss Sprache sein. Höher = weniger Fehlauslösungen.");
+            MicMinDb = Config.Bind("Sprache", "MinPegelDb", -50f, "Absoluter Mindestpegel für Sprache (dBFS).");
+            MicEndSilenceMs = Config.Bind("Sprache", "SatzendeStilleMs", 700, "So lange Stille beendet einen Satz.");
+            MicMinSpeechMs = Config.Bind("Sprache", "MinSprechdauerMs", 350, "Kürzere Geräusche werden ignoriert.");
 
             CrewHelm = Config.Bind("Besetzung", "Steuer", "auto", "Charakter-Id für die Steuer oder 'auto' (wird im Crew-Quartier gesetzt).");
             CrewTactical = Config.Bind("Besetzung", "Taktik", "auto", "Charakter-Id für Taktik oder 'auto'.");
@@ -152,6 +221,7 @@ namespace StbcAiCrew
             MinActiveSecForDebrief = Config.Bind("Lernen", "MinDienstzeitSek", 60, "Nachbesprechung und XP erst ab so viel Dienstzeit an einer Bot-Station.");
             DebriefLogChars = Config.Bind("Lernen", "ProtokollZeichen", 10000, "Maximale Länge des Missionsprotokolls in der Nachbesprechung.");
 
+            KeyMute = Config.Bind("Tasten", "MikrofonStumm", KeyCode.F5, "Dauerhaftes Zuhören stumm schalten / wieder an.");
             KeyCrewPanel = Config.Bind("Tasten", "CrewQuartier", KeyCode.F6, "Crew-Quartier: Charaktere auswählen, anwerben, bearbeiten, entlassen.");
             KeyOverlay = Config.Bind("Tasten", "Overlay", KeyCode.F7, "Overlay ein/aus.");
             KeyTalk = Config.Bind("Tasten", "Sprechen", KeyCode.F8, "Texteingabe an die Crew öffnen.");
@@ -205,9 +275,19 @@ namespace StbcAiCrew
             }
 
             if (_server.State == ServerState.Ready) _brain.Tick(_status);
+            if (_voice != null && !_voiceWarmed && _sttServer.State == ServerState.Ready)
+            {
+                _voiceWarmed = true;
+                _voice.WarmUp();
+            }
 
             if (!_typing && !_panel.CapturesKeyboard)
             {
+                if (Input.GetKeyDown(KeyMute.Value) && _voice != null)
+                {
+                    _voice.Muted = !_voice.Muted;
+                    Toast(_voice.Muted ? "Mikrofon stumm." : "Mikrofon hört wieder zu.");
+                }
                 if (Input.GetKeyDown(KeyCrewPanel.Value)) _panel.Visible = !_panel.Visible;
                 if (Input.GetKeyDown(KeyOverlay.Value)) _showOverlay = !_showOverlay;
                 if (Input.GetKeyDown(KeyTalk.Value)) { _typing = true; _input = ""; _showOverlay = true; }
@@ -244,6 +324,12 @@ namespace StbcAiCrew
                 GUILayout.Label(OfficerAgent.StationDe(a.Station) + ": " + who + "  " + a.Status);
             }
             if (!string.IsNullOrEmpty(_brain.Debriefer.Status)) GUILayout.Label(_brain.Debriefer.Status);
+            if (_voice != null)
+            {
+                string stt = _sttServer.State == ServerState.Failed ? "Fehler: " + _sttServer.Error : _voice.State;
+                string bar = new string('|', Mathf.Clamp(Mathf.RoundToInt((_voice.LevelDb + 70f) / 3f), 0, 20));
+                GUILayout.Label("Mikro (" + _voice.Device + "): " + stt + "  " + bar + (_voice.Speaking ? " ●" : ""));
+            }
 
             // Nur Gesprochenes: das hört jeder auf der Brücke
             int from = Math.Max(0, _brain.Transcript.Count - 8);
@@ -274,7 +360,7 @@ namespace StbcAiCrew
             }
             else
             {
-                GUILayout.Label(KeyTalk.Value + " sprechen · " + KeyCrewPanel.Value + " Crew-Quartier · " + KeyOverlay.Value + " Overlay · " +
+                GUILayout.Label(KeyMute.Value + " Mikro stumm · " + KeyTalk.Value + " tippen · " + KeyCrewPanel.Value + " Crew-Quartier · " + KeyOverlay.Value + " Overlay · " +
                                 KeyEndMission.Value + " Mission beenden · " + KeyStateDump.Value + " Dump");
             }
 
@@ -295,6 +381,8 @@ namespace StbcAiCrew
             if (_shutDown) return;
             _shutDown = true;
             if (_brain != null && _brain.InMission) _brain.SaveForShutdown();
+            if (_voice != null) _voice.Dispose();
+            if (_sttServer != null) _sttServer.Dispose();
             if (_server != null) _server.Dispose();
         }
     }

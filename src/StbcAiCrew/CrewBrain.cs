@@ -107,21 +107,31 @@ namespace StbcAiCrew
 
         // ---------------- Sprechen und Hören ----------------
 
-        /// <summary>Der Captain spricht (F8-Eingabe, später Spracherkennung): alle auf der Brücke hören es.</summary>
-        public void CaptainSays(string text)
+        /// <summary>Der Captain spricht (Spracheingabe oder F8): alle auf der Brücke hören es.</summary>
+        public void CaptainSays(string text) => HumanSays(Station.Captain, text);
+
+        /// <summary>
+        /// Ein Mensch am lokalen Rechner spricht. Wer gemeint ist, ergibt sich aus Namen, Stationen und
+        /// Fachbegriffen ("Schilde hoch" an Taktik). Die anderen hören mit, ohne sich angesprochen zu fühlen.
+        /// Nur Worte des Captains gelten als Befehl.
+        /// </summary>
+        public void HumanSays(Station speaker, string text)
         {
             text = text.Trim();
             if (text.Length == 0) return;
-            AddLine("Captain", text);
-            // Spricht der Captain bestimmte Stationen an, hören die anderen mit, ohne sich angesprochen zu fühlen
+            bool isCaptain = speaker == Station.Captain;
+            string who = isCaptain ? "Captain" : "Mensch an " + OfficerAgent.StationDe(speaker);
+            AddLine(who, text);
+
             var addressed = new List<OfficerAgent>();
-            foreach (var a in Agents) if (a.Char != null && Mentions(text, a)) addressed.Add(a);
+            foreach (var a in Agents) if (a.Char != null && a.Station != speaker && Mentions(text, a, topics: true)) addressed.Add(a);
             foreach (var a in Agents)
             {
+                if (a.Station == speaker) continue;
                 var p = EventLog.Of(a.Station);
-                string line = "Captain sagt: \"" + text + "\"";
-                if (addressed.Count == 0) p.Add(line + " (an alle)", Priority.Urgent, fromCaptain: true);
-                else if (addressed.Contains(a)) p.Add(line + " (an dich)", Priority.Urgent, fromCaptain: true, addressed: true);
+                string line = who + " sagt: \"" + text + "\"";
+                if (addressed.Count == 0) p.Add(line + " (an alle)", isCaptain ? Priority.Urgent : Priority.Important, fromCaptain: isCaptain);
+                else if (addressed.Contains(a)) p.Add(line + " (an dich)", Priority.Urgent, fromCaptain: isCaptain, addressed: true);
                 else p.Add(line + " (an andere)", Priority.Background);
             }
         }
@@ -149,23 +159,38 @@ namespace StbcAiCrew
             {
                 var p = EventLog.Of(other.Station);
                 if (other == speaker) { p.Add("Du hast gesagt: \"" + text + "\"", Priority.Background); continue; }
-                bool addressed = other.Char != null && Mentions(text, other);
+                bool addressed = other.Char != null && Mentions(text, other, topics: false);
                 p.Add(name + " (" + OfficerAgent.StationDe(speaker.Station) + ") sagt: \"" + text + "\"" + (addressed ? " (an dich)" : ""),
                       addressed ? Priority.Urgent : Priority.Background, addressed: addressed);
             }
         }
 
-        static bool Mentions(string text, OfficerAgent a)
+        static readonly Dictionary<Station, string[]> StationWords = new Dictionary<Station, string[]>
+        {
+            { Station.Helm, new[] { "steuer", "helm", "navigation", "navigator" } },
+            { Station.Tactical, new[] { "taktik", "tactical", "waffenoffizier" } },
+            { Station.Engineering, new[] { "technik", "maschinenraum", "engineering", "ingenieur", "chefingenieur" } },
+        };
+
+        // Fachbegriffe, an denen man auch ohne Namen erkennt, wer gemeint ist (nur bei Worten von Menschen)
+        static readonly Dictionary<Station, string[]> TopicWords = new Dictionary<Station, string[]>
+        {
+            { Station.Helm, new[] { "kurs", "geschwindigkeit", "impuls", "volle kraft", "halbe kraft", "viertel", "stopp", "rückwärts",
+                                    "ausweich", "abdrehen", "beidrehen", "anfliegen", "flieg", "warp ausführen", "warp aktivieren", "beschleunig" } },
+            { Station.Tactical, new[] { "schilde hoch", "schilder hoch", "schilde runter", "schilder runter", "schilde aktivieren", "schilde senken", "schutzschild", "phaser", "torpedo", "feuer",
+                                        "ziel erfassen", "zielen", "anvisieren", "scannen", "scan", "modulier", "stören" } },
+            { Station.Engineering, new[] { "energie", "reparier", "reparatur", "schaden", "schäden", "warpkern", "optimier", "warp vorbereiten",
+                                           "beamen", "transporter", "signatur" } },
+        };
+
+        static bool Mentions(string text, OfficerAgent a, bool topics)
         {
             string t = text.ToLowerInvariant();
             foreach (var part in a.Char.Name.ToLowerInvariant().Split(' ', '\''))
                 if (part.Length >= 3 && t.Contains(part)) return true;
-            switch (a.Station)
-            {
-                case Station.Helm: return t.Contains("steuer") || t.Contains("helm") || t.Contains("navigation");
-                case Station.Tactical: return t.Contains("taktik") || t.Contains("tactical") || t.Contains("waffen");
-                case Station.Engineering: return t.Contains("technik") || t.Contains("maschinenraum") || t.Contains("engineering") || t.Contains("ingenieur");
-            }
+            foreach (var w in StationWords[a.Station]) if (t.Contains(w)) return true;
+            if (topics)
+                foreach (var w in TopicWords[a.Station]) if (t.Contains(w)) return true;
             return false;
         }
 
