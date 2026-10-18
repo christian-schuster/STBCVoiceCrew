@@ -146,6 +146,8 @@ namespace StbcAiCrew
             c.SpeechStyle = Area("Sprechweise", c.SpeechStyle);
             c.Background = Area("Hintergrund", c.Background);
             c.Appearance = Area("Aussehen", c.Appearance);
+            c.Laugh = Field("Lachen", c.Laugh);
+            GUILayout.Label("<i>Lachen lautmalerisch, z. B. \"Har har har!\" oder \"Hihihi!\"; leer = lacht nie.</i>");
             GUILayout.Label("<i>Das Aussehen wird gespeichert, aber im Spiel noch nicht angewendet.</i>");
             VoiceEditor(c);
 
@@ -326,11 +328,11 @@ namespace StbcAiCrew
                 { "properties", new Dictionary<string, object>
                     {
                         { "name", shortStr }, { "species", shortStr }, { "pronouns", pronouns },
-                        { "personality", str }, { "speechStyle", str }, { "background", str }, { "appearance", str },
+                        { "personality", str }, { "speechStyle", str }, { "background", str }, { "appearance", str }, { "laugh", shortStr },
                         { "traits", new Dictionary<string, object> { { "type", "object" }, { "properties", traitProps }, { "required", traitReq } } }
                     }
                 },
-                { "required", new List<object> { "name", "species", "pronouns", "personality", "speechStyle", "background", "appearance", "traits" } }
+                { "required", new List<object> { "name", "species", "pronouns", "personality", "speechStyle", "background", "appearance", "laugh", "traits" } }
             };
 
             var names = new List<string>();
@@ -344,7 +346,7 @@ namespace StbcAiCrew
                 "Erfinde einen eigenständigen Charakter (keine bekannte Serienfigur), mit glaubwürdiger Spezies aus dem Star-Trek-Universum. " +
                 "Felder: name (Vor- und/oder Nachname passend zur Spezies, nicht einer von: " + string.Join(", ", names.ToArray()) + "), species, " +
                 "pronouns (sie/ihr, er/ihm oder leer), personality (2 kurze Sätze), speechStyle (1 Satz), background (1–2 Sätze, frisch von der Akademie oder Quereinsteiger), " +
-                "appearance (1–2 Sätze, passend zur Spezies laut Star Trek), traits als ganze Zahlen 0–10: " + traitList +
+                "appearance (1–2 Sätze, passend zur Spezies laut Star Trek), laugh (wie die Person lacht, lautmalerisch und ganz eigen, z. B. Har har har! oder Hihihi! oder Bwahaha!; leer, wenn sie nie lacht), traits als ganze Zahlen 0–10: " + traitList +
                 "Die Werte sollen zur Beschreibung passen und ruhig Ecken und Kanten haben. Schreib auf " + _cfg.Language.Value + ".";
 
             _message = "Sternenflottenkommando prüft die Bewerbung …";
@@ -364,6 +366,7 @@ namespace StbcAiCrew
                         SpeechStyle = Json.Str(o, "speechStyle") ?? "",
                         Background = Json.Str(o, "background") ?? "",
                         Appearance = Json.Str(o, "appearance") ?? "",
+                        Laugh = Json.Str(o, "laugh"),
                         Xp = 0
                     };
                     foreach (var s in stations) c.Stations.Add((string)s);

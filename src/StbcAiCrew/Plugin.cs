@@ -79,6 +79,7 @@ namespace StbcAiCrew
         public ConfigEntry<float> JokeIntervalMissionSec;
         public ConfigEntry<float> JokeIntervalLobbySec;
         public ConfigEntry<int> QuietAfterReprimandMin;
+        public ConfigEntry<int> JokeMemory;
 
         // ---- Lernen ----
         public ConfigEntry<int> MaxLessons;
@@ -262,6 +263,7 @@ namespace StbcAiCrew
             LobbyBanter = Config.Bind("Humor", "InDerLobby", true, "Auch außerhalb von Missionen plaudern und scherzen (nur mit Sprachausgabe).");
             JokeIntervalMissionSec = Config.Bind("Humor", "WitzAbstandMissionSek", 240f, "Mindestabstand zwischen Witzen im Einsatz.");
             JokeIntervalLobbySec = Config.Bind("Humor", "WitzAbstandLobbySek", 120f, "Mindestabstand zwischen Witzen in der Lobby.");
+            JokeMemory = Config.Bind("Humor", "WitzGedaechtnis", 5, "So viele zuletzt erzählte Witze werden gemerkt und nicht wiederholt.");
             QuietAfterReprimandMin = Config.Bind("Humor", "RuheNachErmahnungMin", 15, "So lange keine Witze, nachdem der Captain um Ruhe gebeten hat.");
 
             MaxLessons = Config.Bind("Lernen", "MaxLektionen", 12, "Lektionen je Charakter.");

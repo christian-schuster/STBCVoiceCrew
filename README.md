@@ -105,11 +105,15 @@ Der Mod nutzt dieselben Kanäle wie das Spiel und braucht normalerweise keine ei
   Je höher der Humor, desto wahrscheinlicher. Ganz Humorlose erzählen nie welche.
 - **Jeder Witz ist neu erfunden.** Für Abwechslung bekommt das LLM nur eine zufällige Form („Treffen sich …“,
   „Wie viele … braucht man …?“, Wortspiel …) und ein Thema (Ferengi, Tribbles, Holodeck …, oft auch die Spezies der
-  Anwesenden) als Anstoß. Bereits erzählte Witze werden in `BepInEx\config\StbcAiCrew\witze.json` gespeichert und
-  als „nicht wiederholen“ mitgegeben, auch über Sessions hinweg.
+  Anwesenden) als Anstoß. Die letzten 5 Witze (`WitzGedaechtnis`) werden in `BepInEx\config\StbcAiCrew\witze.json`
+  gespeichert und als „nicht wiederholen“ mitgegeben, auch über Sessions hinweg.
+- **Jeder lacht anders:** Das Lachen ist Teil des Charakters (Kerrigan „Haaaahahaha! Hohohoho!“, Venn „Hihihihi!“,
+  Brannok „Hrmpf. Har har har.“, Zhal „Hah! Hahahaaa!“, T'nar lacht nie). Das LLM variiert und übertreibt es.
+  Wer viel Humor hat, lacht auch über den eigenen Witz. Neu Angeworbene bekommen ihr Lachen gleich mit, und im Crew-Quartier lässt es sich ändern.
 - **Reaktionen nach Charakter:** Wer viel Humor hat, lacht hörbar und legt nach. Mittlerer Humor schmunzelt oder
   kommentiert trocken. Wer wenig Humor hat, reagiert genervt oder verständnislos, und wer viel Disziplin hat,
-  ermahnt im Dienst den Kollegen. Höchstens zwei reagieren, manche schweigen.
+  ermahnt im Dienst den Kollegen. Höchstens zwei reagieren, manche schweigen. Sprüche über Geschlecht, Herkunft oder
+  Aussehen sind ausdrücklich ausgeschlossen.
 - **Der Captain bestimmt:** „Ruhe!“, „keine Witze“, „konzentriert euch“ usw. stellt die Witze für 15 Minuten ab.
   Ob der Captain Humor mag, lernt die Crew über die Nachbesprechung.
 - Erfahrung mit dem 9B-Modell: Die Witze sind eher Kalauer als Pointenfeuerwerk. Ohne JSON-Zwang und bei Temperatur 0,7

@@ -124,9 +124,9 @@ namespace StbcAiCrew
             sb.Append("Erzähle einen kurzen, neu erfundenen Witz für Star-Trek-Fans, den ein Crewmitglied ")
               .Append(inMission ? "in einer ruhigen Minute auf der Brücke" : "im Bereitschaftsraum vor der Mission").Append(" laut erzählt. ");
             sb.Append("Thema: ").Append(topic).Append(". Form: ").Append(form).Append(".\n");
-            sb.Append("Höchstens drei kurze Sätze, mit klarer Pointe am Ende, kollegial und nicht verletzend. ");
+            sb.Append("Höchstens drei kurze Sätze, mit klarer Pointe am Ende, kollegial und nicht verletzend, keine Witze über Geschlecht, Herkunft oder Aussehen. ");
             sb.Append("Kein bekannter Witz und keiner, der diesen schon erzählten ähnelt:\n");
-            int from = Math.Max(0, _jokes.Count - 15);
+            int from = Math.Max(0, _jokes.Count - _cfg.JokeMemory.Value);
             if (_jokes.Count == 0) sb.Append("- (bisher keine)\n");
             for (int i = from; i < _jokes.Count; i++) sb.Append("- ").Append(_jokes[i][1]).Append('\n');
             sb.Append("Schreib nur die Worte, die gesprochen werden: keine Erzählung (\"… sagte\"), keine Anführungszeichen, keine Einleitung oder Erklärung. Auf ").Append(_cfg.Language.Value).Append(".");
@@ -141,6 +141,9 @@ namespace StbcAiCrew
                 _busy = false;
                 if (joke == null) return;
                 Remember(teller.Name, joke);
+                // Wer viel Humor hat, lacht gern über den eigenen Witz
+                if (!string.IsNullOrEmpty(teller.Laugh) && teller.Trait("Humor") >= 8 && UnityEngine.Random.value < 0.5f)
+                    joke += " " + teller.Laugh;
                 // Die anderen reagieren erst, wenn der Witz zu Ende erzählt ist
                 _bridge.SayAs(teller, station, joke, () => React(teller, joke, group, inMission));
             }, temperature: 0.7f);
@@ -163,6 +166,9 @@ namespace StbcAiCrew
             var sb = new StringBuilder();
             foreach (char c in s) if (c != '"' && c != '„' && c != '“' && c != '‚' && c != '‘' && c != '*') sb.Append(c);
             s = sb.ToString().Replace("  ", " ").Trim();
+            // Erzählsätze mit Sprecherangabe ("…, sagte Dehlor, während …") entfernen
+            s = System.Text.RegularExpressions.Regex.Replace(s,
+                @"(?<=[.!?…])\s*[^.!?…]*,\s*(sagte|meinte|erwiderte|antwortete|rief|fragte)\s+[A-ZÄÖÜ][^.!?…]*[.!?…]", "").Trim();
             foreach (char c in s)
                 if (c > 0x024F && !(c >= 0x2000 && c <= 0x206F)) return null;   // nur lateinische Schrift und Satzzeichen
             if (s.Length < 20 || s.Length > 420) return null;
@@ -197,9 +203,11 @@ namespace StbcAiCrew
         static float Attitude(Character c, Character teller, bool inMission, out string attitude)
         {
             int humor = c.Trait("Humor"), discipline = c.Trait("Disziplin"), calm = c.Trait("Gelassenheit");
-            if (humor >= 7)
+            bool laughs = !string.IsNullOrEmpty(c.Laugh);
+            if (humor >= 7 && laughs)
             {
-                attitude = "Du findest den Witz lustig: Lach zuerst hörbar (z. B. \"Hahaha!\" oder \"Hehe!\") und sag dann höchstens einen kurzen, freundlichen Satz oder Spruch dazu.";
+                attitude = "Du findest den Witz lustig: Lach zuerst laut auf deine ganz eigene Art, so wie du eben lachst (" + c.Laugh +
+                           "), gern lang gezogen, schräg oder übertrieben, als Lautmalerei geschrieben. Danach höchstens ein kurzer, freundlicher Spruch.";
                 return 0.8f;
             }
             if (humor <= 3)
@@ -212,7 +220,9 @@ namespace StbcAiCrew
                     attitude = "Du kannst mit dem Witz nichts anfangen: Reagiere trocken oder verständnislos, so wie es zu dir passt.";
                 return 0.6f;
             }
-            attitude = "Reagiere kurz: ein Schmunzeln, ein trockener Kommentar oder höflich gequältes Lächeln, je nachdem, was zu dir passt.";
+            attitude = laughs
+                ? "Reagiere kurz: ein verhaltenes Lachen auf deine Art (" + c.Laugh + ", aber leiser), ein trockener Kommentar oder höflich gequältes Lächeln, je nachdem, was zu dir passt."
+                : "Reagiere kurz und trocken, ohne zu lachen, so wie es zu dir passt.";
             return 0.3f;
         }
 
@@ -222,7 +232,7 @@ namespace StbcAiCrew
             sb.Append(c.ProfileForPrompt()).Append('\n');
             sb.Append(teller.Title).Append(" hat gerade diesen Witz erzählt:\n\"").Append(joke).Append("\"\n\n");
             sb.Append(attitude).Append('\n');
-            sb.Append("Antworte mit einem kurzen Satz (höchstens zwei), ganz aus deiner Persönlichkeit heraus, im Rahmen des kollegialen Umgangs an Bord. Sprich ")
+            sb.Append("Antworte mit einem kurzen Satz (höchstens zwei), ganz aus deiner Persönlichkeit heraus, im Rahmen des kollegialen Umgangs an Bord, ohne Sprüche über Geschlecht, Herkunft oder Aussehen. Sprich ")
               .Append(_cfg.Language.Value).Append(". Antworte als JSON {\"say\": \"...\"}.");
             _llm.Send(new List<ChatMessage> { new ChatMessage("user", sb.ToString()) }, Obj("say", 200), 150, (content, error, latency) =>
             {
@@ -236,7 +246,7 @@ namespace StbcAiCrew
         void Remember(string teller, string joke)
         {
             _jokes.Add(new[] { teller, joke, DateTime.Now.ToString("yyyy-MM-dd") });
-            while (_jokes.Count > 60) _jokes.RemoveAt(0);
+            while (_jokes.Count > Math.Max(1, _cfg.JokeMemory.Value)) _jokes.RemoveAt(0);
             try
             {
                 var list = new List<object>();

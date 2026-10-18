@@ -26,7 +26,12 @@ namespace StbcAiCrew
                 catch (Exception e) { Plugin.Log.LogError("Charakter " + Path.GetFileName(f) + " unlesbar: " + e.Message); }
             }
             foreach (var c in All)
-                if (string.IsNullOrEmpty(c.Voice)) { AssignVoice(c); c.Save(); }
+            {
+                bool changed = false;
+                if (string.IsNullOrEmpty(c.Voice)) { AssignVoice(c); changed = true; }
+                if (c.Laugh == null) { AssignLaugh(c); changed = true; }
+                if (changed) c.Save();
+            }
             Plugin.Log.LogInfo("Crew-Liste: " + All.Count + " Charaktere.");
         }
 
@@ -41,6 +46,27 @@ namespace StbcAiCrew
             { "venn",     new object[] { "de_DE-eva_k-x_low", 1.08f, 1.08f } },
             { "brannok",  new object[] { "de_DE-thorsten_emotional-medium#1", 0.95f, 0.86f } },   // Sprecher 1 = "angry"
         };
+
+        // Jeder lacht anders (Teil des Charakters). T'nar als Vulkanier lacht nie.
+        static readonly Dictionary<string, string> DefaultLaughs = new Dictionary<string, string>
+        {
+            { "rao", "Heh. Hehe." },
+            { "hoyle", "Ha. Ha. Ha." },
+            { "tnar", "" },
+            { "zhal", "Hah! Hahahaaa!" },
+            { "kerrigan", "Haaaahahaha! Hohohoho!" },
+            { "venn", "Hihihihi!" },
+            { "brannok", "Hrmpf. Har har har." },
+        };
+
+        /// <summary>Lachen für einen Charakter ohne eigenes: Stammbesetzung fest, sonst nach Humor.</summary>
+        public static void AssignLaugh(Character c)
+        {
+            string l;
+            if (DefaultLaughs.TryGetValue(c.Id, out l)) { c.Laugh = l; return; }
+            int h = c.Trait("Humor");
+            c.Laugh = h <= 2 ? "" : h <= 4 ? "Heh." : h <= 6 ? "Haha!" : "Hahahaha!";
+        }
 
         /// <summary>
         /// Gibt einem Charakter ohne Stimme eine: Stammbesetzung fest, alle anderen einen eigenen
@@ -79,6 +105,7 @@ namespace StbcAiCrew
             c.Id = id;
             c.FilePath = Path.Combine(_dir, id + ".json");
             if (string.IsNullOrEmpty(c.Voice)) AssignVoice(c);
+            if (c.Laugh == null) AssignLaugh(c);
             c.Save();
             All.Add(c);
             return c;
@@ -222,6 +249,7 @@ namespace StbcAiCrew
                 c.SetTrait(kv[0], int.Parse(kv[1]));
             }
             AssignVoice(c);
+            AssignLaugh(c);
             c.Save();
         }
     }
