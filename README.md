@@ -76,8 +76,10 @@ Der Mod nutzt dieselben Kanäle wie das Spiel und braucht normalerweise keine ei
   Daraus entwirft das VoiceDesign-Modell einmalig eine Referenzaufnahme (`BepInEx\config\StbcAiCrew\stimmen\`, ca. 3 s je Charakter).
   Ein dauerhaft laufender `tts-server` klont diese Stimme für jede Zeile (ca. 0,5–1,8 s pro Satz, Echtzeitfaktor ca. 0,17).
   Bei neuen Charakteren schreibt das LLM die Stimmbeschreibung gleich mit. Im Crew-Quartier lässt sie sich ändern, neu entwerfen und probehören.
-- **VRAM:** tts-server ca. 4,5 GB (1.7B-Base Q8). Zusammen mit dem Sprachmodell (ca. 5,6 GB) und Whisper (ca. 1 GB) sind das rund 11 GB
-  plus Spiel. Wird es eng: `[Stimme] QwenBaseModell` auf die Q4_K_M-Variante stellen oder `Engine = piper` wählen.
+- **VRAM:** tts-server ca. 4,1 GB mit 1.7B-Base Q4_K_M (Standard; Q8_0 ca. 4,9 GB, gleich gut verständlich). Zusammen mit dem
+  Sprachmodell (ca. 5,6 GB) und Whisper (ca. 1 GB) rund 10,7 GB plus Spiel. Wird es eng: `Engine = piper`.
+- **Piepskontrolle:** Nach jedem Stimmentwurf wird die Grundfrequenz gemessen. Liegt sie über 260 Hz (`MaxTonhoeheHz`), wird bis zu
+  zweimal tiefer neu entworfen und die tiefste Variante behalten.
 - **Piper** ist der Rückfall: Er spricht, solange eine Stimme noch entworfen wird, der Server lädt oder ausfällt.
 - **Piper** (lokal, CPU, keine GPU-Last) erzeugt einen Satz in ca. 0,4 s. Er wird schon vorbereitet, während
   der vorige Kollege noch spricht. Je Stimme läuft ein dauerhafter piper-Prozess.
@@ -149,7 +151,7 @@ Im Spiel, zum Beispiel im Hauptmenü, als Fenster auf dem Desktop:
    der Treiber den GPU-Code übersetzt. Der Mod wärmt das beim Start vor.
 6. Qwen3-TTS: `tools\build-qwentts.cmd` baut qwentts.cpp (Visual Studio 2026, Windows-SDK, CUDA 13.4). Die Programme und
    `ggml*.dll` sowie die CUDA-13-Laufzeit-DLLs kommen nach `BepInEx\plugins\StbcAiCrew\qwentts\`, die Modelle
-   (`qwen-talker-1.7b-base-Q8_0.gguf`, `qwen-talker-1.7b-voicedesign-Q8_0.gguf`, `qwen-tokenizer-12hz-Q8_0.gguf`
+   (`qwen-talker-1.7b-base-Q4_K_M.gguf`, `qwen-talker-1.7b-voicedesign-Q8_0.gguf`, `qwen-tokenizer-12hz-Q8_0.gguf`
    von huggingface.co/Serveurperso/Qwen3-TTS-GGUF) nach `qwentts\models\`.
 7. Piper für Windows nach `BepInEx\plugins\StbcAiCrew\piper\` entpacken (`piper\piper\piper.exe`) und die
    Stimmen (`*.onnx` + `*.onnx.json` von huggingface.co/rhasspy/piper-voices) nach `piper\voices\` legen.

@@ -56,6 +56,7 @@ namespace StbcAiCrew
         public ConfigEntry<string> QwenCodec;
         public ConfigEntry<int> QwenPort;
         public ConfigEntry<string> QwenLanguage;
+        public ConfigEntry<float> QwenMaxPitchHz;
         public ConfigEntry<string> PiperExe;
         public ConfigEntry<string> PiperVoiceDir;
         public ConfigEntry<string> SpeakerDevice;
@@ -198,6 +199,7 @@ namespace StbcAiCrew
                     _qwen = new QwenTts(Log, qServer, qCli, qBase, qDesign, qCodec, QwenPort.Value,
                                         Path.Combine(_dataDir, "stimmen"), QwenLanguage.Value, _tts);
                     _qwen.MayDesignNow = () => !GameBridge.InMission;
+                    _qwen.MaxPitchHz = QwenMaxPitchHz.Value;
                     _qwen.Start();
                     foreach (var c in _roster.All) _qwen.Prepare(c, false);   // fehlende Stimmen gleich entwerfen
                 }
@@ -301,10 +303,11 @@ namespace StbcAiCrew
             TtsEngine = Config.Bind("Stimme", "Engine", "qwen", "qwen = Qwen3-TTS (hochwertig, entworfene Stimme je Charakter, GPU), piper = Piper (schnell, CPU, einfacher Klang).");
             QwenServerExe = Config.Bind("Stimme", "QwenServerExe", @"qwentts\tts-server.exe", "qwentts.cpp-Server.");
             QwenTtsExe = Config.Bind("Stimme", "QwenTtsExe", @"qwentts\qwen-tts.exe", "qwentts.cpp-Kommandozeile (für den Stimmentwurf).");
-            QwenBaseModel = Config.Bind("Stimme", "QwenBaseModell", @"qwentts\models\qwen-talker-1.7b-base-Q8_0.gguf", "Qwen3-TTS-Base-Modell (Sprachausgabe mit geklonter Stimme).");
+            QwenBaseModel = Config.Bind("Stimme", "QwenBaseModell", @"qwentts\models\qwen-talker-1.7b-base-Q4_K_M.gguf", "Qwen3-TTS-Base-Modell (Sprachausgabe mit geklonter Stimme). Q4_K_M spart gegenüber Q8_0 ca. 0,8 GB VRAM bei gleicher Verständlichkeit.");
             QwenDesignModel = Config.Bind("Stimme", "QwenDesignModell", @"qwentts\models\qwen-talker-1.7b-voicedesign-Q8_0.gguf", "Qwen3-TTS-VoiceDesign-Modell (Stimmentwurf aus Beschreibung).");
             QwenCodec = Config.Bind("Stimme", "QwenCodec", @"qwentts\models\qwen-tokenizer-12hz-Q8_0.gguf", "Qwen3-TTS-Tokenizer.");
             QwenPort = Config.Bind("Stimme", "QwenPort", 8091, "Lokaler Port des tts-server.");
+            QwenMaxPitchHz = Config.Bind("Stimme", "MaxTonhoeheHz", 260f, "Piepskontrolle: Entworfene Stimmen über dieser Grundfrequenz werden tiefer neu entworfen (0 = aus).");
             QwenLanguage = Config.Bind("Stimme", "QwenSprache", "german", "Sprache für Qwen3-TTS (german, english, …).");
             PiperExe = Config.Bind("Stimme", "PiperExe", @"piper\piper\piper.exe", "Pfad zu piper.exe (relativ zum Plugin-Ordner oder absolut).");
             PiperVoiceDir = Config.Bind("Stimme", "StimmenOrdner", @"piper\voices", "Ordner mit Piper-Stimmen (*.onnx + *.onnx.json).");

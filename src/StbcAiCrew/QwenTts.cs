@@ -123,19 +123,57 @@ namespace StbcAiCrew
 
         readonly object _designLock = new object();
 
+        /// <summary>Höchste erlaubte Grundfrequenz eines Entwurfs; darüber wird neu entworfen (0 = aus).</summary>
+        public float MaxPitchHz = 260f;
+
         void Design(Character c)
         {
             Status = "entwirft Stimme für " + c.Name + " …";
             string station = c.Stations.Count > 0 ? OfficerAgent.StationDe(c.Stations[0]) : "Brücke";
-            // Referenzsatz: natürlich, ruhig, mit typischen Lauten, damit der Klon später gut klingt
-            string refText = "Hier spricht " + c.Name + " von der " + station + ". Alle Systeme arbeiten im normalen Bereich, Captain. " +
+            // Referenzsatz: natürlich und ruhig, damit der Klon später gut klingt
+            string refText = "Hier spricht " + c.Name.Replace("'", "") + " von der " + station + ". Alle Systeme arbeiten im normalen Bereich, Captain. " +
                              "Ich melde mich sofort, wenn sich daran etwas ändert.";
-            string wav = RefWav(c), tmp = wav + ".tmp.wav";
+            string wav = RefWav(c);
             var started = DateTime.UtcNow;
 
+            // Piepskontrolle: Tonhöhe messen; zu hohe Entwürfe mit dem Zusatz "nicht hoch" wiederholen, tiefsten behalten
+            string best = null;
+            float bestF0 = float.MaxValue;
+            for (int attempt = 0; attempt < 3; attempt++)
+            {
+                string instruct = c.VoiceDesign.Trim();
+                if (attempt > 0) instruct = instruct.TrimEnd('.') + ", not high-pitched, " + (attempt > 1 ? "clearly lower and fuller voice." : "lower voice.");
+                string tmp = wav + ".try" + attempt + ".wav";
+                RunDesign(instruct, refText, tmp);
+                int rate;
+                float f0 = VoiceAnalysis.MedianPitch(PiperTts.ParseWav(File.ReadAllBytes(tmp), out rate), rate);
+                _log.LogInfo("Stimmentwurf " + c.Name + " Versuch " + (attempt + 1) + ": " + Mathf0(f0) + " Hz");
+                if (f0 < bestF0)
+                {
+                    if (best != null) File.Delete(best);
+                    best = tmp;
+                    bestF0 = f0;
+                }
+                else File.Delete(tmp);
+                if (MaxPitchHz <= 0f || f0 <= MaxPitchHz) break;
+            }
+
+            if (File.Exists(wav)) File.Delete(wav);
+            File.Move(best, wav);
+            File.WriteAllText(RefTxt(c), refText, new UTF8Encoding(false));
+            File.WriteAllText(RefDesign(c), DesignKey(c), new UTF8Encoding(false));
+            lock (_registered) _registered.Remove(c.Id);
+            _log.LogInfo("Stimme für " + c.Name + " entworfen (" + Mathf0(bestF0) + " Hz, " + (DateTime.UtcNow - started).TotalSeconds.ToString("0") + " s).");
+            Status = "bereit";
+        }
+
+        static string Mathf0(float f) => f >= float.MaxValue ? "?" : f.ToString("0");
+
+        void RunDesign(string instruct, string refText, string outFile)
+        {
             var psi = new ProcessStartInfo(_designExe,
-                "--model \"" + _designModel + "\" --codec \"" + _codec + "\" --instruct \"" + c.VoiceDesign.Replace("\"", "'") +
-                "\" --lang " + _language + " -o \"" + tmp + "\"")
+                "--model \"" + _designModel + "\" --codec \"" + _codec + "\" --instruct \"" + instruct.Replace("\"", "'") +
+                "\" --lang " + _language + " -o \"" + outFile + "\"")
             {
                 UseShellExecute = false, CreateNoWindow = true,
                 RedirectStandardInput = true, RedirectStandardError = true,
@@ -148,17 +186,8 @@ namespace StbcAiCrew
             p.StandardInput.Close();
             string err = p.StandardError.ReadToEnd();
             p.WaitForExit(180000);
-            if (p.ExitCode != 0 || !File.Exists(tmp)) throw new Exception("qwen-tts Exit " + p.ExitCode + ": " + Tail(err));
-
-            if (File.Exists(wav)) File.Delete(wav);
-            File.Move(tmp, wav);
-            File.WriteAllText(RefTxt(c), refText, new UTF8Encoding(false));
-            File.WriteAllText(RefDesign(c), DesignKey(c), new UTF8Encoding(false));
-            lock (_registered) _registered.Remove(c.Id);
-            _log.LogInfo("Stimme für " + c.Name + " entworfen (" + (DateTime.UtcNow - started).TotalSeconds.ToString("0") + " s).");
-            Status = "bereit";
+            if (p.ExitCode != 0 || !File.Exists(outFile)) throw new Exception("qwen-tts Exit " + p.ExitCode + ": " + Tail(err));
         }
-
         void Register(Character c)
         {
             string body = Json.Serialize(new Dictionary<string, object>

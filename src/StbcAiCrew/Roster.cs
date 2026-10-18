@@ -66,9 +66,9 @@ namespace StbcAiCrew
             { "rao", "Male, around 35, calm and precise baritone, clear diction, composed and steady, a starship helmsman." },
             { "hoyle", "Female, around 40, firm and alert alto voice, direct and clipped delivery, confident security officer." },
             { "tnar", "Male, middle-aged, low and perfectly even voice, emotionless and precise, slow measured pace, cool and logical." },
-            { "zhal", "Female, young adult, energetic and fiery voice, fast and passionate, slightly raspy, proud warrior attitude." },
-            { "kerrigan", "Male, around 55, warm and gravelly deep voice, jovial and hearty, gentle Irish lilt, relaxed storyteller." },
-            { "venn", "Female, around 22, soft and bright voice, gentle and slightly shy, warm and empathetic, a little hesitant." },
+            { "zhal", "Female, adult, low husky alto voice, intense and fiery, fast confident delivery, proud warrior." },
+            { "kerrigan", "Male, older, low rumbling deep voice, gravelly and warm, cheerful, slight Irish accent." },
+            { "venn", "Female, young adult, gentle low-mid voice, calm and warm, soft-spoken and a little unsure." },
             { "brannok", "Male, middle-aged, very deep, gruff and growly voice, grumpy and argumentative, gravelly and blunt." },
         };
 
