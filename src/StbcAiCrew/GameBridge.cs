@@ -66,15 +66,20 @@ namespace StbcAiCrew
             finally { Injecting = false; }
         }
 
-        /// <summary>Zeigt Text auf den Brückenkonsolen an (in VR sichtbar).</summary>
-        public static void ShowConsoleMessage(Station target, string text, float seconds)
+        /// <summary>Zeigt Text auf einer Brückenkonsole an (in VR sichtbar).</summary>
+        public static void ShowConsoleMessage(Station target, string text, float seconds) => Show(ToConsole(target), text, seconds);
+
+        /// <summary>Gesprochenes hört die ganze Brücke: bis zur Sprachausgabe als Text auf allen Konsolen.</summary>
+        public static void ShowOnAllConsoles(string text, float seconds) => Show(MIFGHKACDIH.All, text, seconds);
+
+        static void Show(MIFGHKACDIH target, string text, float seconds)
         {
             var bridge = Bridge.Instance;
             if (bridge == null) return;
             // '|' trennt im Spiel Lokalisierungs-ID und Text – nicht durchreichen
             text = text.Replace('|', '/');
             Injecting = true;
-            try { bridge.SendConsoleMessage(ToConsole(target), text, seconds); }
+            try { bridge.SendConsoleMessage(target, text, seconds); }
             finally { Injecting = false; }
         }
 

@@ -8,7 +8,8 @@ using UI;
 namespace StbcAiCrew
 {
     /// <summary>
-    /// Harmony-Hooks: liefern der Crew ihre "Wahrnehmung" des Spiels.
+    /// Harmony-Hooks: liefern den Offizieren ihre Wahrnehmung. Jede Information geht nur an die
+    /// Station, deren Konsole sie anzeigt. Was die Captain-Konsole zeigt, sieht kein KI-Offizier.
     /// Jeder Patch wird einzeln angewendet – schlägt einer fehl, laufen die anderen weiter.
     /// </summary>
     public static class GamePatches
@@ -46,15 +47,23 @@ namespace StbcAiCrew
             try
             {
                 string text = GameBridge.StripLocId(IPMGLGJABGP);
-                // Bedienhinweise sind keine Lageinformation
+                // Bedienhinweise (Farbcodes) sind keine Lageinformation
                 if (string.IsNullOrEmpty(text) || text.IndexOf("<#", StringComparison.Ordinal) >= 0) return;
-                string who = ECBMIBNCBNP == MIFGHKACDIH.All ? "Alle Konsolen" : ECBMIBNCBNP.ToString();
-                EventLog.Add("Konsolenmeldung (" + who + "): " + text, true);
+                string line = "Meldung auf deiner Konsole: " + text;
+                switch (ECBMIBNCBNP)
+                {
+                    case MIFGHKACDIH.All: EventLog.ToAll(line, Priority.Important); break;
+                    case MIFGHKACDIH.Helm: EventLog.ToStation(Station.Helm, line, Priority.Important); break;
+                    case MIFGHKACDIH.Tactical: EventLog.ToStation(Station.Tactical, line, Priority.Important); break;
+                    case MIFGHKACDIH.Engineering: EventLog.ToStation(Station.Engineering, line, Priority.Important); break;
+                    // MIFGHKACDIH.Captain: nur der Captain sieht das
+                }
             }
             catch (Exception e) { Plugin.Log.LogDebug(e); }
         }
 
-        // CommandManager.TriggerCommand(BHPPPGKNAHK befehl) – auch die Menüauswahl des Captains läuft hier durch
+        // CommandManager.TriggerCommand(BHPPPGKNAHK befehl): Befehl, den der Captain an seiner Konsole gibt.
+        // Er erscheint auf der Konsole der ausführenden Station.
         static void TriggerCommandPrefix(BHPPPGKNAHK GOOFNMAKIJB)
         {
             if (GameBridge.Injecting) return;
@@ -62,7 +71,9 @@ namespace StbcAiCrew
             {
                 var cmd = CrewCommands.Find(GOOFNMAKIJB.ToString());
                 string desc = cmd != null ? cmd.Description : GOOFNMAKIJB.ToString();
-                EventLog.Add("Captain gibt Befehl: " + desc + " (" + GOOFNMAKIJB + ")", true);
+                string line = "Befehl des Captains auf deiner Konsole: " + desc + " (" + GOOFNMAKIJB + ")";
+                if (cmd == null || cmd.Station == Station.Captain) EventLog.ToAll(line, Priority.Urgent, fromCaptain: true);
+                else EventLog.ToStation(cmd.Station, line, Priority.Urgent, fromCaptain: true);
             }
             catch (Exception e) { Plugin.Log.LogDebug(e); }
         }
@@ -70,29 +81,29 @@ namespace StbcAiCrew
         // CommandManager.SetRedAlert(bool an)
         static void RedAlertPrefix(bool LLLOEELGIJN)
         {
-            try { EventLog.Add(LLLOEELGIJN ? "Roter Alarm ausgelöst" : "Roter Alarm beendet", true); }
+            try { EventLog.SetRedAlert(LLLOEELGIJN); }
             catch (Exception e) { Plugin.Log.LogDebug(e); }
         }
 
         // USSAegisCrew.CrewbotPlayVO(string wwiseEvent, KFLPAPJAAGO sprecher, float verzögerung)
-        // Returnwert false unterdrückt die vorgefertigte Sprachausgabe der Bots (Option).
-        static bool CrewbotVoPrefix(string GPICMMEIAPM, KFLPAPJAAGO KFLGELOFJDK)
+        // false unterdrückt die vorgefertigte Sprachausgabe der Bots (die KI-Offiziere sprechen selbst).
+        static bool CrewbotVoPrefix(KFLPAPJAAGO KFLGELOFJDK)
         {
             try
             {
-                if (Plugin.Instance != null && Plugin.Instance.LogBotVoiceLines.Value)
-                    EventLog.Add("Sprachzeile " + KFLGELOFJDK + ": " + GPICMMEIAPM, false);
-                if (Plugin.Instance != null && Plugin.Instance.MuteBotVoiceLines.Value && !GameBridge.Injecting)
+                var p = Plugin.Instance;
+                if (p != null && p.MuteBotVoiceLines.Value && !GameBridge.Injecting &&
+                    (KFLGELOFJDK == KFLPAPJAAGO.Crewbot_Helm_Rao || KFLGELOFJDK == KFLPAPJAAGO.Crewbot_Tac_Hoyle || KFLGELOFJDK == KFLPAPJAAGO.Crewbot_Eng_Tnar))
                     return false;
             }
             catch (Exception e) { Plugin.Log.LogDebug(e); }
             return true;
         }
 
-        // PlayerSpacecraft.takeHit(Vector3 pos, float schaden, ...)
-        static void TakeHitPostfix(float AFLKODIBBCC)
+        // PlayerSpacecraft.takeHit(...): Treffer spürt jeder auf der Brücke
+        static void TakeHitPostfix()
         {
-            try { EventLog.AddHit(AFLKODIBBCC); }
+            try { EventLog.AddHit(); }
             catch (Exception e) { Plugin.Log.LogDebug(e); }
         }
     }

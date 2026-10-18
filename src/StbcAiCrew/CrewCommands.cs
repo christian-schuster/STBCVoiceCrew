@@ -8,14 +8,18 @@ namespace StbcAiCrew
     public sealed class CrewCommand
     {
         public readonly BHPPPGKNAHK GameCommand;   // obfuskiertes Befehls-Enum des Spiels
-        public readonly Station Station;
+        public readonly Station Station;           // Station laut Spiel (Captain = Mehrstationen-Ablauf)
+        public readonly Station Owner;             // welcher KI-Offizier ihn auslösen darf
+        public readonly bool Major;                // weitreichend: eigenmächtig nur bei Gefahr bzw. auf Befehl
         public readonly string Description;
         public string Name => GameCommand.ToString();
 
-        public CrewCommand(BHPPPGKNAHK cmd, Station station, string description)
+        public CrewCommand(BHPPPGKNAHK cmd, Station station, string description, Station owner, bool major)
         {
             GameCommand = cmd;
             Station = station;
+            Owner = owner;
+            Major = major;
             Description = description;
         }
     }
@@ -40,11 +44,11 @@ namespace StbcAiCrew
 
             // Taktik (Tactical)
             C(BHPPPGKNAHK.RaiseShields, Station.Tactical, "Schilde hoch"),
-            C(BHPPPGKNAHK.LowerShields, Station.Tactical, "Schilde runter"),
+            C(BHPPPGKNAHK.LowerShields, Station.Tactical, "Schilde runter", major: true),
             C(BHPPPGKNAHK.ArmTorpedoes, Station.Tactical, "Torpedos scharf machen"),
             C(BHPPPGKNAHK.DisarmTorpedoes, Station.Tactical, "Torpedos entschärfen"),
-            C(BHPPPGKNAHK.FirePhasers, Station.Tactical, "Phaser auf das Ziel feuern"),
-            C(BHPPPGKNAHK.FireTorpedoes, Station.Tactical, "Torpedos auf das Ziel feuern"),
+            C(BHPPPGKNAHK.FirePhasers, Station.Tactical, "Phaser auf das Ziel feuern", major: true),
+            C(BHPPPGKNAHK.FireTorpedoes, Station.Tactical, "Torpedos auf das Ziel feuern", major: true),
             C(BHPPPGKNAHK.CeaseFire, Station.Tactical, "Feuer einstellen"),
             C(BHPPPGKNAHK.TargetWeapons, Station.Tactical, "Waffen des Ziels anvisieren"),
             C(BHPPPGKNAHK.TargetEngines, Station.Tactical, "Antrieb des Ziels anvisieren"),
@@ -82,15 +86,15 @@ namespace StbcAiCrew
             C(BHPPPGKNAHK.OptimzeComputerCore, Station.Engineering, "Computerkern optimieren"),
 
             // Abläufe über mehrere Stationen (im Spiel "Playbook"-Befehle des Captains)
-            C(BHPPPGKNAHK.EngageTarget, Station.Captain, "Gewähltes Ziel angreifen (Anflug + Feuer)"),
-            C(BHPPPGKNAHK.AnalyseTarget, Station.Captain, "Gewähltes Ziel analysieren"),
-            C(BHPPPGKNAHK.TransportFromTarget, Station.Captain, "Vom Ziel beamen"),
-            C(BHPPPGKNAHK.PrepareImpulse, Station.Captain, "Impulssprung zum Ziel vorbereiten"),
-            C(BHPPPGKNAHK.EngageImpulse, Station.Captain, "Impulssprung ausführen"),
-            C(BHPPPGKNAHK.PrepareWarp, Station.Captain, "Warp vorbereiten"),
-            C(BHPPPGKNAHK.EngageWarp, Station.Captain, "Warp ausführen"),
-            C(BHPPPGKNAHK.ReduceSignature, Station.Captain, "Signatur verringern (Tarnung erschweren)"),
-            C(BHPPPGKNAHK.CloakHunt, Station.Captain, "Getarnte Schiffe jagen"),
+            Cap(BHPPPGKNAHK.EngageTarget, Station.Tactical, "Gewähltes Ziel angreifen (Anflug + Feuer)"),
+            Cap(BHPPPGKNAHK.AnalyseTarget, Station.Tactical, "Gewähltes Ziel analysieren"),
+            Cap(BHPPPGKNAHK.TransportFromTarget, Station.Engineering, "Vom Ziel beamen"),
+            Cap(BHPPPGKNAHK.PrepareImpulse, Station.Helm, "Impulssprung zum Ziel vorbereiten"),
+            Cap(BHPPPGKNAHK.EngageImpulse, Station.Helm, "Impulssprung ausführen"),
+            Cap(BHPPPGKNAHK.PrepareWarp, Station.Engineering, "Warp vorbereiten"),
+            Cap(BHPPPGKNAHK.EngageWarp, Station.Helm, "Warp ausführen"),
+            Cap(BHPPPGKNAHK.ReduceSignature, Station.Engineering, "Signatur verringern (Tarnung erschweren)"),
+            Cap(BHPPPGKNAHK.CloakHunt, Station.Tactical, "Getarnte Schiffe jagen"),
         };
 
         static readonly Dictionary<string, CrewCommand> ByName = new Dictionary<string, CrewCommand>();
@@ -106,6 +110,14 @@ namespace StbcAiCrew
             return name != null && ByName.TryGetValue(name, out c) ? c : null;
         }
 
-        static CrewCommand C(BHPPPGKNAHK cmd, Station st, string desc) => new CrewCommand(cmd, st, desc);
+        static CrewCommand C(BHPPPGKNAHK cmd, Station st, string desc, bool major = false) => new CrewCommand(cmd, st, desc, st, major);
+
+        // Mehrstationen-Abläufe: im Spiel löst sie der Captain aus. Auf seinen Befehl hin darf sie der zuständige Offizier anstoßen.
+        static CrewCommand Cap(BHPPPGKNAHK cmd, Station owner, string desc) => new CrewCommand(cmd, Station.Captain, desc, owner, true);
+
+        public static IEnumerable<CrewCommand> ForOfficer(Station owner)
+        {
+            foreach (var c in All) if (c.Owner == owner) yield return c;
+        }
     }
 }

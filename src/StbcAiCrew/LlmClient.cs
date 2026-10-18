@@ -25,13 +25,12 @@ namespace StbcAiCrew
         readonly ManualLogSource _log;
         readonly string _baseUrl;
         readonly int _timeoutMs;
-        int _busy;
+        int _inFlight;
 
         public float Temperature = 0.6f;
-        public int MaxTokens = 400;
 
-        public bool Busy => _busy != 0;
-        public double LastLatencySec { get; private set; }
+        /// <summary>Laufende Anfragen. llama-server bearbeitet mehrere parallel (ein Slot je Offizier).</summary>
+        public int InFlight => _inFlight;
 
         public LlmClient(ManualLogSource log, string baseUrl, int timeoutMs)
         {
@@ -43,12 +42,11 @@ namespace StbcAiCrew
 
         /// <summary>
         /// Schickt eine Chat-Anfrage, deren Antwort per JSON-Schema erzwungen wird (llama.cpp-Grammatik).
-        /// onDone(content, error) läuft im Unity-Hauptthread. Gibt false zurück, wenn schon eine Anfrage läuft.
+        /// onDone(content, error, latencySec) läuft im Unity-Hauptthread.
         /// </summary>
-        public bool Send(List<ChatMessage> messages, object jsonSchema, Action<string, string> onDone)
+        public void Send(List<ChatMessage> messages, object jsonSchema, int maxTokens, Action<string, string, double> onDone)
         {
-            if (Interlocked.CompareExchange(ref _busy, 1, 0) != 0) return false;
-
+            Interlocked.Increment(ref _inFlight);
             var msgList = new List<object>();
             foreach (var m in messages)
                 msgList.Add(new Dictionary<string, object> { { "role", m.Role }, { "content", m.Content } });
@@ -57,7 +55,7 @@ namespace StbcAiCrew
             {
                 { "messages", msgList },
                 { "temperature", Temperature },
-                { "max_tokens", MaxTokens },
+                { "max_tokens", maxTokens },
                 { "stream", false },
                 // Denk-Modus (Qwen3 u. a.) aus: kostet sonst Sekunden, die im Gefecht fehlen
                 { "chat_template_kwargs", new Dictionary<string, object> { { "enable_thinking", false } } }
@@ -74,10 +72,9 @@ namespace StbcAiCrew
 
             var t = new Thread(() => Worker(payload, onDone)) { IsBackground = true, Name = "StbcAiCrew.Llm" };
             t.Start();
-            return true;
         }
 
-        void Worker(string payload, Action<string, string> onDone)
+        void Worker(string payload, Action<string, string, double> onDone)
         {
             string content = null, error = null;
             var started = DateTime.UtcNow;
@@ -120,12 +117,12 @@ namespace StbcAiCrew
             }
             finally
             {
-                LastLatencySec = (DateTime.UtcNow - started).TotalSeconds;
-                Interlocked.Exchange(ref _busy, 0);
+                Interlocked.Decrement(ref _inFlight);
             }
 
+            double latency = (DateTime.UtcNow - started).TotalSeconds;
             if (error != null) _log.LogWarning("LLM-Anfrage fehlgeschlagen: " + error);
-            MainThread.Post(() => onDone(content, error));
+            MainThread.Post(() => onDone(content, error, latency));
         }
 
         static string Trunc(string s) => s == null ? "" : (s.Length > 300 ? s.Substring(0, 300) + "…" : s);
