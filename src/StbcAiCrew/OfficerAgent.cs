@@ -129,13 +129,15 @@ namespace StbcAiCrew
             sb.Append("- In ruhigen Momenten darfst du gelegentlich etwas Persönliches sagen, passend zu deiner Figur, aber nicht dauernd.\n");
             sb.Append("- Sprich nur, wenn du etwas beizutragen hast. Spricht der Captain gezielt eine andere Station an, schweigst du.\n");
             sb.Append("- Sprich ").Append(_cfg.Language.Value).Append(". Wie viel du redest, richtet sich nach deiner Beredsamkeit, höchstens drei kurze Sätze.\n");
+            sb.Append("- Schreib so, wie man wirklich spricht: Füllwörter und Laute (äh, hm, puh, pff), Pausen mit …, Betonung mit ! oder ?!. Sparsam und passend zu deiner Figur.\n");
+            sb.Append("- Lachen (lautmalerisch) nur, wenn etwas wirklich lustig ist, nie bei Gefahr. Keine Regieanweisungen in Klammern oder Sternchen: Alles in \"say\" wird laut gesprochen.\n");
 
             sb.Append("\nDEINE BEFEHLE (nur deine Station; Befehle mit Ziel wirken auf das Ziel, das der Captain gewählt hat)\n");
             foreach (var c in CrewCommands.ForOfficer(Station))
                 sb.Append("- ").Append(c.Name).Append(": ").Append(c.Description).Append(c.Major ? " [weitreichend]" : "").Append('\n');
 
             sb.Append("\nANTWORT als JSON: \"say\" = was du laut sagst (leer = schweigen), \"commands\" = Befehle, die du jetzt ausführst (höchstens ")
-              .Append(_cfg.MaxCommandsPerTurn.Value).Append("), \"remember\" = höchstens zwei Dinge, die dir auch in künftigen Missionen nützen (über den Captain, Kollegen, Taktiken; keine aktuellen Werte oder Ereignisse; fast immer leer).\n\n");
+              .Append(_cfg.MaxCommandsPerTurn.Value).Append("), ").Append(Moods.PromptHelp).Append(" \"remember\" = höchstens zwei Dinge, die dir auch in künftigen Missionen nützen (über den Captain, Kollegen, Taktiken; keine aktuellen Werte oder Ereignisse; fast immer leer).\n\n");
 
             sb.Append(Char.MemoryForPrompt());
             return sb.ToString();
@@ -188,6 +190,7 @@ namespace StbcAiCrew
                 { "properties", new Dictionary<string, object>
                     {
                         { "say", new Dictionary<string, object> { { "type", "string" } } },
+                        { "mood", new Dictionary<string, object> { { "type", "string" }, { "enum", Moods.Enum() } } },
                         { "commands", new Dictionary<string, object>
                             {
                                 { "type", "array" },
@@ -204,7 +207,7 @@ namespace StbcAiCrew
                         }
                     }
                 },
-                { "required", new List<object> { "say", "commands", "remember" } }
+                { "required", new List<object> { "say", "mood", "commands", "remember" } }
             };
         }
 
@@ -235,7 +238,7 @@ namespace StbcAiCrew
             ExecuteCommands(Json.Arr(Json.Get(root, "commands")), captainSpoke);
 
             string say = Json.Str(root, "say");
-            if (!string.IsNullOrEmpty(say) && say.Trim().Length > 0) _bridge.Say(this, say.Trim());
+            if (!string.IsNullOrEmpty(say) && say.Trim().Length > 0) _bridge.Say(this, say.Trim(), Json.Str(root, "mood"));
         }
 
         void ExecuteCommands(List<object> commands, bool captainSpoke)

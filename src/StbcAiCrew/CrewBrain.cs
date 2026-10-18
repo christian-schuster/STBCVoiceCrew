@@ -30,6 +30,7 @@ namespace StbcAiCrew
             public Character Char;
             public Station Station;
             public string Text;
+            public string Mood;
             public Action OnSpoken;
             public short[] Pcm;
             public int Rate;
@@ -200,29 +201,54 @@ namespace StbcAiCrew
         }
 
         /// <summary>Satz vormerken; die Stimme wird sofort im Hintergrund erzeugt, damit sie bereitliegt.</summary>
-        public void Say(OfficerAgent speaker, string text)
+        public void Say(OfficerAgent speaker, string text, string mood = null)
         {
-            if (speaker.Char != null) SayAs(speaker.Char, speaker.Station, text, null);
+            if (speaker.Char != null) SayAs(speaker.Char, speaker.Station, text, null, mood);
         }
 
         /// <summary>
         /// Ein Charakter sagt etwas, auch außerhalb einer Mission (Lobby). onSpoken läuft, sobald der Satz
         /// tatsächlich gesprochen wurde (z. B. damit Kollegen erst danach auf einen Witz reagieren).
         /// </summary>
-        public void SayAs(Character c, Station station, string text, Action onSpoken)
+        public void SayAs(Character c, Station station, string text, Action onSpoken, string mood = null)
         {
-            var item = new SpeechItem { Char = c, Station = station, Text = text, OnSpoken = onSpoken, QueuedAt = Time.time };
+            text = StripStageDirections(text);
+            if (text.Length == 0) return;
+            var item = new SpeechItem { Char = c, Station = station, Text = text, Mood = Moods.Normalize(mood), OnSpoken = onSpoken, QueuedAt = Time.time };
             _speech.Enqueue(item);
             if (Tts != null)
-                Tts.Speak(c, text, (pcm, rate) => { item.Pcm = pcm; item.Rate = rate; item.Ready = true; });
+                Tts.Speak(c, text, item.Mood, (pcm, rate) => { item.Pcm = pcm; item.Rate = rate; item.Ready = true; });
             else item.Ready = true;
         }
 
+        static readonly string[] ActionWords =
+        {
+            "lacht", "lachen", "kichert", "grinst", "schmunzelt", "seufzt", "räuspert", "nickt", "zögert", "hustet",
+            "flüstert", "schluckt", "stöhnt", "brummt", "schnaubt", "atmet", "lächelt", "zwinkert", "pause"
+        };
+
+        /// <summary>
+        /// Regieanweisungen entfernen, denn alles Übrige wird gesprochen: "(lacht nervös)" und "[Pause]" immer,
+        /// "*seufzt*" nur, wenn eine Handlung drinsteht. Betonungen wie "*bebt*" bleiben als Wort stehen.
+        /// </summary>
+        public static string StripStageDirections(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return "";
+            string s = System.Text.RegularExpressions.Regex.Replace(text, @"\([^)]*\)|\[[^\]]*\]", " ");
+            s = System.Text.RegularExpressions.Regex.Replace(s, @"\*([^*]+)\*", m =>
+            {
+                string inner = m.Groups[1].Value.ToLowerInvariant();
+                foreach (var w in ActionWords) if (inner.Contains(w)) return " ";
+                return m.Groups[1].Value;
+            });
+            s = s.Replace("*", "");
+            return System.Text.RegularExpressions.Regex.Replace(s, @"\s{2,}", " ").Replace(" ,", ",").Replace(" .", ".").Replace(" !", "!").Trim();
+        }
         /// <summary>Stimme probehören (Crew-Quartier).</summary>
         public void Preview(Character c, string text)
         {
             if (Tts == null || Player == null) return;
-            Tts.Speak(c, text, (pcm, rate) => { if (pcm != null) Player.Play(pcm, rate); });
+            Tts.Speak(c, text, Moods.Neutral, (pcm, rate) => { if (pcm != null) Player.Play(pcm, rate); });
         }
 
         /// <summary>Immer nur einer spricht; die Dauer richtet sich nach der Sprachausgabe bzw. Textlänge.</summary>

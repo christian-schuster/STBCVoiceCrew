@@ -78,6 +78,13 @@ Der Mod nutzt dieselben Kanäle wie das Spiel und braucht normalerweise keine ei
   Bei neuen Charakteren schreibt das LLM die Stimmbeschreibung gleich mit. Im Crew-Quartier lässt sie sich ändern, neu entwerfen und probehören.
 - **VRAM:** tts-server ca. 4,1 GB mit 1.7B-Base Q4_K_M (Standard; Q8_0 ca. 4,9 GB, gleich gut verständlich). Zusammen mit dem
   Sprachmodell (ca. 5,6 GB) und Whisper (ca. 1 GB) rund 10,7 GB plus Spiel. Wird es eng: `Engine = piper`.
+- **Stimmungen:** Qwen3-TTS kennt keine Befehle wie `[lacht]` oder `[seufzt]`, übernimmt beim Klonen aber den Sprechstil der
+  Referenz. Deshalb hat jeder Charakter neben der neutralen Referenz vier Stimmungs-Referenzen (**belustigt** mit eigenem Lachen,
+  **dringend**, **wütend**, **ängstlich**), gesprochen von seiner eigenen geklonten Stimme: gleiche Klangfarbe, andere Färbung
+  (gemessen: Tonhöhe bleibt, Schwankung und Lautstärke steigen deutlich). Das LLM wählt pro Satz die Stimmung, Witze und Lacher
+  nutzen „belustigt“. Ein Stimmentwurf mit Emotions-Zusatz wurde verworfen, weil er die Stimme verfälscht (Kerrigan wütend: 286 statt 106 Hz).
+- **Ausdruck im Text:** Die Offiziere schreiben gesprochene Sprache (äh, hm, puh, Pausen mit …, Betonung mit ! und ?!). Regieanweisungen
+  wie „(lacht nervös)“ oder „*seufzt*“ werden vor dem Sprechen entfernt.
 - **Piepskontrolle:** Nach jedem Stimmentwurf wird die Grundfrequenz gemessen. Liegt sie über 260 Hz (`MaxTonhoeheHz`), wird bis zu
   zweimal tiefer neu entworfen und die tiefste Variante behalten.
 - **Piper** ist der Rückfall: Er spricht, solange eine Stimme noch entworfen wird, der Server lädt oder ausfällt.

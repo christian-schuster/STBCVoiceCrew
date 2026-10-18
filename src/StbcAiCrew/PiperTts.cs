@@ -107,7 +107,7 @@ namespace StbcAiCrew
             return d;
         }
 
-        public void Speak(Character c, string text, Action<short[], int> done) => Speak(c.VoiceSpec, text, done);
+        public void Speak(Character c, string text, string mood, Action<short[], int> done) => Speak(c.VoiceSpec, text, done);
 
         /// <summary>Erzeugt einen Satz; done(pcm, sampleRate) läuft im Unity-Hauptthread (pcm = null bei Fehler).</summary>
         public void Speak(VoiceSpec voice, string text, Action<short[], int> done)

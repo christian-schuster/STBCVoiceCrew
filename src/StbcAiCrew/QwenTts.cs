@@ -13,7 +13,7 @@ namespace StbcAiCrew
     public interface ISpeechEngine : IDisposable
     {
         /// <summary>done(pcm, sampleRate) im Unity-Hauptthread; pcm = null bei Fehler.</summary>
-        void Speak(Character c, string text, Action<short[], int> done);
+        void Speak(Character c, string text, string mood, Action<short[], int> done);
         string Error { get; }
     }
 
@@ -95,6 +95,70 @@ namespace StbcAiCrew
 
         static string DesignKey(Character c) => (c.VoiceDesign ?? "").Trim();
 
+        string MoodWav(Character c, string m) => Path.Combine(_voiceDir, c.Id + "." + m + ".wav");
+        string MoodTxt(Character c, string m) => Path.Combine(_voiceDir, c.Id + "." + m + ".txt");
+        string MoodKeyFile(Character c, string m) => Path.Combine(_voiceDir, c.Id + "." + m + ".design");
+        static string MoodKey(Character c, string m) => DesignKey(c) + "|" + Moods.ReferenceText(m, c);
+
+        /// <summary>Gibt es eine Stimmungs-Referenz, die zur aktuellen Stimme und zum aktuellen Lachen passt?</summary>
+        public bool HasMood(Character c, string m)
+        {
+            if (m == Moods.Neutral) return HasVoice(c);
+            try
+            {
+                return File.Exists(MoodWav(c, m)) && File.Exists(MoodTxt(c, m)) && File.Exists(MoodKeyFile(c, m)) &&
+                       File.ReadAllText(MoodKeyFile(c, m), Encoding.UTF8) == MoodKey(c, m);
+            }
+            catch { return false; }
+        }
+
+        bool HasAllMoods(Character c)
+        {
+            foreach (var m in Moods.All) if (!HasMood(c, m)) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Stimmungs-Referenzen erzeugen: die geklonte Stimme spricht einen typischen Satz der Stimmung.
+        /// So bleibt die Klangfarbe gleich (Stimmentwurf mit Emotions-Zusatz würde die Stimme verfälschen).
+        /// </summary>
+        void EnsureMoods(Character c)
+        {
+            if (!HasVoice(c)) return;
+            while (_running && _server.State != ServerState.Ready) Thread.Sleep(1000);
+            foreach (var m in Moods.All)
+            {
+                if (m == Moods.Neutral || HasMood(c, m)) continue;
+                Status = "Stimmung " + m + " für " + c.Name + " …";
+                bool known;
+                lock (_registered) known = _registered.Contains(c.Id);
+                if (!known) Register(c);
+                string text = Moods.ReferenceText(m, c);
+                byte[] wav = PostBytes("/v1/audio/speech", Json.Serialize(new Dictionary<string, object>
+                {
+                    { "input", PiperTts.CleanForSpeech(text) }, { "voice", c.Id }, { "language", _language }, { "response_format", "wav" }
+                }));
+                File.WriteAllBytes(MoodWav(c, m), wav);
+                File.WriteAllText(MoodTxt(c, m), PiperTts.CleanForSpeech(text), new UTF8Encoding(false));
+                File.WriteAllText(MoodKeyFile(c, m), MoodKey(c, m), new UTF8Encoding(false));
+                lock (_registered) _registered.Remove(c.Id + "~" + m);
+            }
+            Status = "bereit";
+            _log.LogInfo("Stimmungen für " + c.Name + " bereit.");
+        }
+
+        void RegisterMood(Character c, string m)
+        {
+            string body = Json.Serialize(new Dictionary<string, object>
+            {
+                { "name", c.Id + "~" + m },
+                { "ref_text", File.ReadAllText(MoodTxt(c, m), Encoding.UTF8) },
+                { "wav_b64", Convert.ToBase64String(File.ReadAllBytes(MoodWav(c, m))) }
+            });
+            Post("/v1/audio/voices", body);
+            lock (_registered) _registered.Add(c.Id + "~" + m);
+        }
+
         /// <summary>Stimme im Hintergrund entwerfen (falls nötig). force = auch wenn schon eine existiert.</summary>
         public void Prepare(Character c, bool force)
         {
@@ -102,7 +166,7 @@ namespace StbcAiCrew
             lock (_designing)
             {
                 if (_designing.Contains(c.Id)) return;
-                if (!force && HasVoice(c)) return;
+                if (!force && HasVoice(c) && HasAllMoods(c)) return;
                 _designing.Add(c.Id);
             }
             // Eigener Thread, damit ein Entwurf (einige Sekunden) die Sprachausgabe der anderen nicht aufhält.
@@ -113,7 +177,7 @@ namespace StbcAiCrew
                 if (!_running) return;
                 lock (_designLock)
                 {
-                    try { Design(c); }
+                    try { if (force || !HasVoice(c)) Design(c); EnsureMoods(c); }
                     catch (Exception e) { Error = e.Message; _log.LogWarning("Stimmentwurf für " + c.Name + " fehlgeschlagen: " + e.Message); }
                     finally { lock (_designing) _designing.Remove(c.Id); }
                 }
@@ -203,14 +267,15 @@ namespace StbcAiCrew
 
         // ---------------- Sprechen ----------------
 
-        public void Speak(Character c, string text, Action<short[], int> done)
+        public void Speak(Character c, string text, string mood, Action<short[], int> done)
         {
+            mood = Moods.Normalize(mood);
             bool ready = _server.State == ServerState.Ready && HasVoice(c);
             if (!ready)
             {
                 // Stimme entsteht noch oder Server lädt: diesmal Piper, die Stimme wird nebenbei vorbereitet
                 Prepare(c, false);
-                if (_fallback != null) _fallback.Speak(c, text, done);
+                if (_fallback != null) _fallback.Speak(c, text, mood, done);
                 else MainThread.Post(() => done(null, 0));
                 return;
             }
@@ -220,13 +285,25 @@ namespace StbcAiCrew
                 int rate = 0;
                 try
                 {
-                    bool known;
-                    lock (_registered) known = _registered.Contains(c.Id);
-                    if (!known) Register(c);
+                    // Stimmung, wenn ihre Referenz fertig ist, sonst die neutrale Stimme
+                    string voice = c.Id;
+                    if (mood != Moods.Neutral && HasMood(c, mood))
+                    {
+                        bool knownMood;
+                        lock (_registered) knownMood = _registered.Contains(c.Id + "~" + mood);
+                        if (!knownMood) RegisterMood(c, mood);
+                        voice = c.Id + "~" + mood;
+                    }
+                    else
+                    {
+                        bool known;
+                        lock (_registered) known = _registered.Contains(c.Id);
+                        if (!known) Register(c);
+                    }
                     string body = Json.Serialize(new Dictionary<string, object>
                     {
                         { "input", PiperTts.CleanForSpeech(text) },
-                        { "voice", c.Id },
+                        { "voice", voice },
                         { "language", _language },
                         { "response_format", "wav" }
                     });
@@ -239,7 +316,7 @@ namespace StbcAiCrew
                     Error = e.Message;
                     _log.LogWarning("Qwen-Sprachausgabe fehlgeschlagen (" + c.Name + "): " + e.Message);
                 }
-                if (pcm == null && _fallback != null) { _fallback.Speak(c, text, done); return; }
+                if (pcm == null && _fallback != null) { _fallback.Speak(c, text, mood, done); return; }
                 var p = pcm; var r = rate;
                 MainThread.Post(() => done(p, r));
             });

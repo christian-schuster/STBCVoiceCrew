@@ -145,7 +145,7 @@ namespace StbcAiCrew
                 if (!string.IsNullOrEmpty(teller.Laugh) && teller.Trait("Humor") >= 8 && UnityEngine.Random.value < 0.5f)
                     joke += " " + teller.Laugh;
                 // Die anderen reagieren erst, wenn der Witz zu Ende erzählt ist
-                _bridge.SayAs(teller, station, joke, () => React(teller, joke, group, inMission));
+                _bridge.SayAs(teller, station, joke, () => React(teller, joke, group, inMission), Moods.Amused);
             }, temperature: 0.7f);
             attempt(0);
         }
@@ -191,23 +191,25 @@ namespace StbcAiCrew
             foreach (var m in listeners)
             {
                 if (reactions >= 2) break;
-                string attitude;
-                float chance = Attitude(m.Key, teller, inMission, out attitude);
+                string attitude, mood;
+                float chance = Attitude(m.Key, teller, inMission, out attitude, out mood);
                 if (UnityEngine.Random.value > chance) continue;
                 reactions++;
-                Reply(m.Key, m.Value, teller, joke, attitude);
+                Reply(m.Key, m.Value, teller, joke, attitude, mood);
             }
         }
 
         /// <summary>Wie reagiert jemand auf einen Witz? Gibt die Wahrscheinlichkeit einer Reaktion zurück.</summary>
-        static float Attitude(Character c, Character teller, bool inMission, out string attitude)
+        static float Attitude(Character c, Character teller, bool inMission, out string attitude, out string mood)
         {
             int humor = c.Trait("Humor"), discipline = c.Trait("Disziplin"), calm = c.Trait("Gelassenheit");
             bool laughs = !string.IsNullOrEmpty(c.Laugh);
+            mood = Moods.Neutral;
             if (humor >= 7 && laughs)
             {
                 attitude = "Du findest den Witz lustig: Lach zuerst laut auf deine ganz eigene Art, so wie du eben lachst (" + c.Laugh +
                            "), gern lang gezogen, schräg oder übertrieben, als Lautmalerei geschrieben. Danach höchstens ein kurzer, freundlicher Spruch.";
+                mood = Moods.Amused;
                 return 0.8f;
             }
             if (humor <= 3)
@@ -215,18 +217,22 @@ namespace StbcAiCrew
                 if (discipline >= 7 && inMission)
                     attitude = "Witze im Dienst findest du unangebracht: Ermahne " + teller.Name + " kurz und sachlich, sich auf den Dienst zu konzentrieren.";
                 else if (calm <= 4)
+                {
                     attitude = "Der Witz nervt dich: Reagiere kurz und genervt, aber ohne Drohungen oder Beleidigungen.";
+                    mood = Moods.Angry;
+                }
                 else
                     attitude = "Du kannst mit dem Witz nichts anfangen: Reagiere trocken oder verständnislos, so wie es zu dir passt.";
                 return 0.6f;
             }
+            if (laughs) mood = Moods.Amused;
             attitude = laughs
                 ? "Reagiere kurz: ein verhaltenes Lachen auf deine Art (" + c.Laugh + ", aber leiser), ein trockener Kommentar oder höflich gequältes Lächeln, je nachdem, was zu dir passt."
                 : "Reagiere kurz und trocken, ohne zu lachen, so wie es zu dir passt.";
             return 0.3f;
         }
 
-        void Reply(Character c, Station station, Character teller, string joke, string attitude)
+        void Reply(Character c, Station station, Character teller, string joke, string attitude, string mood)
         {
             var sb = new StringBuilder();
             sb.Append(c.ProfileForPrompt()).Append('\n');
@@ -237,7 +243,7 @@ namespace StbcAiCrew
             _llm.Send(new List<ChatMessage> { new ChatMessage("user", sb.ToString()) }, Obj("say", 200), 150, (content, error, latency) =>
             {
                 string say = error == null ? Field(content, "say") : null;
-                if (!string.IsNullOrEmpty(say)) _bridge.SayAs(c, station, say, null);
+                if (!string.IsNullOrEmpty(say)) _bridge.SayAs(c, station, say, null, mood);
             }, temperature: 0.7f);
         }
 
