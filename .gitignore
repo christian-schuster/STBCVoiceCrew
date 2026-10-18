@@ -1,0 +1,8 @@
+bin/
+obj/
+.vs/
+*.user
+# Spiel-DLLs, BepInEx, llama.cpp und Modelle werden nie eingecheckt
+lib/
+*.gguf
+dist/
