@@ -44,7 +44,7 @@ namespace StbcAiCrew
         /// Schickt eine Chat-Anfrage, deren Antwort per JSON-Schema erzwungen wird (llama.cpp-Grammatik).
         /// onDone(content, error, latencySec) läuft im Unity-Hauptthread.
         /// </summary>
-        public void Send(List<ChatMessage> messages, object jsonSchema, int maxTokens, Action<string, string, double> onDone)
+        public void Send(List<ChatMessage> messages, object jsonSchema, int maxTokens, Action<string, string, double> onDone, float temperature = -1f)
         {
             Interlocked.Increment(ref _inFlight);
             var msgList = new List<object>();
@@ -54,7 +54,7 @@ namespace StbcAiCrew
             var body = new Dictionary<string, object>
             {
                 { "messages", msgList },
-                { "temperature", Temperature },
+                { "temperature", temperature >= 0f ? temperature : Temperature },
                 { "max_tokens", maxTokens },
                 { "stream", false },
                 // Denk-Modus (Qwen3 u. a.) aus: kostet sonst Sekunden, die im Gefecht fehlen

@@ -98,6 +98,23 @@ Der Mod nutzt dieselben Kanäle wie das Spiel und braucht normalerweise keine ei
 - **Absturzsicher:** Der laufende Einsatz wird jede Minute gesichert. Nach einem Absturz oder Alt+F4 wird die
   Nachbesprechung beim nächsten Start nachgeholt.
 
+## Humor: Witze und Reaktionen
+
+- In **ruhigen Momenten** (kein Alarm, kein Beschuss seit 90 s, der Captain hat 30 s nichts gesagt) und in der
+  **Lobby** (mit Sprachausgabe; die für die nächste Mission eingeteilte Crew) erzählt gern jemand einen Witz.
+  Je höher der Humor, desto wahrscheinlicher. Ganz Humorlose erzählen nie welche.
+- **Jeder Witz ist neu erfunden.** Für Abwechslung bekommt das LLM nur eine zufällige Form („Treffen sich …“,
+  „Wie viele … braucht man …?“, Wortspiel …) und ein Thema (Ferengi, Tribbles, Holodeck …, oft auch die Spezies der
+  Anwesenden) als Anstoß. Bereits erzählte Witze werden in `BepInEx\config\StbcAiCrew\witze.json` gespeichert und
+  als „nicht wiederholen“ mitgegeben, auch über Sessions hinweg.
+- **Reaktionen nach Charakter:** Wer viel Humor hat, lacht hörbar und legt nach. Mittlerer Humor schmunzelt oder
+  kommentiert trocken. Wer wenig Humor hat, reagiert genervt oder verständnislos, und wer viel Disziplin hat,
+  ermahnt im Dienst den Kollegen. Höchstens zwei reagieren, manche schweigen.
+- **Der Captain bestimmt:** „Ruhe!“, „keine Witze“, „konzentriert euch“ usw. stellt die Witze für 15 Minuten ab.
+  Ob der Captain Humor mag, lernt die Crew über die Nachbesprechung.
+- Erfahrung mit dem 9B-Modell: Die Witze sind eher Kalauer als Pointenfeuerwerk. Ohne JSON-Zwang und bei Temperatur 0,7
+  sind sie deutlich besser als mit Formatvorgabe oder Denkmodus. Ein größeres Modell würde hier am meisten bringen.
+
 ## Crew-Quartier (F6)
 
 Im Spiel, zum Beispiel im Hauptmenü, als Fenster auf dem Desktop:

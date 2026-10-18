@@ -30,6 +30,7 @@ namespace StbcAiCrew
         readonly List<ChatMessage> _history = new List<ChatMessage>();
 
         bool _busy;
+        public bool Busy => _busy;
         float _lastDecision = -999f;
         float _nextIdle;
         float _activeSeconds;

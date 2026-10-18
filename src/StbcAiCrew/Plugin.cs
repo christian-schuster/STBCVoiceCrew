@@ -73,6 +73,13 @@ namespace StbcAiCrew
         public ConfigEntry<float> MessageSeconds;
         public ConfigEntry<bool> MuteBotVoiceLines;
 
+        // ---- Humor ----
+        public ConfigEntry<bool> HumorEnabled;
+        public ConfigEntry<bool> LobbyBanter;
+        public ConfigEntry<float> JokeIntervalMissionSec;
+        public ConfigEntry<float> JokeIntervalLobbySec;
+        public ConfigEntry<int> QuietAfterReprimandMin;
+
         // ---- Lernen ----
         public ConfigEntry<int> MaxLessons;
         public ConfigEntry<int> ChronicleMax;
@@ -133,7 +140,7 @@ namespace StbcAiCrew
             _llm = new LlmClient(Log, baseUrl, RequestTimeoutSec.Value * 1000) { Temperature = Temperature.Value };
             _roster = new Roster(Path.Combine(_dataDir, "crew"));
             _roster.Load();
-            _brain = new CrewBrain(_llm, this, _roster);
+            _brain = new CrewBrain(_llm, this, _roster, _dataDir);
             if (TtsEnabled.Value) StartTts(pluginDir);
             _panel = new CrewPanel(this, _roster, _llm, _brain, _tts);
 
@@ -188,8 +195,8 @@ namespace StbcAiCrew
         /// <summary>Erkannter Satz vom Mikrofon (Hauptthread).</summary>
         void OnHeard(string text)
         {
-            if (!_brain.InMission) { Toast("Gehört (kein Einsatz): " + text); return; }
-            _brain.HumanSays(ParseStation(MyStation.Value), text);
+            if (!_brain.InMission) Toast("Gehört (kein Einsatz): " + text);
+            _brain.HumanSays(ParseStation(MyStation.Value), text);   // außerhalb des Einsatzes nur für "Ruhe!" usw.
         }
 
         static Station ParseStation(string s)
@@ -250,6 +257,12 @@ namespace StbcAiCrew
             Language = Config.Bind("Crew", "Sprache", "Deutsch", "Sprache der Crew.");
             MessageSeconds = Config.Bind("Crew", "AnzeigedauerSek", 7f, "Wie lange Gesprochenes auf den Konsolen steht.");
             MuteBotVoiceLines = Config.Bind("Crew", "BotSprachzeilenStumm", true, "Vorgefertigte Sprachzeilen von Rao/Hoyle/T'nar unterdrücken (die KI-Charaktere sprechen selbst).");
+
+            HumorEnabled = Config.Bind("Humor", "Aktiv", true, "Charaktere mit Humor erzählen in ruhigen Momenten Witze, die anderen reagieren nach ihren Charakterzügen.");
+            LobbyBanter = Config.Bind("Humor", "InDerLobby", true, "Auch außerhalb von Missionen plaudern und scherzen (nur mit Sprachausgabe).");
+            JokeIntervalMissionSec = Config.Bind("Humor", "WitzAbstandMissionSek", 240f, "Mindestabstand zwischen Witzen im Einsatz.");
+            JokeIntervalLobbySec = Config.Bind("Humor", "WitzAbstandLobbySek", 120f, "Mindestabstand zwischen Witzen in der Lobby.");
+            QuietAfterReprimandMin = Config.Bind("Humor", "RuheNachErmahnungMin", 15, "So lange keine Witze, nachdem der Captain um Ruhe gebeten hat.");
 
             MaxLessons = Config.Bind("Lernen", "MaxLektionen", 12, "Lektionen je Charakter.");
             ChronicleMax = Config.Bind("Lernen", "ChronikEintraege", 15, "Einträge der Dienstchronik je Charakter.");

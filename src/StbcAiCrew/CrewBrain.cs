@@ -27,8 +27,10 @@ namespace StbcAiCrew
 
         sealed class SpeechItem
         {
-            public OfficerAgent Agent;
+            public Character Char;
+            public Station Station;
             public string Text;
+            public Action OnSpoken;
             public short[] Pcm;
             public int Rate;
             public bool Ready;
@@ -45,13 +47,54 @@ namespace StbcAiCrew
         float _floorFreeAt;
         float _nextSnapshot;
         public bool InMission { get; private set; }
+        public readonly CrewBanter Banter;
 
-        public CrewBrain(LlmClient llm, Plugin cfg, Roster roster)
+        /// <summary>Zeitpunkt (Echtzeit), zu dem zuletzt ein Mensch gesprochen hat.</summary>
+        public float LastHumanSpeech { get; private set; } = -9999f;
+
+        /// <summary>Niemand spricht und nichts wartet aufs Sprechen.</summary>
+        public bool FloorFree => _speech.Count == 0 && Time.time >= _floorFreeAt && (Player == null || !Player.Playing);
+
+        public CrewBrain(LlmClient llm, Plugin cfg, Roster roster, string dataDir)
         {
             _cfg = cfg;
             Roster = roster;
             Debriefer = new Debriefer(llm, cfg, this);
+            Banter = new CrewBanter(llm, cfg, this, System.IO.Path.Combine(dataDir, "witze.json"));
             foreach (var st in EventLog.CrewStations) Agents.Add(new OfficerAgent(st, llm, cfg, this));
+        }
+
+        /// <summary>
+        /// Wer gerade zusammen ist und plaudern kann: im Einsatz die KI-Offiziere auf ihren Stationen,
+        /// sonst (Lobby) die Besetzung, die für die nächste Mission eingeteilt ist.
+        /// </summary>
+        public List<KeyValuePair<Character, Station>> BanterGroup()
+        {
+            var group = new List<KeyValuePair<Character, Station>>();
+            if (InMission)
+            {
+                foreach (var a in Agents)
+                    if (a.Char != null && a.Active) group.Add(new KeyValuePair<Character, Station>(a.Char, a.Station));
+                return group;
+            }
+            var taken = new List<Character>();
+            foreach (var a in Agents)
+            {
+                var c = Roster.Pick(a.Key, _cfg.CrewWish(a.Station), taken);
+                if (c == null) continue;
+                taken.Add(c);
+                group.Add(new KeyValuePair<Character, Station>(c, a.Station));
+            }
+            return group;
+        }
+
+        public bool AnyAgentBusy
+        {
+            get
+            {
+                foreach (var a in Agents) if (a.Busy) return true;
+                return false;
+            }
         }
 
         // ---------------- Missionsablauf ----------------
@@ -108,9 +151,10 @@ namespace StbcAiCrew
 
         public void Tick(ShipStatus status)
         {
+            ReleaseSpeech();
+            Banter.Tick(InMission);
             if (InMission)
             {
-                ReleaseSpeech();
                 foreach (var a in Agents) a.Tick(status);
                 if (Time.time >= _nextSnapshot)
                 {
@@ -138,6 +182,9 @@ namespace StbcAiCrew
             bool isCaptain = speaker == Station.Captain;
             string who = isCaptain ? "Captain" : "Mensch an " + OfficerAgent.StationDe(speaker);
             AddLine(who, text);
+            LastHumanSpeech = Time.realtimeSinceStartup;
+            if (isCaptain) Banter.OnCaptainSpeech(text);
+            if (!InMission) return;
 
             var addressed = new List<OfficerAgent>();
             foreach (var a in Agents) if (a.Char != null && a.Station != speaker && Mentions(text, a, topics: true)) addressed.Add(a);
@@ -155,10 +202,19 @@ namespace StbcAiCrew
         /// <summary>Satz vormerken; die Stimme wird sofort im Hintergrund erzeugt, damit sie bereitliegt.</summary>
         public void Say(OfficerAgent speaker, string text)
         {
-            var item = new SpeechItem { Agent = speaker, Text = text, QueuedAt = Time.time };
+            if (speaker.Char != null) SayAs(speaker.Char, speaker.Station, text, null);
+        }
+
+        /// <summary>
+        /// Ein Charakter sagt etwas, auch außerhalb einer Mission (Lobby). onSpoken läuft, sobald der Satz
+        /// tatsächlich gesprochen wurde (z. B. damit Kollegen erst danach auf einen Witz reagieren).
+        /// </summary>
+        public void SayAs(Character c, Station station, string text, Action onSpoken)
+        {
+            var item = new SpeechItem { Char = c, Station = station, Text = text, OnSpoken = onSpoken, QueuedAt = Time.time };
             _speech.Enqueue(item);
-            if (Tts != null && speaker.Char != null)
-                Tts.Speak(speaker.Char.VoiceSpec, text, (pcm, rate) => { item.Pcm = pcm; item.Rate = rate; item.Ready = true; });
+            if (Tts != null)
+                Tts.Speak(c.VoiceSpec, text, (pcm, rate) => { item.Pcm = pcm; item.Rate = rate; item.Ready = true; });
             else item.Ready = true;
         }
 
@@ -176,13 +232,10 @@ namespace StbcAiCrew
             var item = _speech.Peek();
             if (!item.Ready && Time.time - item.QueuedAt < 4f) return;   // Stimme ist gleich fertig
             _speech.Dequeue();
-            var speaker = item.Agent;
             string text = item.Text;
-            if (speaker.Char == null) return;
-
-            string name = speaker.Char.Title;
-            AddLine(name + " (" + OfficerAgent.StationDe(speaker.Station) + ")", text);
-            GameBridge.ShowOnAllConsoles(speaker.Char.Name + ": " + text, _cfg.MessageSeconds.Value);
+            string name = item.Char.Title;
+            AddLine(name + " (" + OfficerAgent.StationDe(item.Station) + ")", text);
+            if (InMission) GameBridge.ShowOnAllConsoles(item.Char.Name + ": " + text, _cfg.MessageSeconds.Value);
             float seconds = 0f;
             if (item.Pcm != null && Player != null) seconds = Player.Play(item.Pcm, item.Rate);
             if (seconds > 0f)
@@ -191,13 +244,15 @@ namespace StbcAiCrew
                 if (CrewSpeaking != null) CrewSpeaking(seconds + 0.4f);
             }
             else _floorFreeAt = Time.time + 1.2f + text.Length / 15f;
+            if (item.OnSpoken != null) item.OnSpoken();
+            if (!InMission) return;
 
             foreach (var other in Agents)
             {
                 var p = EventLog.Of(other.Station);
-                if (other == speaker) { p.Add("Du hast gesagt: \"" + text + "\"", Priority.Background); continue; }
+                if (other.Char == item.Char) { p.Add("Du hast gesagt: \"" + text + "\"", Priority.Background); continue; }
                 bool addressed = other.Char != null && Mentions(text, other, topics: false);
-                p.Add(name + " (" + OfficerAgent.StationDe(speaker.Station) + ") sagt: \"" + text + "\"" + (addressed ? " (an dich)" : ""),
+                p.Add(name + " (" + OfficerAgent.StationDe(item.Station) + ") sagt: \"" + text + "\"" + (addressed ? " (an dich)" : ""),
                       addressed ? Priority.Urgent : Priority.Background, addressed: addressed);
             }
         }
