@@ -53,6 +53,7 @@ namespace StbcAiCrew
             sb.Append("- missionSummary: ein Satz, was diese Mission aus deiner Sicht war.\n");
             sb.Append("- captainFeedback: hat der Captain dich gelobt (lob), getadelt (tadel) oder keins von beiden (neutral)?\n");
             sb.Append("- traitChanges: höchstens zwei Charakterzüge, die sich durch ein konkretes Erlebnis dieser Mission verändert haben (delta -1 oder +1; 0 oder leere Liste, wenn sich nichts geändert hat).\n");
+            sb.Append("- anecdote: ein komischer Moment dieser Mission (Missverständnis, Versprecher, kleine Panne), so wie du ihn später gern erzählst, in einem Satz. Leer, wenn es keinen gab; nichts erfinden.\n");
             sb.Append("Schreib auf ").Append(_cfg.Language.Value).Append(", aus deiner Ich-Perspektive.\n\n");
             sb.Append(c.MemoryForPrompt()).Append('\n');
             if (notes.Count > 0)
@@ -97,6 +98,7 @@ namespace StbcAiCrew
                         { "relationships", str },
                         { "lessons", new Dictionary<string, object> { { "type", "array" }, { "maxItems", _cfg.MaxLessons.Value }, { "items", lesson } } },
                         { "missionSummary", str },
+                        { "anecdote", new Dictionary<string, object> { { "type", "string" }, { "maxLength", 300 } } },
                         { "captainFeedback", new Dictionary<string, object> { { "type", "string" }, { "enum", new List<object> { "lob", "neutral", "tadel" } } } },
                         { "traitChanges", new Dictionary<string, object>
                             {
@@ -153,6 +155,13 @@ namespace StbcAiCrew
                         c.Chronicle.Add(Today() + ": " + trait + " " + before + " → " + c.Trait(trait) + " (" + Json.Str(ch, "reason") + ")");
                 }
 
+            string anecdote = (Json.Str(root, "anecdote") ?? "").Trim();
+            if (anecdote.Length > 15)
+            {
+                c.Anecdotes.Add(anecdote);
+                while (c.Anecdotes.Count > 6) c.Anecdotes.RemoveAt(0);
+                Plugin.Log.LogInfo(c.Name + " merkt sich eine Anekdote: " + anecdote);
+            }
             string summary = Json.Str(root, "missionSummary");
             Finish(c, log, station, minutes, commands, orders, Json.Str(root, "captainFeedback") ?? "neutral", summary, noteCount);
         }

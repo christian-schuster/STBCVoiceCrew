@@ -108,6 +108,8 @@ namespace StbcAiCrew
 
         void TellJoke(Character teller, Station station, List<KeyValuePair<Character, Station>> group, bool inMission)
         {
+            // Manchmal statt eines Witzes eine Erinnerung an einen komischen Moment aus einer früheren Mission
+            if (teller.Anecdotes.Count > 0 && UnityEngine.Random.value < 0.4f) { TellAnecdote(teller, station, group, inMission); return; }
             _busy = true;
             _lastJoke = Now;
 
@@ -124,7 +126,7 @@ namespace StbcAiCrew
             sb.Append("Erzähle einen kurzen, neu erfundenen Witz für Star-Trek-Fans, den ein Crewmitglied ")
               .Append(inMission ? "in einer ruhigen Minute auf der Brücke" : "im Bereitschaftsraum vor der Mission").Append(" laut erzählt. ");
             sb.Append("Thema: ").Append(topic).Append(". Form: ").Append(form).Append(".\n");
-            sb.Append("Höchstens drei kurze Sätze, mit klarer Pointe am Ende, kollegial und nicht verletzend, keine Witze über Geschlecht, Herkunft oder Aussehen. ");
+            sb.Append("Höchstens zwei kurze Sätze, knackige Pointe am Ende, kollegial und nicht verletzend, keine Witze über Geschlecht, Herkunft oder Aussehen. ");
             sb.Append("Kein bekannter Witz und keiner, der diesen schon erzählten ähnelt:\n");
             int from = Math.Max(0, _jokes.Count - _cfg.JokeMemory.Value);
             if (_jokes.Count == 0) sb.Append("- (bisher keine)\n");
@@ -148,6 +150,30 @@ namespace StbcAiCrew
                 _bridge.SayAs(teller, station, joke, () => React(teller, joke, group, inMission), Moods.Amused);
             }, temperature: 0.7f);
             attempt(0);
+        }
+
+        void TellAnecdote(Character teller, Station station, List<KeyValuePair<Character, Station>> group, bool inMission)
+        {
+            _busy = true;
+            _lastJoke = Now;
+            string memory = teller.Anecdotes[UnityEngine.Random.Range(0, teller.Anecdotes.Count)];
+            var sb = new StringBuilder();
+            sb.Append(teller.ProfileForPrompt()).Append('\n');
+            sb.Append("Du erinnerst dich ").Append(inMission ? "in einer ruhigen Minute auf der Brücke" : "im Bereitschaftsraum")
+              .Append(" an diesen komischen Moment aus einer früheren Mission: ").Append(memory).Append('\n');
+            sb.Append("Erzähl ihn deinen Kollegen oder dem Captain in deiner Art, etwa beginnend mit \"Wissen Sie noch …\". Höchstens zwei kurze Sätze mit Pointe. ");
+            sb.Append("Keine Flüche oder vulgären Wörter. Schreib nur die Worte, die gesprochen werden, ohne Anführungszeichen. Auf ").Append(_cfg.Language.Value).Append(".");
+            string prompt = sb.ToString();
+            _llm.Send(new List<ChatMessage> { new ChatMessage("user", prompt) }, null, 140, (content, error, latency) =>
+            {
+                _busy = false;
+                string story = error == null ? CleanJoke(content) : null;
+                if (story == null) return;
+                teller.Anecdotes.Remove(memory);   // einmal erzählt reicht
+                teller.Save();
+                Remember(teller.Name, story);
+                _bridge.SayAs(teller, station, story, () => React(teller, story, group, inMission), Moods.Amused);
+            }, temperature: 0.7f);
         }
 
         /// <summary>Witz säubern; null, wenn unbrauchbar (fremde Schriftzeichen, zu lang, leer).</summary>

@@ -114,6 +114,7 @@ namespace StbcAiCrew
         public string Relationships = "";        // Eindruck von Kollegen
         public List<string> Chronicle = new List<string>();
         public List<string> MissionNotes = new List<string>();
+        public List<string> Anecdotes = new List<string>();   // komische Momente aus Missionen, für ruhige Minuten
 
         // ---- laufende / ausstehende Mission (absturzsicher) ----
         public string UnfinishedLog = "";
@@ -168,6 +169,7 @@ namespace StbcAiCrew
             c.Relationships = Json.Str(mem, "relationships") ?? "";
             Strings(Json.Get(mem, "chronicle"), c.Chronicle);
             Strings(Json.Get(mem, "missionNotes"), c.MissionNotes);
+            Strings(Json.Get(mem, "anecdotes"), c.Anecdotes);
 
             var p = Json.Get(o, "pending");
             c.UnfinishedLog = Json.Str(p, "unfinishedLog") ?? "";
@@ -210,7 +212,7 @@ namespace StbcAiCrew
                         {
                             { "personal", Personal }, { "captainImpression", CaptainImpression },
                             { "relationships", Relationships }, { "lessons", Lessons },
-                            { "chronicle", Chronicle }, { "missionNotes", MissionNotes }
+                            { "chronicle", Chronicle }, { "missionNotes", MissionNotes }, { "anecdotes", Anecdotes }
                         }
                     },
                     { "pending", new Dictionary<string, object>
