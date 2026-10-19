@@ -281,6 +281,12 @@ namespace StbcAiCrew
                 float last;
                 if (!captainSpoke && _lastRun.TryGetValue(cmd.Name, out last) && Time.time - last < 20f) continue;   // nicht dauernd dasselbe drücken
                 if (!mayAct) { Plugin.Log.LogInfo(Char.Name + " schlägt vor (nicht ausgeführt): " + cmd.Name); continue; }
+                if (!captainSpoke && CrewCommands.OrderOnly(cmd))
+                {
+                    Plugin.Log.LogInfo(Char.Name + " darf " + cmd.Name + " nur auf Befehl.");
+                    P.Add("Du wolltest " + cmd.Description + ", das tust du nur auf ausdrücklichen Befehl des Captains.", Priority.Background);
+                    continue;
+                }
                 if (cmd.Major && !captainSpoke && !_cfg.AllowMajorWithoutOrder.Value &&
                     !Ranks.MayActMajor(Char.Xp, EventLog.UnderThreat(60f)))
                 {

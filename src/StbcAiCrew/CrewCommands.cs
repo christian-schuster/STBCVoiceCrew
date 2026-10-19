@@ -45,14 +45,14 @@ namespace StbcAiCrew
             // Taktik (Tactical)
             C(BHPPPGKNAHK.RaiseShields, Station.Tactical, "Schilde hoch"),
             C(BHPPPGKNAHK.LowerShields, Station.Tactical, "Schilde runter", major: true),
-            C(BHPPPGKNAHK.ArmTorpedoes, Station.Tactical, "Torpedos scharf machen"),
+            C(BHPPPGKNAHK.ArmTorpedoes, Station.Tactical, "Torpedos scharf machen", major: true),
             C(BHPPPGKNAHK.DisarmTorpedoes, Station.Tactical, "Torpedos entschärfen"),
             C(BHPPPGKNAHK.FirePhasers, Station.Tactical, "Phaser auf das Ziel feuern", major: true),
             C(BHPPPGKNAHK.FireTorpedoes, Station.Tactical, "Torpedos auf das Ziel feuern", major: true),
             C(BHPPPGKNAHK.CeaseFire, Station.Tactical, "Feuer einstellen"),
-            C(BHPPPGKNAHK.TargetWeapons, Station.Tactical, "Waffen des Ziels anvisieren"),
-            C(BHPPPGKNAHK.TargetEngines, Station.Tactical, "Antrieb des Ziels anvisieren"),
-            C(BHPPPGKNAHK.TargetShields, Station.Tactical, "Schilde des Ziels anvisieren"),
+            C(BHPPPGKNAHK.TargetWeapons, Station.Tactical, "Waffen des Ziels anvisieren", major: true),
+            C(BHPPPGKNAHK.TargetEngines, Station.Tactical, "Antrieb des Ziels anvisieren", major: true),
+            C(BHPPPGKNAHK.TargetShields, Station.Tactical, "Schilde des Ziels anvisieren", major: true),
             C(BHPPPGKNAHK.CeaseTargeting, Station.Tactical, "Zielerfassung lösen"),
             C(BHPPPGKNAHK.ScanTarget, Station.Tactical, "Ziel scannen"),
             C(BHPPPGKNAHK.ModulateShields, Station.Tactical, "Schildfrequenz modulieren"),
@@ -109,6 +109,9 @@ namespace StbcAiCrew
             CrewCommand c;
             return name != null && ByName.TryGetValue(name, out c) ? c : null;
         }
+
+        /// <summary>Nur auf ausdrücklichen Befehl des Captains, nie eigenmächtig (auch nicht unter Beschuss).</summary>
+        public static bool OrderOnly(CrewCommand c) => c.GameCommand == BHPPPGKNAHK.LowerShields;
 
         static CrewCommand C(BHPPPGKNAHK cmd, Station st, string desc, bool major = false) => new CrewCommand(cmd, st, desc, st, major);
 
