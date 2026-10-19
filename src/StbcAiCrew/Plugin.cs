@@ -18,6 +18,7 @@ namespace StbcAiCrew
         public static ManualLogSource Log { get; private set; }
 
         // ---- LLM / llama.cpp ----
+        public ConfigEntry<bool> UseJobObject;
         public ConfigEntry<bool> UseExternalServer;
         public ConfigEntry<string> LlamaServerExe;
         public ConfigEntry<string> ModelPath;
@@ -138,6 +139,8 @@ namespace StbcAiCrew
 
             string pluginDir = Path.GetDirectoryName(Info.Location);
             _dataDir = Path.Combine(Paths.ConfigPath, "StbcAiCrew");
+            JobObject.Enabled = UseJobObject.Value;
+            KillLeftovers(pluginDir);
 
             string baseUrl = "http://127.0.0.1:" + Port.Value;
             string exe = UseExternalServer.Value ? null : ResolvePath(pluginDir, LlamaServerExe.Value);
@@ -238,8 +241,30 @@ namespace StbcAiCrew
             }
         }
 
+        /// <summary>Server aus einer abgestürzten Session beenden (nur Programme aus dem eigenen Plugin-Ordner).</summary>
+        static void KillLeftovers(string pluginDir)
+        {
+            foreach (var name in new[] { "llama-server", "whisper-server", "tts-server", "qwen-tts", "piper" })
+            {
+                System.Diagnostics.Process[] procs;
+                try { procs = System.Diagnostics.Process.GetProcessesByName(name); } catch { continue; }
+                foreach (var p in procs)
+                {
+                    try
+                    {
+                        string path = p.MainModule.FileName;
+                        if (path == null || !path.StartsWith(pluginDir, StringComparison.OrdinalIgnoreCase)) continue;
+                        p.Kill();
+                        Log.LogInfo("Verwaisten Server beendet: " + name + " (PID " + p.Id + ")");
+                    }
+                    catch { }
+                }
+            }
+        }
+
         void BindConfig()
         {
+            UseJobObject = Config.Bind("Diagnose", "JobObjekt", false, "Kindprozesse per Windows-Job-Objekt an das Spiel binden (im Spiel-Mono fehlerhaft, daher aus).");
             UseExternalServer = Config.Bind("LLM", "ExternenServerNutzen", false, "true = llama-server nicht selbst starten, sondern einen bereits laufenden auf dem Port nutzen.");
             LlamaServerExe = Config.Bind("LLM", "LlamaServerExe", @"llama\llama-server.exe", "Pfad zu llama-server.exe (relativ zum Plugin-Ordner oder absolut).");
             ModelPath = Config.Bind("LLM", "Modell", @"models\crew.gguf", "Pfad zur GGUF-Modelldatei (relativ zum Plugin-Ordner oder absolut).");

@@ -12,8 +12,15 @@ namespace StbcAiCrew
         static IntPtr _job = IntPtr.Zero;
         static readonly object Lock = new object();
 
+        /// <summary>
+        /// Im Mono des Spiels beendete das Job-Objekt die Kindprozesse sofort (Exit-Code -1, vermutlich falsches
+        /// Struktur-Marshalling). Deshalb standardmäßig aus; verwaiste Server räumt Plugin.KillLeftovers beim nächsten Start ab.
+        /// </summary>
+        public static bool Enabled;
+
         public static void Add(int pid)
         {
+            if (!Enabled) return;
             try
             {
                 lock (Lock)

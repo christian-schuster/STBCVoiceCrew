@@ -20,7 +20,21 @@ namespace StbcAiCrew
             Patch(harmony, typeof(CommandManager), "TriggerCommand", nameof(TriggerCommandPrefix));
             Patch(harmony, typeof(CommandManager), "SetRedAlert", nameof(RedAlertPrefix));
             Patch(harmony, typeof(USSAegisCrew), "CrewbotPlayVO", nameof(CrewbotVoPrefix));
-            Patch(harmony, typeof(PlayerSpacecraft), "takeHit", nameof(TakeHitPostfix), postfix: true);
+            PatchAllOverloads(harmony, typeof(PlayerSpacecraft), "takeHit", nameof(TakeHitPostfix));
+        }
+
+        // takeHit gibt es mehrfach (Überladungen): alle patchen, der Postfix braucht keine Parameter
+        static void PatchAllOverloads(Harmony harmony, Type type, string method, string hook)
+        {
+            var hm = new HarmonyMethod(typeof(GamePatches).GetMethod(hook, BindingFlags.Static | BindingFlags.NonPublic));
+            int n = 0;
+            foreach (var m in type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+            {
+                if (m.Name != method || m.IsAbstract) continue;
+                try { harmony.Patch(m, postfix: hm); n++; }
+                catch (Exception e) { Plugin.Log.LogError("Hook fehlgeschlagen: " + type.Name + "." + method + " (" + m + ") – " + e.Message); }
+            }
+            Plugin.Log.LogInfo("Hook aktiv: " + type.Name + "." + method + " (" + n + " Überladungen)");
         }
 
         static void Patch(Harmony harmony, Type type, string method, string hook, bool postfix = false)
