@@ -22,6 +22,7 @@ namespace StbcAiCrew
             "Erst dann löst die Steuer den Warp aus (EngageWarp). Die Steuer lädt den Warpkern nie selbst, sie wartet auf die Meldung der Technik.\n" +
             "- Impulssprung (für ferne Ziele: Sektionen, Nebel, entfernte Stationen): Der Captain markiert das Ziel auf der Navigationskarte. " +
             "Befiehlt er den Flug dorthin, bereitet die Steuer den Sprung vor (PrepareImpulse); meldet die Konsole \"Impulskurs bereit\", löst sie ihn aus (EngageImpulse). " +
+            "Das Ausrichten auf das Ziel übernimmt der Antrieb dabei selbst. Die Aegis braucht für den Impulssprung Fahrt: vorher volle Geschwindigkeit (SetSpeedFull), für den Warp ebenso. " +
             "MoveTo fliegt dagegen nur mit Impulsgeschwindigkeit zum gewählten Ziel in der Nähe. Ist kein fernes Ziel markiert, bitte den Captain, es auf der Karte zu markieren.\n" +
             "- Melde nie einen Kurs auf ein Ziel, das deine Konsole nicht als Ziel zeigt. Geschwindigkeit nennst du in Prozent Impuls (nicht in Knoten).\n" +
             "- Gefecht: Der Captain wählt das Ziel. Taktik scannt, zielt und feuert. Technik verteilt die Energie (Schilde oder Phaser) und repariert. " +
