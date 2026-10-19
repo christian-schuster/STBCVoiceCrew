@@ -204,7 +204,7 @@ namespace StbcAiCrew
                 { "type", "object" },
                 { "properties", new Dictionary<string, object>
                     {
-                        { "say", new Dictionary<string, object> { { "type", "string" }, { "maxLength", 200 } } },
+                        { "say", new Dictionary<string, object> { { "type", "string" }, { "maxLength", 240 } } },
                         { "mood", new Dictionary<string, object> { { "type", "string" }, { "enum", Moods.Enum() } } },
                         { "commands", new Dictionary<string, object>
                             {
@@ -253,7 +253,18 @@ namespace StbcAiCrew
             ExecuteCommands(Json.Arr(Json.Get(root, "commands")), captainSpoke);
 
             string say = Json.Str(root, "say");
-            if (!string.IsNullOrEmpty(say) && say.Trim().Length > 0) _bridge.Say(this, say.Trim(), Json.Str(root, "mood"));
+            if (!string.IsNullOrEmpty(say) && say.Trim().Length > 0) _bridge.Say(this, CompleteSentences(say), Json.Str(root, "mood"));
+        }
+
+        readonly Dictionary<string, float> _lastRun = new Dictionary<string, float>();
+
+        /// <summary>Hat die Längengrenze den Satz abgeschnitten, bis zum letzten vollständigen Satz kürzen.</summary>
+        static string CompleteSentences(string s)
+        {
+            s = s.Trim();
+            if (s.Length == 0 || ".!?…\"".IndexOf(s[s.Length - 1]) >= 0) return s;
+            int cut = s.LastIndexOfAny(new[] { '.', '!', '?', '…' });
+            return cut > 10 ? s.Substring(0, cut + 1) : s + " …";
         }
 
         void ExecuteCommands(List<object> commands, bool captainSpoke)
@@ -267,6 +278,8 @@ namespace StbcAiCrew
                 if (executed >= _cfg.MaxCommandsPerTurn.Value) break;
                 var cmd = CrewCommands.Find(o as string);
                 if (cmd == null || cmd.Owner != Station) continue;
+                float last;
+                if (!captainSpoke && _lastRun.TryGetValue(cmd.Name, out last) && Time.time - last < 20f) continue;   // nicht dauernd dasselbe drücken
                 if (!mayAct) { Plugin.Log.LogInfo(Char.Name + " schlägt vor (nicht ausgeführt): " + cmd.Name); continue; }
                 if (cmd.Major && !captainSpoke && !_cfg.AllowMajorWithoutOrder.Value &&
                     !Ranks.MayActMajor(Char.Xp, EventLog.UnderThreat(60f)))
@@ -278,6 +291,7 @@ namespace StbcAiCrew
                 try
                 {
                     GameBridge.Trigger(cmd);
+                    _lastRun[cmd.Name] = Time.time;
                     executed++;
                     _commands++;
                     if (captainSpoke) _ordersFollowed++;
