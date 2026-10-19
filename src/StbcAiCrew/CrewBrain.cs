@@ -161,16 +161,22 @@ namespace StbcAiCrew
 
         float _lineupAnnounceAt = -1f;
 
+        string _lastLineup;
+        float _lineupStableSince;
+
+        /// <summary>
+        /// Die Bots setzen sich nacheinander an ihre Stationen. Gemeldet wird, sobald die Besetzung 5 s lang
+        /// unverändert ist (frühestens nach 8 s, spätestens nach 40 s).
+        /// </summary>
         void AnnounceLineupWhenReady()
         {
             if (_lineupAnnounceAt < 0f) return;
-            bool anyActive = false;
-            foreach (var a in Agents) if (a.Active) anyActive = true;
-            if (!anyActive && Time.time < _lineupAnnounceAt + 22f) return;   // spätestens nach 30 s melden
-            if (!anyActive && Time.time < _lineupAnnounceAt) return;
-            _lineupAnnounceAt = -1f;
             string lineup = Lineup(null);
-            Plugin.Log.LogInfo("Besatzung: " + lineup);
+            if (lineup != _lastLineup) { _lastLineup = lineup; _lineupStableSince = Time.time; }
+            bool late = Time.time >= _lineupAnnounceAt + 32f;
+            if (!late && (Time.time < _lineupAnnounceAt || Time.time - _lineupStableSince < 5f)) return;
+            _lineupAnnounceAt = -1f;
+            _lastLineup = null;
             Notice("Besatzung: " + lineup);
             EventLog.ToAll("Besatzung auf der Brücke: " + lineup, Priority.Background);
         }
