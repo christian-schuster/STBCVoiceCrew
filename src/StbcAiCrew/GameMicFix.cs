@@ -38,17 +38,20 @@ namespace StbcAiCrew
                 {
                     foreach (var d in devices) if (d.IndexOf(Preferred, StringComparison.OrdinalIgnoreCase) >= 0) { want = d; break; }
                 }
-                else if (IsVirtual(current) && !RiftActive())
+                else if (string.IsNullOrEmpty(current) || (IsVirtual(current) && !RiftActive()))
                 {
-                    foreach (var d in devices) if (!IsVirtual(d)) { want = d; break; }
+                    // Kein Gerät gewählt (im Test: Name leer, Mikrofontest schlug fehl) oder stummes Oculus-Gerät ohne Rift
+                    bool rift = RiftActive();
+                    foreach (var d in devices) if (rift || !IsVirtual(d)) { want = d; break; }
+                    if (want == null) want = devices[0];
                 }
                 if (want == null || want == current)
                 {
-                    if (current != _logged) { _logged = current; Plugin.Log.LogInfo("Spiel-Mikrofon: " + (current ?? "?")); }
+                    if (current != _logged) { _logged = current; Plugin.Log.LogInfo("Spiel-Mikrofon: " + (string.IsNullOrEmpty(current) ? "(keins)" : current) + " | verfügbar: " + string.Join(" | ", devices)); }
                     return;
                 }
                 _logged = want;
-                Plugin.Log.LogInfo("Spiel-Mikrofon: " + (current ?? "?") + " → " + want + (string.IsNullOrEmpty(Preferred) ? " (Rift nicht aktiv)" : " (Konfiguration)"));
+                Plugin.Log.LogInfo("Spiel-Mikrofon: " + (current ?? "?") + " → " + want + (string.IsNullOrEmpty(Preferred) ? (string.IsNullOrEmpty(current) ? " (Spiel hatte keins gewählt)" : " (Rift nicht aktiv)") : " (Konfiguration)"));
                 _deviceField.SetValue(device, want);
                 ((DaikonForge.VoIP.AudioInputDeviceBase)device).ChangeMicrophoneDevice(want);
             }
