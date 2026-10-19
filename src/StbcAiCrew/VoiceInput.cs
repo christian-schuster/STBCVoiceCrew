@@ -356,6 +356,12 @@ namespace StbcAiCrew
             foreach (char c in text) if (char.IsLetter(c)) letters++;
             if (letters < 2) return null;
 
+            // Angehängte Floskeln, die Whisper bei Stille am Ende erfindet ("… Vielen Dank.")
+            text = System.Text.RegularExpressions.Regex.Replace(text,
+                @"(\s+(Vielen Dank( fürs Zuschauen)?|Danke( schön| fürs Zuschauen)?|Tschüss|Bis zum nächsten Mal)[.!]?)+\s*$", "",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+            if (text.Length == 0) return null;
+
             string lower = text.ToLowerInvariant();
             foreach (var h in Hallucinations)
             {
