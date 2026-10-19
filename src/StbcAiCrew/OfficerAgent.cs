@@ -155,7 +155,9 @@ namespace StbcAiCrew
             sb.Append("Besatzung: ").Append(_bridge.Lineup(this)).Append('\n');
             if (status != null)
             {
-                sb.Append("Deine Konsole zeigt: ").Append(status.ForStation(Station)).Append('\n');
+                // Für alle sichtbar: Alarmlicht auf der ganzen Brücke
+            sb.Append("Brücke: ").Append(EventLog.RedAlert ? "ROTER ALARM (Sirene, rotes Licht)" : "kein Alarm").Append('\n');
+            sb.Append("Deine Konsole zeigt: ").Append(status.ForStation(Station)).Append('\n');
                 string pending = status.PendingFor(Station);
                 if (pending != null) sb.Append("Offene Befehle an deine Station (noch nicht ausgeführt): ").Append(pending).Append('\n');
             }
