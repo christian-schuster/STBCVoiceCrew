@@ -205,9 +205,10 @@ namespace StbcAiCrew
                           " -l " + MicLanguage.Value + " -t " + WhisperThreads.Value + (WhisperGpu.Value ? "" : " -ng");
             _sttServer = new ServerHost(Log, "whisper-server", exe, args, url, "/", StartupTimeoutSec.Value)
             {
-                After = _qwen != null ? _qwen.Host : _server   // zuletzt: Spracherkennung
+                After = _server   // direkt nach dem Sprachmodell: Zuhören ist wichtiger als die schöne Stimme
             };
             _sttServer.Start();
+            if (_qwen != null) _qwen.Host.After = _sttServer;   // Sprachausgabe erst nach der Spracherkennung (wartet noch in der Startverzögerung)
             var vs = new VoiceSettings
             {
                 Device = MicDevice.Value, GameDeviceId = () => GameBridge.GameAudioInId, Language = MicLanguage.Value, MarginDb = MicMarginDb.Value,
@@ -263,7 +264,7 @@ namespace StbcAiCrew
                                         Path.Combine(_dataDir, "stimmen"), QwenLanguage.Value, _tts);
                     _qwen.MayDesignNow = () => !GameBridge.InMission;
                     _qwen.MaxPitchHz = QwenMaxPitchHz.Value;
-                    _qwen.Host.After = _server;   // nacheinander laden: erst Sprachmodell, dann Sprachausgabe
+                    _qwen.Host.After = _sttServer ?? _server;   // nacheinander laden: Sprachmodell, Spracherkennung, dann Sprachausgabe
                     _qwen.Start();
                     foreach (var c in _roster.All) _qwen.Prepare(c, false);   // fehlende Stimmen gleich entwerfen
                 }
