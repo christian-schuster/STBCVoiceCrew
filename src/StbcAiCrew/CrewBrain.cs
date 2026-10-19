@@ -271,6 +271,12 @@ namespace StbcAiCrew
         {
             if (speaker.Char == null) return;
             if (IsRepeat(speaker.Char, text)) { Plugin.Log.LogInfo(speaker.Char.Name + " wiederholt sich, verworfen: " + text); return; }
+            // In Gefahr lacht niemand laut (Kerrigan lachte im Borg-Gefecht)
+            if (InMission && EventLog.UnderThreat(30f))
+            {
+                text = StripLaugh(speaker.Char, text);
+                if (text.Length == 0) return;
+            }
             // Notfall: dringende/ängstliche Meldung bei Alarm oder Beschuss darf anderen ins Wort fallen
             string m = Moods.Normalize(mood);
             bool emergency = InMission && (m == Moods.Urgent || m == Moods.Afraid) && EventLog.UnderThreat(20f);
@@ -297,6 +303,18 @@ namespace StbcAiCrew
             }
             if (!repeat) list.Add(new KeyValuePair<float, string>(Time.time, text));
             return repeat;
+        }
+
+        /// <summary>Lachen entfernen: das eigene Lachen des Charakters und lautmalerische Lacher (Haha, Hohoho, Hihi …).</summary>
+        static string StripLaugh(Character c, string text)
+        {
+            string s = text;
+            if (!string.IsNullOrEmpty(c.Laugh)) s = s.Replace(c.Laugh, " ");
+            // nur ganze Lachwörter (Haaaahahaha, Hohoho, Hihihi), nicht "Hoheit" oder "Halt"
+            s = System.Text.RegularExpressions.Regex.Replace(s, @"\b(?:h[aeiou]{1,6}){2,}h?\b[.!…]*", " ", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            s = System.Text.RegularExpressions.Regex.Replace(s, @"\b(?:har|hehe|haha|hihi|hoho)\b(?:[\s,]+(?:har|hehe|haha|hihi|hoho)\b)*[.!…]*", " ", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            s = System.Text.RegularExpressions.Regex.Replace(s, @"([.!?…])\s*[,;]\s*", "$1 ");   // "Hrmpf. , das" -> "Hrmpf. das"
+            return System.Text.RegularExpressions.Regex.Replace(s, @"\s{2,}", " ").Trim().TrimStart('.', '!', ',', ' ');
         }
 
         static HashSet<string> Words(string s)
