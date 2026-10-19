@@ -91,6 +91,13 @@ namespace StbcAiCrew
                 if (key == _lastProbe && !s.Contains("Signal") && !s.Contains("hoch")) return;
                 _lastProbe = key;
                 Plugin.Log.LogInfo("Spiel-Mikrofon (Beobachtung): " + s);
+                foreach (var d in Microphone.devices)
+                    if (string.IsNullOrEmpty(d))
+                    {
+                        Plugin.Log.LogWarning("Ein Mikrofon hat für das Spiel einen leeren Namen (Umlaute wie in \"Kopfhörermikrofon\" kann die Unity-Version des Spiels nicht). " +
+                                              "Das Spiel bekommt dann kein Mikrofon. Abhilfe: das Mikrofon in Windows ohne Umlaute umbenennen.");
+                        break;
+                    }
             }
             catch (Exception e) { Plugin.Log.LogDebug("Mikrofon-Beobachtung: " + e.Message); }
         }
