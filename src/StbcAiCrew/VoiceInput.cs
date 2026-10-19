@@ -266,7 +266,7 @@ namespace StbcAiCrew
         }
 
         /// <summary>Brücken-Wortschatz als Whisper-Prompt (Namen der Crew werden ergänzt).</summary>
-        public static string Vocabulary = "Brücke der Aegis. Warp, Impuls, Phaser, Photonentorpedos, Schilde, Rot-Alarm, Traktorstrahl, Transporter, Kurs setzen, Ziel erfassen, scannen, rufen.";
+        public static string Vocabulary = "Brücke der Aegis. Warp, Impuls, Phaser, Photonentorpedos, Schilde, Rot-Alarm, Traktorstrahl, Transporter, Kurs setzen, Ziel erfassen, scannen, rufen. Energie! Bitte.";
 
         public static string Transcribe(string sttUrl, short[] pcm, string language)
         {
