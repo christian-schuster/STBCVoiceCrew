@@ -361,6 +361,9 @@ namespace StbcAiCrew
                 @"(\s+(Vielen Dank( fürs Zuschauen)?|Danke( schön| fürs Zuschauen)?|Tschüss|Bis zum nächsten Mal)[.!]?)+\s*$", "",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
             if (text.Length == 0) return null;
+            // Halluzination in fremder Sprache bei Rauschen ("Hvað er að hljóða?"): Buchstaben, die es im Deutschen nicht gibt
+            foreach (char c in text)
+                if ("ðþæøåáíóúýœ".IndexOf(char.ToLowerInvariant(c)) >= 0 || (c > 0x024F && !(c >= 0x2000 && c <= 0x206F))) return null;
 
             string lower = text.ToLowerInvariant();
             foreach (var h in Hallucinations)
