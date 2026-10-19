@@ -48,6 +48,7 @@ namespace StbcAiCrew
         /// <summary>Stimmentwürfe nur, wenn das erlaubt ist (z. B. nicht im Einsatz: der Entwurf belegt kurz zusätzliches VRAM).</summary>
         public Func<bool> MayDesignNow = () => true;
         public ServerState State => _server.State;
+        public ServerHost Host => _server;
 
         public QwenTts(ManualLogSource log, string serverExe, string designExe, string baseModel, string designModel,
                        string codec, int port, string voiceDir, string language, ISpeechEngine fallback)

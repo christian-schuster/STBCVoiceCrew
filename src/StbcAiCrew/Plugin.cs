@@ -28,6 +28,7 @@ namespace StbcAiCrew
         public ConfigEntry<int> GpuLayers;
         public ConfigEntry<string> ExtraServerArgs;
         public ConfigEntry<int> StartupTimeoutSec;
+        public ConfigEntry<float> ServerStartDelaySec;
         public ConfigEntry<int> RequestTimeoutSec;
         public ConfigEntry<float> Temperature;
         public ConfigEntry<int> MaxTokens;
@@ -150,7 +151,7 @@ namespace StbcAiCrew
                           " -np " + slots + " -c " + (ContextPerSlot.Value * slots) + " -ngl " + GpuLayers.Value +
                           " --jinja --log-file \"" + Path.Combine(pluginDir, "llama-server.log") + "\" " + ExtraServerArgs.Value;
 
-            _server = new ServerHost(Log, "llama-server", exe, args, baseUrl, "/health", StartupTimeoutSec.Value);
+            _server = new ServerHost(Log, "llama-server", exe, args, baseUrl, "/health", StartupTimeoutSec.Value) { DelaySec = ServerStartDelaySec.Value };
             _llm = new LlmClient(Log, baseUrl, RequestTimeoutSec.Value * 1000) { Temperature = Temperature.Value };
             _roster = new Roster(Path.Combine(_dataDir, "crew"));
             _roster.Load();
@@ -170,7 +171,10 @@ namespace StbcAiCrew
             string exe = UseExternalServer.Value ? null : ResolvePath(pluginDir, WhisperServerExe.Value);
             string args = "-m \"" + ResolvePath(pluginDir, WhisperModel.Value) + "\" --host 127.0.0.1 --port " + WhisperPort.Value +
                           " -l " + MicLanguage.Value + " -t " + WhisperThreads.Value + (WhisperGpu.Value ? "" : " -ng");
-            _sttServer = new ServerHost(Log, "whisper-server", exe, args, url, "/", StartupTimeoutSec.Value);
+            _sttServer = new ServerHost(Log, "whisper-server", exe, args, url, "/", StartupTimeoutSec.Value)
+            {
+                After = _qwen != null ? _qwen.Host : _server   // zuletzt: Spracherkennung
+            };
             _sttServer.Start();
             var vs = new VoiceSettings
             {
@@ -203,6 +207,7 @@ namespace StbcAiCrew
                                         Path.Combine(_dataDir, "stimmen"), QwenLanguage.Value, _tts);
                     _qwen.MayDesignNow = () => !GameBridge.InMission;
                     _qwen.MaxPitchHz = QwenMaxPitchHz.Value;
+                    _qwen.Host.After = _server;   // nacheinander laden: erst Sprachmodell, dann Sprachausgabe
                     _qwen.Start();
                     foreach (var c in _roster.All) _qwen.Prepare(c, false);   // fehlende Stimmen gleich entwerfen
                 }
@@ -273,6 +278,7 @@ namespace StbcAiCrew
             ContextPerSlot = Config.Bind("LLM", "KontextProSlot", 6144, "Kontextfenster je Slot in Tokens. Mehr = mehr VRAM.");
             GpuLayers = Config.Bind("LLM", "GpuLayers", 99, "Wie viele Modellschichten auf die GPU (99 = alle). Weniger, falls das Spiel ruckelt.");
             ExtraServerArgs = Config.Bind("LLM", "ZusatzArgumente", "-fa on --cache-type-k q8_0 --cache-type-v q8_0", "Weitere Argumente für llama-server.");
+            ServerStartDelaySec = Config.Bind("LLM", "StartVerzoegerungSek", 20f, "So lange nach dem Spielstart warten, bevor die KI-Server ihre Modelle auf die GPU laden (das Spiel fährt erst Grafik/VR hoch). Danach laden sie nacheinander.");
             StartupTimeoutSec = Config.Bind("LLM", "StartTimeoutSek", 180, "So lange wird auf das Laden des Modells gewartet.");
             RequestTimeoutSec = Config.Bind("LLM", "AnfrageTimeoutSek", 60, "Zeitlimit pro LLM-Anfrage.");
             Temperature = Config.Bind("LLM", "Temperatur", 0.7f, "Kreativität der Antworten.");
