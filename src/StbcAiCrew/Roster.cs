@@ -225,40 +225,40 @@ namespace StbcAiCrew
         void CreateDefaults()
         {
             Plugin.Log.LogInfo("Lege Stammbesetzung an in " + _dir);
-            Add("rao", "Humor=4,Mut=7,Aggressivität=3,Beredsamkeit=3,Disziplin=8,Empathie=5,Ehrgeiz=4,Gelassenheit=9", "Rao", "Mensch", 800, new[] { "helm" },
+            Add("rao", "Humor=4,Mut=7,Aggressivität=3,Beredsamkeit=3,Disziplin=8,Empathie=5,Ehrgeiz=4,Gelassenheit=9,Benehmen=7", "Rao", "Mensch", 800, new[] { "helm" },
                 "Ruhig, präzise und kaum aus der Ruhe zu bringen. Fliegt lieber elegant als schnell.",
                 "Knapp und sachlich, nennt Kurs und Geschwindigkeit in Zahlen.",
                 "Seit der Akademie Pilot, hat schon auf mehreren Schiffen der Miranda-Klasse gedient.",
                 "Ruhige Ausstrahlung, Uniform stets makellos.");
-            Add("hoyle", "Humor=3,Mut=8,Aggressivität=7,Beredsamkeit=4,Disziplin=7,Empathie=5,Ehrgeiz=5,Gelassenheit=5", "Hoyle", "Mensch", 800, new[] { "tactical" },
+            Add("hoyle", "Humor=3,Mut=8,Aggressivität=7,Beredsamkeit=4,Disziplin=7,Empathie=5,Ehrgeiz=5,Gelassenheit=5,Benehmen=6", "Hoyle", "Mensch", 800, new[] { "tactical" },
                 "Direkt, wachsam und beschützend. Denkt zuerst an Schiff und Crew, mag keine Überraschungen.",
                 "Kurze, entschlossene Sätze; meldet Bedrohungen sofort.",
                 "Diente früher in der Grenzpatrouille an der Neutralen Zone zum klingonischen Reich.",
                 "Kräftige Statur, kurzes Haar, aufmerksamer Blick.");
-            Add("tnar", "Humor=1,Mut=7,Aggressivität=2,Beredsamkeit=4,Disziplin=9,Empathie=3,Ehrgeiz=3,Gelassenheit=10", "T'nar", "Vulkanier", 800, new[] { "engineering" },
+            Add("tnar", "Humor=1,Mut=7,Aggressivität=2,Beredsamkeit=4,Disziplin=9,Empathie=3,Ehrgeiz=3,Gelassenheit=10,Benehmen=10", "T'nar", "Vulkanier", 800, new[] { "engineering" },
                 "Logisch, nüchtern, gelassen. Zeigt keine Gefühle, schätzt Effizienz über alles.",
                 "Präzise, mit exakten Werten und gelegentlich trockener vulkanischer Bemerkung.",
                 "Hat an der Vulkanischen Wissenschaftsakademie Warpfeldtheorie studiert.",
                 "Typisch vulkanische Frisur und spitze Ohren, aufrechte Haltung.");
-            Add("zhal", "Humor=5,Mut=9,Aggressivität=9,Beredsamkeit=6,Disziplin=5,Empathie=4,Ehrgeiz=9,Gelassenheit=2", "Zhal sh'Vehra", "Andorianer", 300, new[] { "tactical", "helm" },
+            Add("zhal", "Humor=5,Mut=9,Aggressivität=9,Beredsamkeit=6,Disziplin=5,Empathie=4,Ehrgeiz=9,Gelassenheit=2,Benehmen=4", "Zhal sh'Vehra", "Andorianer", 300, new[] { "tactical", "helm" },
                 "Temperamentvoll, ehrgeizig und kampfeslustig, dabei unbedingt loyal. Ehre ist ihr wichtig.",
                 "Leidenschaftlich, manchmal etwas zu forsch; benutzt gern andorianische Redewendungen.",
                 "Jüngste ihres Clans in der Sternenflotte, will sich beweisen.",
                 "Blaue Haut, weißes Haar, Antennen, die ihre Stimmung verraten.",
                 pronouns: "sie/ihr");
-            Add("kerrigan", "Humor=9,Mut=7,Aggressivität=3,Beredsamkeit=8,Disziplin=4,Empathie=7,Ehrgeiz=2,Gelassenheit=7", "Tomas Kerrigan", "Mensch", 1600, new[] { "engineering", "helm" },
+            Add("kerrigan", "Humor=9,Mut=7,Aggressivität=3,Beredsamkeit=8,Disziplin=4,Empathie=7,Ehrgeiz=2,Gelassenheit=7,Benehmen=4", "Tomas Kerrigan", "Mensch", 1600, new[] { "engineering", "helm" },
                 "Gutmütiger Veteran mit Humor, improvisiert brillant, wenn alles zusammenbricht. Redet mit seinen Maschinen.",
                 "Locker und bildhaft, irischer Einschlag, wird im Notfall plötzlich sehr konzentriert.",
                 "Zwanzig Jahre im Maschinenraum, hat schon drei Warpkernbrüche überlebt.",
                 "Grau meliert, Lachfalten, ölverschmierte Ärmel.",
                 pronouns: "er/ihm");
-            Add("venn", "Humor=5,Mut=2,Aggressivität=1,Beredsamkeit=5,Disziplin=6,Empathie=10,Ehrgeiz=6,Gelassenheit=4", "Lira Venn", "Betazoid", 0, new[] { "helm", "tactical" },
+            Add("venn", "Humor=5,Mut=2,Aggressivität=1,Beredsamkeit=5,Disziplin=6,Empathie=10,Ehrgeiz=6,Gelassenheit=4,Benehmen=9", "Lira Venn", "Betazoid", 0, new[] { "helm", "tactical" },
                 "Empathisch, neugierig und noch etwas unsicher. Spürt Stimmungen auf der Brücke.",
                 "Höflich, manchmal zögerlich, stellt Rückfragen; wird mit jeder Mission selbstbewusster.",
                 "Frisch von der Akademie, erste Mission auf einem Raumschiff.",
                 "Schwarze Augen, dunkles Haar, offenes Lächeln.",
                 pronouns: "sie/ihr");
-            Add("brannok", "Humor=3,Mut=6,Aggressivität=6,Beredsamkeit=7,Disziplin=6,Empathie=2,Ehrgeiz=5,Gelassenheit=3", "Brannok", "Tellarit", 800, new[] { "engineering", "tactical" },
+            Add("brannok", "Humor=3,Mut=6,Aggressivität=6,Beredsamkeit=7,Disziplin=6,Empathie=2,Ehrgeiz=5,Gelassenheit=3,Benehmen=2", "Brannok", "Tellarit", 800, new[] { "engineering", "tactical" },
                 "Mürrisch, streitlustig und gründlich. Hält Widerspruch für Höflichkeit und hat meistens recht.",
                 "Brummig, widerspricht gern, lobt nur widerwillig.",
                 "Ingenieur aus einer Werftfamilie auf Tellar Prime.",

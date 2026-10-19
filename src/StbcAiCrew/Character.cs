@@ -83,6 +83,7 @@ namespace StbcAiCrew
             new[] { "Empathie", "kühl und distanziert", "einfühlsam, achtet auf die Crew" },
             new[] { "Ehrgeiz", "genügsam", "ehrgeizig, will sich auszeichnen" },
             new[] { "Gelassenheit", "hitzköpfig, reagiert impulsiv", "stoisch, bleibt immer ruhig" },
+            new[] { "Benehmen", "rüpelhaft, flucht gern und nimmt kein Blatt vor den Mund", "tadellose Umgangsformen, stets höflich und gewählt" },
         };
 
         static Dictionary<string, int> Traits0()
