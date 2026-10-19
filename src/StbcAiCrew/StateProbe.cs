@@ -59,6 +59,18 @@ namespace StbcAiCrew
                 if (st != null)
                     foreach (var s in new[] { Station.Helm, Station.Tactical, Station.Engineering })
                         sb.Append("\n## Konsole ").Append(s).Append(": ").Append(st.ForStation(s)).Append(" | offen: ").Append(st.PendingFor(s) ?? "-");
+                if (st != null)
+                {
+                    // Zur Kontrolle: alle Kontakte mit ihren Sichtbarkeits-Flags und die gemessene Fahrt
+                    sb.Append("\n\n## Kontakte (Captain/Steuer/Taktik/Technik auswählbar)\n");
+                    if (st.ContactList != null)
+                        foreach (var c in st.ContactList)
+                            sb.Append(c.Name).Append(" | ").Append(c.KindDe()).Append(" | ").Append(c.DistanceKm.ToString("0.00")).Append(" km | ").Append(c.Bearing)
+                              .Append(" | ").Append(c.Captain ? "C" : "-").Append(c.Helm ? "S" : "-").Append(c.Tactical ? "T" : "-").Append(c.Engineering ? "E" : "-").Append('\n');
+                    sb.Append("Ziel Steuer: ").Append(st.HelmTarget ?? "-").Append(", Ziel Taktik: ").Append(st.TacticalTarget ?? "-")
+                      .Append(", Ziel Bot-Befehle: ").Append(st.TargetName ?? "-").Append('\n');
+                    sb.Append("Gemessene Fahrt: ").Append(st.MeasuredSpeed.ToString("0.0")).Append(" Einheiten/s, Sollfahrt (Brett): ").Append(st.Speed).Append('\n');
+                }
             }
             catch (Exception e) { sb.Append("\nSchwarzes Brett nicht lesbar: ").Append(e.Message).Append('\n'); }
 

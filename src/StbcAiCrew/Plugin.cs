@@ -432,6 +432,7 @@ namespace StbcAiCrew
                 var now = ShipStatus.Read();
                 ShipStatus.ReportChanges(_status, now);
                 if (now != null) _status = now;
+                if (now != null && now.ContactList != null) VoiceInput.ContactNames = Contacts.Names(now.ContactList);
             }
 
             if (_server.State == ServerState.Ready) _brain.Tick(_status);

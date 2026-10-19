@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using Sector;
 using Sector.Spacecraft;
 using Sector.Spacecraft.Subsystems;
 using UnityEngine;
@@ -23,7 +24,11 @@ namespace StbcAiCrew
         public bool FullStop, Evading, WarpPreparing, WarpEngaged, ImpulsePreparing, ImpulseEngaged;
         public int PowerPhasers = -1, PowerShields = -1, PowerEngines = -1;
         public string RepairTarget;
-        public string TargetName;
+        public string TargetName;   // Ziel aus den Befehlen der Bot-Crew (Ersatz, falls eine Konsole keins liefert)
+        public string HelmTarget, TacticalTarget;   // an der jeweiligen Konsole gewählt
+        public System.Collections.Generic.List<Contact> ContactList;
+        public bool Moving;
+        public double MeasuredSpeed = -1;   // Positionsänderung je Sekunde (Systemeinheiten), zur Kalibrierung
         public readonly System.Collections.Generic.Dictionary<Station, System.Collections.Generic.List<string>> PendingOrders =
             new System.Collections.Generic.Dictionary<Station, System.Collections.Generic.List<string>>();
 
@@ -135,7 +140,30 @@ namespace StbcAiCrew
             try { s.TorpedoesAft = ship.OAPDHHGKBLJ != null ? ship.OAPDHHGKBLJ.TotalAmmo : -1; } catch { }
             try { s.ReadBlackboard(); } catch { }
             try { s.ReadTarget(); } catch { }
+            s.HelmTarget = Contacts.TargetOf(Station.Helm);
+            s.TacticalTarget = Contacts.TargetOf(Station.Tactical);
+            try { s.ContactList = Contacts.Read(); } catch { }
+            try { s.MeasureSpeed(ship); } catch { }
             return s;
+        }
+
+        static Vector3d _lastPos;
+        static float _lastPosTime = -1f;
+        static double _lastSpeed = -1;
+
+        /// <summary>Tatsächliche Fahrt aus der Positionsänderung (die Sollfahrt im Schwarzen Brett blieb im Test bei 0).</summary>
+        void MeasureSpeed(OBIMAHNLBCJ ship)
+        {
+            var body = ship as HOLJLCLENCA;
+            var st = body != null ? body.ALPAOOKFIEE : null;
+            if (st == null) return;
+            var pos = st.Position;
+            float now = Time.time;
+            if (_lastPosTime >= 0f && now - _lastPosTime > 0.2f && now - _lastPosTime < 10f)
+                _lastSpeed = (pos - _lastPos).magnitude / (now - _lastPosTime);
+            if (_lastPosTime < 0f || now - _lastPosTime > 0.2f) { _lastPos = pos; _lastPosTime = now; }
+            MeasuredSpeed = _lastSpeed;
+            Moving = _lastSpeed > 1.0;
         }
 
         static float Percent(PFKMFIIAAFC sub) =>
@@ -153,10 +181,11 @@ namespace StbcAiCrew
             switch (st)
             {
                 case Station.Tactical:
-                    sb.Append("Ziel: ").Append(TargetName ?? "keins gewählt")
+                    sb.Append("Ziel: ").Append(TacticalTarget ?? "keins gewählt")
                       .Append(", Schilde ").Append(P(Shields)).Append(" (").Append(ShieldStateDe()).Append(')')
                       .Append(", Phaser ").Append(P(Phasers))
                       .Append(", Torpedos vorn ").Append(N(TorpedoesFore)).Append(" / achtern ").Append(N(TorpedoesAft));
+                    sb.Append("\nKontakte: ").Append(Contacts.ForStation(ContactList, Station.Tactical));
                     break;
                 case Station.Engineering:
                     sb.Append("Hülle ").Append(P(Hull))
@@ -169,14 +198,16 @@ namespace StbcAiCrew
                     if (WarpPreparing) sb.Append(", Warpkern wird geladen");
                     break;
                 case Station.Helm:
-                    sb.Append("Ziel: ").Append(TargetName ?? "keins gewählt")
+                    sb.Append("Ziel: ").Append(HelmTarget ?? "keins gewählt")
                       .Append(", Antrieb ").Append(P(Engines))
-                      .Append(", Geschwindigkeit ").Append(FullStop ? "Stopp" : SpeedText());
+                      .Append(", Fahrt ").Append(FullStop ? "Stopp" : Moving ? "in Bewegung" : "steht")
+                      .Append(", Sollfahrt ").Append(SpeedText());
                     if (Evading) sb.Append(", Ausweichmanöver aktiv");
                     if (ImpulsePreparing) sb.Append(", Impulssprung wird vorbereitet");
                     if (ImpulseEngaged) sb.Append(", Impulssprung läuft");
                     if (WarpPreparing) sb.Append(", Warp wird vorbereitet");
                     if (WarpEngaged) sb.Append(", Warp aktiv");
+                    sb.Append("\nKontakte auf der Navigationskarte: ").Append(Contacts.ForStation(ContactList, Station.Helm));
                     break;
             }
             return sb.ToString();

@@ -42,6 +42,27 @@ namespace StbcAiCrew
         /// Spricht gerade eine Stimme des Spiels (Missionssprecher, Sternenflotte, fremde Captains, Schiffscomputer)?
         /// VOManager führt je Sprecher eine Warteschlange; die stummgeschalteten Bot-Stimmen zählen nicht.
         /// </summary>
+        /// <summary>Stimmen, bei denen die Crew nicht schweigen muss: die stummen Bots und das leise Hintergrundgemurmel der Brücke.</summary>
+        static bool IgnoredVoice(int i)
+        {
+            switch ((KFLPAPJAAGO)i)
+            {
+                case KFLPAPJAAGO.Crewbot_Eng_Tnar:
+                case KFLPAPJAAGO.Crewbot_Helm_Rao:
+                case KFLPAPJAAGO.Crewbot_Tac_Hoyle:
+                case KFLPAPJAAGO.Ambient_Female_1:
+                case KFLPAPJAAGO.Ambient_Female_2:
+                case KFLPAPJAAGO.Ambient_Female_3:
+                case KFLPAPJAAGO.Ambient_Male_1:
+                case KFLPAPJAAGO.Ambient_Male_2:
+                case KFLPAPJAAGO.Ambient_Male_3:
+                case KFLPAPJAAGO.Ambient_Female_Extra_1:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         public static bool GameVoicePlaying()
         {
             try
@@ -54,7 +75,7 @@ namespace StbcAiCrew
                 if (list == null) return false;
                 for (int i = 0; i < list.Count; i++)
                 {
-                    if (i == (int)KFLPAPJAAGO.Crewbot_Eng_Tnar || i == (int)KFLPAPJAAGO.Crewbot_Helm_Rao || i == (int)KFLPAPJAAGO.Crewbot_Tac_Hoyle) continue;
+                    if (IgnoredVoice(i)) continue;
                     var q = list[i] as DHECOBKMDDB;
                     try { if (q != null && q.IsPlaying()) return true; } catch { }   // leere Warteschlange wirft
                 }
