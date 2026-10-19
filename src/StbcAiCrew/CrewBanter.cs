@@ -126,7 +126,7 @@ namespace StbcAiCrew
             sb.Append("Erzähle einen kurzen, neu erfundenen Witz für Star-Trek-Fans, den ein Crewmitglied ")
               .Append(inMission ? "in einer ruhigen Minute auf der Brücke" : "im Bereitschaftsraum vor der Mission").Append(" laut erzählt. ");
             sb.Append("Thema: ").Append(topic).Append(". Form: ").Append(form).Append(".\n");
-            sb.Append("Höchstens zwei kurze Sätze, knackige Pointe am Ende, kollegial und nicht verletzend, keine Witze über Geschlecht, Herkunft oder Aussehen. ");
+            sb.Append("Erzähl den Witz direkt, ohne Einleitung wie \"Ich habe gerade einen Witz gehört\" und ohne Nacherzählung. Höchstens zwei kurze Sätze (zusammen unter 30 Wörtern), knackige Pointe am Ende, kollegial und nicht verletzend, keine Witze über Geschlecht, Herkunft oder Aussehen. ");
             sb.Append("Kein bekannter Witz und keiner, der diesen schon erzählten ähnelt:\n");
             int from = Math.Max(0, _jokes.Count - _cfg.JokeMemory.Value);
             if (_jokes.Count == 0) sb.Append("- (bisher keine)\n");
@@ -198,7 +198,7 @@ namespace StbcAiCrew
                 @"(?<=[.!?…])\s*[^.!?…]*,\s*(sagte|meinte|erwiderte|antwortete|rief|fragte)\s+[A-ZÄÖÜ][^.!?…]*[.!?…]", "").Trim();
             foreach (char c in s)
                 if (c > 0x024F && !(c >= 0x2000 && c <= 0x206F)) return null;   // nur lateinische Schrift und Satzzeichen
-            if (s.Length < 20 || s.Length > 420) return null;
+            if (s.Length < 20 || s.Length > 260) return null;   // zu lang: neu erfinden lassen
             return s;
         }
         // ---------------- Reaktionen ----------------
