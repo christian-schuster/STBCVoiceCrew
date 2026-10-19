@@ -21,6 +21,10 @@ namespace StbcAiCrew
             Patch(harmony, typeof(CommandManager), "SetRedAlert", nameof(RedAlertPrefix));
             Patch(harmony, typeof(USSAegisCrew), "CrewbotPlayVO", nameof(CrewbotVoPrefix));
             Patch(harmony, typeof(VOManager), "Play", nameof(VoPlayPrefix));
+            // Mehrspieler: Stimmen der Mitspieler abhören, eigenes Mikro ruhen lassen, solange die Crew spricht
+            Patch(harmony, typeof(DaikonForge.VoIP.UnityAudioPlayer), "BufferAudio", nameof(RemoteAudioPrefix));
+            Patch(harmony, typeof(WwiseAudioPlayer), "BufferAudio", nameof(RemoteAudioPrefix));
+            Patch(harmony, typeof(DaikonForge.VoIP.VoiceControllerBase), "LOEAHNOJEOK", nameof(MicBufferPrefix));
             PatchAllOverloads(harmony, typeof(PlayerSpacecraft), "takeHit", nameof(TakeHitPostfix));
         }
 
@@ -91,6 +95,20 @@ namespace StbcAiCrew
                 else EventLog.ToStation(cmd.Station, line, Priority.Urgent, fromCaptain: true);
             }
             catch (Exception e) { Plugin.Log.LogDebug(e); }
+        }
+
+        // AudioPlayerBase.BufferAudio(Puffer): entpackte Stimme eines Mitspielers
+        static void RemoteAudioPrefix(UnityEngine.Component __instance, DaikonForge.VoIP.DHEDECPPLGP<float> LGNKMOBGEAD)
+        {
+            try { var tap = RemoteVoiceTap.Instance; if (tap != null && LGNKMOBGEAD != null) tap.OnRemoteAudio(__instance, LGNKMOBGEAD); }
+            catch (Exception e) { Plugin.Log.LogDebug("VoIP-Hook: " + e.Message); }
+        }
+
+        // VoiceControllerBase.LOEAHNOJEOK(Puffer, Rate): Mikrofonpuffer zum Senden; ruht, solange die Crew über den Sprachchat spricht
+        static bool MicBufferPrefix()
+        {
+            var s = CrewVoiceSender.Instance;
+            return CrewVoiceSender.Injecting || s == null || !s.Active;
         }
 
         /// <summary>Wird gesetzt, wenn das Mithören läuft: (Ereignisname, Sprecher).</summary>

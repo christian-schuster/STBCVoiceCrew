@@ -68,6 +68,7 @@ namespace StbcAiCrew
         public ConfigEntry<float> PauseBetweenLinesSec;
         public ConfigEntry<bool> ListenToGameVoice;
         public ConfigEntry<bool> NoProfanity;
+        public ConfigEntry<bool> Multiplayer;
         public ConfigEntry<string> GameVoiceLanguage;
         public ConfigEntry<float> StaleSpeechSec;
         public ConfigEntry<float> SpeechTempo;
@@ -121,6 +122,9 @@ namespace StbcAiCrew
         WavePlayer _player;
         VoiceInput _voice;
         VoListener _voListener;
+        RemoteVoiceTap _remoteTap;
+        CrewVoiceSender _crewSender;
+        bool _wasHost = true;
         bool _voiceWarmed;
         LlmClient _llm;
         Roster _roster;
@@ -212,6 +216,14 @@ namespace StbcAiCrew
             _voice = new VoiceInput(Log, vs, url, OnHeard);
             _voice.Start();
 
+            if (Multiplayer.Value)
+            {
+                // Mitspieler hören (Sprachchat) und die Crew für alle hörbar machen
+                var stt = _sttServer;
+                _remoteTap = new RemoteVoiceTap(Log, url, MicLanguage.Value, () => stt.State == ServerState.Ready, OnRemoteHeard);
+                _crewSender = new CrewVoiceSender();
+            }
+
             if (ListenToGameVoice.Value)
             {
                 // Mithören: Sprachausgaben des Spiels (Briefing, Funk) live abhören wie der Captain
@@ -270,7 +282,9 @@ namespace StbcAiCrew
             _brain.Tts = (ISpeechEngine)_qwen ?? _tts;
             _brain.Player = _player;
             AudioTempo.GlobalTempo = SpeechTempo.Value;
-            _brain.HumanSpeaking = () => _voice != null && _voice.Speaking;
+            _brain.HumanSpeaking = () => (_voice != null && _voice.Speaking) ||
+                                         (_remoteTap != null && Time.realtimeSinceStartup - _remoteTap.LastRemoteSpeech < 0.8f);
+            _brain.CrewAudio = (pcm, rate) => { if (_crewSender != null && Net.Online) _crewSender.Enqueue(pcm, rate); };
             _brain.GameVoicePlaying = GameBridge.GameVoicePlaying;
             _brain.CrewSpeaking = secs => { if (_voice != null && DeafWhileCrewSpeaks.Value) _voice.Deafen(secs); };
         }
@@ -278,8 +292,19 @@ namespace StbcAiCrew
         /// <summary>Erkannter Satz vom Mikrofon (Hauptthread).</summary>
         void OnHeard(string text)
         {
+            if (!Net.IsHost) return;
             if (!_brain.InMission) Toast("Gehört (kein Einsatz): " + text);
-            _brain.HumanSays(ParseStation(MyStation.Value), text);   // außerhalb des Einsatzes nur für "Ruhe!" usw.
+            // Im Mehrspieler die eigene Station aus dem Spiel, sonst aus der Konfiguration
+            Station? mine = Net.Online ? Net.StationOf(Net.LocalPlayerId) : null;
+            _brain.HumanSays(mine ?? ParseStation(MyStation.Value), text);   // außerhalb des Einsatzes nur für "Ruhe!" usw.
+        }
+
+        void OnRemoteHeard(int playerId, string text)
+        {
+            if (!Net.IsHost) return;
+            Station st = Net.StationOf(playerId) ?? Station.Captain;
+            Log.LogInfo("Gehört von " + (Net.NameOf(playerId) ?? "Mitspieler " + playerId) + " (" + OfficerAgent.StationDe(st) + "): " + text);
+            _brain.HumanSays(st, text);
         }
 
         static Station ParseStation(string s)
@@ -392,6 +417,7 @@ namespace StbcAiCrew
             PiperVoiceDir = Config.Bind("Stimme", "StimmenOrdner", "piper/voices", "Ordner mit Piper-Stimmen (*.onnx + *.onnx.json).");
             SpeakerDevice = Config.Bind("Stimme", "Lautsprecher", "", "Leer lassen = dasselbe Ausgabegerät wie das Spiel (Oculus-Einstellung bzw. Windows-Standard). Nur für Sonderfälle: Teil eines Gerätenamens aus dem Log.");
             SpeakerVolume = Config.Bind("Stimme", "LautstaerkeFaktor", 1f, "Faktor auf die Lautstärke aus dem Optionsmenü des Spiels (Master × Sprachchat). 1 = genau wie Mitspieler.");
+            Multiplayer = Config.Bind("Sprache", "Mehrspieler", true, "Mehrspieler (nur beim Host nötig): Crew hört die Mitspieler über den Sprachchat und spricht für alle hörbar über den Sprachchat.");
             NoProfanity = Config.Bind("Crew", "KeineKraftausdruecke", false, "Crew vermeidet Flüche und vulgäre Wörter (auch beim Zitieren).");
             ListenToGameVoice = Config.Bind("Sprache", "SpielstimmenMithoeren", true, "Die Crew hört Briefing, Funksprüche und Logbuch des Spiels mit (Whisper hört die abgespielten Aufnahmen ab).");
             GameVoiceLanguage = Config.Bind("Sprache", "SpielstimmenSprache", "auto", "Sprache der Sprachausgabe des Spiels (Ordnername in GeneratedSoundBanks: German, English(US), French(France)); auto = vom Spiel.");
@@ -444,7 +470,10 @@ namespace StbcAiCrew
             MainThread.Drain(e => Log.LogError(e));
             EventLog.Update();
 
-            bool inMission = GameBridge.InMission;
+            // Mehrspieler: Die Crew gehört dem Host (Master Client); bei allen anderen bleibt sie aus
+            bool host = Net.IsHost;
+            if (host != _wasHost) { _wasHost = host; Log.LogInfo(host ? "Host: KI-Crew aktiv." : "Nicht Host: KI-Crew bleibt aus (die Crew läuft beim Host)."); }
+            bool inMission = GameBridge.InMission && host;
             if (inMission && !_wasInMission) { _status = null; _brain.StartMission(); }
             else if (!inMission && _wasInMission) _brain.EndMission("Mission verlassen");
             _wasInMission = inMission;
@@ -458,7 +487,9 @@ namespace StbcAiCrew
                 if (now != null && now.ContactList != null) VoiceInput.ContactNames = Contacts.Names(now.ContactList);
             }
 
-            if (_server.State == ServerState.Ready) _brain.Tick(_status);
+            if (_server.State == ServerState.Ready && host) _brain.Tick(_status);
+            if (_remoteTap != null) _remoteTap.Tick();
+            if (_crewSender != null) _crewSender.Tick();
             if (_voice != null && !_voiceWarmed && _sttServer.State == ServerState.Ready)
             {
                 _voiceWarmed = true;

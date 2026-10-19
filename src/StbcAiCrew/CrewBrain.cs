@@ -41,6 +41,8 @@ namespace StbcAiCrew
 
         /// <summary>Spricht gerade ein Mensch ins Mikrofon? Dann wartet die Crew.</summary>
         public Func<bool> HumanSpeaking = () => false;
+        /// <summary>Jeder gesprochene Crew-Satz (pcm, Rate), z. B. für den Sprachchat im Mehrspieler.</summary>
+        public Action<short[], int> CrewAudio;
         /// <summary>Spricht gerade eine Stimme des Spiels (Missionssprecher)? Dann schweigt die Crew.</summary>
         public Func<bool> GameVoicePlaying = () => false;
         float _gameVoiceUntil = -1f;
@@ -392,6 +394,7 @@ namespace StbcAiCrew
             if (InMission) GameBridge.ShowOnAllConsoles(item.Char.Name + ": " + text, _cfg.MessageSeconds.Value);
             float seconds = 0f;
             if (item.Pcm != null && Player != null) seconds = Player.Play(item.Pcm, item.Rate);
+            if (item.Pcm != null && CrewAudio != null) { try { CrewAudio(item.Pcm, item.Rate); } catch (Exception e) { Plugin.Log.LogWarning("Crew-Stimme für den Sprachchat: " + e.Message); } }
             if (seconds > 0f)
             {
                 // Nach jedem Satz eine Pause, in der das Mikrofon offen ist und der Captain dazwischenreden kann
