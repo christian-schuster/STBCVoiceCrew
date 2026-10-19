@@ -15,15 +15,19 @@ namespace StbcAiCrew
     /// </summary>
     public static class Net
     {
-        /// <summary>Offline (Einzelspieler) oder Master Client.</summary>
+        /// <summary>
+        /// Crew läuft hier, außer man sitzt in einem fremden Raum (in einem Raum, aber nicht Master Client:
+        /// NDIOGIGMPBH.PDANNCPHHIN). Im Menü, offline und als Host also immer.
+        /// </summary>
         public static bool IsHost
         {
-            get { try { return NDIOGIGMPBH.HECOODODCEP || NDIOGIGMPBH.CMFPPLBMHAJ; } catch { return true; } }
+            get { try { return !NDIOGIGMPBH.PDANNCPHHIN; } catch { return true; } }
         }
 
+        /// <summary>In einem Mehrspieler-Raum (nicht offline).</summary>
         public static bool Online
         {
-            get { try { return !NDIOGIGMPBH.HECOODODCEP && NDIOGIGMPBH.DIMFCNEMMPD != null; } catch { return false; } }
+            get { try { return !NDIOGIGMPBH.HECOODODCEP && NDIOGIGMPBH.PGJDPPDBGBL; } catch { return false; } }
         }
 
         public static int LocalPlayerId
