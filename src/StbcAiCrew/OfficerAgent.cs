@@ -303,9 +303,10 @@ namespace StbcAiCrew
         void ExecuteCommands(List<object> commands, bool captainSpoke)
         {
             if (commands == null) return;
-            // Ein Befehl des Captains gilt eine Weile: Die nächste Überlegung kommt oft erst nach einer anderen
-            // Meldung (im Test blieb "Warp, Energie!" deshalb an der Rangsperre hängen)
-            captainSpoke = captainSpoke || Time.realtimeSinceStartup - _bridge.LastCaptainTime < 60f;
+            // Befehl des Captains: Seine letzten Worte (höchstens 60 s alt) müssen GENAU diesen Befehl anordnen.
+            // Vorher galt jeder Satz als Befehl (Brannok griff mitten in der Flucht an), und ein Befehl verfiel,
+            // sobald eine andere Meldung dazwischenkam (Venn durfte "Warp, Energie!" nicht ausführen).
+            string orderWords = Time.realtimeSinceStartup - _bridge.LastCaptainTime < 60f ? _bridge.LastCaptainWords : null;
             var autonomy = (Autonomy)_cfg.AutonomyLevel.Value;
             bool mayAct = captainSpoke || autonomy == Autonomy.Act;
             int executed = 0;
@@ -314,16 +315,17 @@ namespace StbcAiCrew
                 if (executed >= _cfg.MaxCommandsPerTurn.Value) break;
                 var cmd = CrewCommands.Find(o as string);
                 if (cmd == null || cmd.Owner != Station) continue;
+                bool ordered = OrderHints.Orders(Station, cmd.Name, orderWords);
                 float last;
-                if (!captainSpoke && _lastRun.TryGetValue(cmd.Name, out last) && Time.time - last < 20f) continue;   // nicht dauernd dasselbe drücken
-                if (!mayAct) { Plugin.Log.LogInfo(Char.Name + " schlägt vor (nicht ausgeführt): " + cmd.Name); continue; }
-                if (!captainSpoke && CrewCommands.OrderOnly(cmd))
+                if (!ordered && _lastRun.TryGetValue(cmd.Name, out last) && Time.time - last < 20f) continue;   // nicht dauernd dasselbe drücken
+                if (!mayAct && !ordered) { Plugin.Log.LogInfo(Char.Name + " schlägt vor (nicht ausgeführt): " + cmd.Name); continue; }
+                if (!ordered && CrewCommands.OrderOnly(cmd))
                 {
                     Plugin.Log.LogInfo(Char.Name + " darf " + cmd.Name + " nur auf Befehl.");
                     P.Add("Du wolltest " + cmd.Description + ", das tust du nur auf ausdrücklichen Befehl des Captains.", Priority.Background);
                     continue;
                 }
-                if (cmd.Major && !captainSpoke && !_cfg.AllowMajorWithoutOrder.Value &&
+                if (cmd.Major && !ordered && !_cfg.AllowMajorWithoutOrder.Value &&
                     !Ranks.MayActMajor(Char.Xp, EventLog.UnderThreat(60f)))
                 {
                     Plugin.Log.LogInfo(Char.Name + " (" + Char.Rank + ") darf " + cmd.Name + " nicht eigenmächtig.");
@@ -336,7 +338,7 @@ namespace StbcAiCrew
                     _lastRun[cmd.Name] = Time.time;
                     executed++;
                     _commands++;
-                    if (captainSpoke) _ordersFollowed++;
+                    if (ordered || captainSpoke) _ordersFollowed++;
                     P.Add("Du hast an deiner Konsole ausgeführt: " + cmd.Description, Priority.Background);
                     Plugin.Log.LogInfo(Char.Name + " führt aus: " + cmd.Name);
                 }

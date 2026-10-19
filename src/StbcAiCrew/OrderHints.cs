@@ -32,6 +32,7 @@ namespace StbcAiCrew
             H(Station.Tactical, "RaiseShields", "schilde hoch", "schilder hoch", "schilde aktivieren", "schutzschilde hoch", "roter alarm"),
             H(Station.Tactical, "LowerShields", "schilde runter", "schilder runter", "schilde senken", "schilde deaktivieren"),
             H(Station.Tactical, "FirePhasers", "phaser", "feuer frei", "feuern", "angriff"),
+            H(Station.Tactical, "EngageTarget (Ziel angreifen)", "angreifen", "angriff", "greif an", "greifen sie an", "attacke"),
             H(Station.Tactical, "FireTorpedoes (vorher ArmTorpedoes, falls nicht scharf)", "torpedo"),
             H(Station.Tactical, "ScanTarget", "scan", "analysier"),
             H(Station.Tactical, "TargetWeapons", "waffen des ziels", "auf die waffen", "waffen anvisieren"),
@@ -46,6 +47,19 @@ namespace StbcAiCrew
         };
 
         static Hint H(Station st, string text, params string[] words) => new Hint { Station = st, Text = text, Words = words };
+
+        /// <summary>Haben die Worte des Captains genau diesen Befehl angeordnet? (für weitreichende Befehle)</summary>
+        public static bool Orders(Station st, string commandName, string captainWords)
+        {
+            if (string.IsNullOrEmpty(captainWords) || string.IsNullOrEmpty(commandName)) return false;
+            string t = captainWords.ToLowerInvariant();
+            foreach (var h in Hints)
+            {
+                if (h.Station != st || h.Text.IndexOf(commandName, System.StringComparison.Ordinal) < 0) continue;
+                foreach (var w in h.Words) if (t.Contains(w)) return true;
+            }
+            return false;
+        }
 
         /// <summary>Vorschläge für diese Station zu den Worten des Captains; null, wenn nichts passt.</summary>
         public static string For(Station st, string captainWords)
