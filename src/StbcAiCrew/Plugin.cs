@@ -145,11 +145,15 @@ namespace StbcAiCrew
             // Steam startet stbc.exe zunächst ohne Parameter; diese Instanz startet Ubisoft Connect und beendet sich,
             // Ubisoft Connect startet dann das eigentliche Spiel mit "-uplay_steam_mode". In der ersten Instanz bleibt
             // der Mod still, sonst würde er Server starten und den Neustart stören.
-            if (SkipLauncherInstance.Value && Environment.CommandLine.IndexOf("uplay", StringComparison.OrdinalIgnoreCase) < 0)
+            string parent;
+            if (SkipLauncherInstance.Value && LaunchInstance.IsSteamLauncherInstance(out parent))
             {
-                Log.LogInfo("Startinstanz ohne Ubisoft-Parameter (" + Environment.CommandLine + ") – Mod bleibt inaktiv bis zum Neustart über Ubisoft Connect.");
+                int n = LaunchInstance.ClearDoorstopVariables();
+                Log.LogInfo("Startinstanz (gestartet von " + parent + "): Mod bleibt inaktiv, " + n +
+                            " DOORSTOP-Variablen entfernt, damit das über Ubisoft Connect neu gestartete Spiel BepInEx lädt.");
                 return;
             }
+            Log.LogInfo("Spielinstanz (gestartet von " + (LaunchInstance.ParentProcessName() ?? "?") + "): Mod wird aktiv.");
             _active = true;
 
             string pluginDir = Path.GetDirectoryName(Info.Location);
@@ -283,7 +287,7 @@ namespace StbcAiCrew
 
         void BindConfig()
         {
-            SkipLauncherInstance = Config.Bind("Diagnose", "StartinstanzUeberspringen", true, "Mod nur in der über Ubisoft Connect neu gestarteten Spielinstanz aktivieren (Kommandozeile enthält \"uplay\"). false, wenn du das Spiel anders startest.");
+            SkipLauncherInstance = Config.Bind("Diagnose", "StartinstanzUeberspringen", true, "In der von Steam gestarteten Startinstanz (die nur Ubisoft Connect startet) inaktiv bleiben und die DOORSTOP-Variablen entfernen. Aktiv wird der Mod im von Ubisoft Connect gestarteten Spiel.");
             UseJobObject = Config.Bind("Diagnose", "JobObjekt", false, "Kindprozesse per Windows-Job-Objekt an das Spiel binden (im Spiel-Mono fehlerhaft, daher aus).");
             UseExternalServer = Config.Bind("LLM", "ExternenServerNutzen", false, "true = llama-server nicht selbst starten, sondern einen bereits laufenden auf dem Port nutzen.");
             LlamaServerExe = Config.Bind("LLM", "LlamaServerExe", "llama/llama-server.exe", "Pfad zu llama-server.exe (relativ zum Plugin-Ordner oder absolut).");

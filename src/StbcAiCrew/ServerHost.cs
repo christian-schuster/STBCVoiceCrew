@@ -73,7 +73,9 @@ namespace StbcAiCrew
                 // Nicht gleichzeitig mit dem Hochfahren des Spiels und nicht alle Server auf einmal laden:
                 // Beim ersten Spieltest starben alle drei Server beim ersten GPU-Speicher, während das Spiel startete.
                 if (DelaySec > 0f) Thread.Sleep((int)(DelaySec * 1000));
-                while (After != null && After.State == ServerState.Starting) Thread.Sleep(500);
+                var waitUntil = DateTime.UtcNow.AddSeconds(DelaySec + 300);
+                while (After != null && (After.State == ServerState.Starting || After.State == ServerState.Stopped) && DateTime.UtcNow < waitUntil)
+                    Thread.Sleep(500);
 
                 // Stufe 1: direkter Kindprozess mit der Standard-Umgebung des Benutzers, mehrere Versuche
                 string err = null;
