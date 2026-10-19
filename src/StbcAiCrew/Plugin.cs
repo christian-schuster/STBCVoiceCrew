@@ -19,6 +19,7 @@ namespace StbcAiCrew
 
         // ---- LLM / llama.cpp ----
         public ConfigEntry<bool> UseJobObject;
+        public ConfigEntry<bool> SkipLauncherInstance;
         public ConfigEntry<bool> UseExternalServer;
         public ConfigEntry<string> LlamaServerExe;
         public ConfigEntry<string> ModelPath;
@@ -132,11 +133,24 @@ namespace StbcAiCrew
 
         public ServerState ServerState => _server.State;
 
+        /// <summary>false in der ersten Startinstanz (siehe Awake): dann tut der Mod nichts.</summary>
+        bool _active;
+
         void Awake()
         {
             Instance = this;
             Log = Logger;
             BindConfig();
+
+            // Steam startet stbc.exe zunächst ohne Parameter; diese Instanz startet Ubisoft Connect und beendet sich,
+            // Ubisoft Connect startet dann das eigentliche Spiel mit "-uplay_steam_mode". In der ersten Instanz bleibt
+            // der Mod still, sonst würde er Server starten und den Neustart stören.
+            if (SkipLauncherInstance.Value && Environment.CommandLine.IndexOf("uplay", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                Log.LogInfo("Startinstanz ohne Ubisoft-Parameter (" + Environment.CommandLine + ") – Mod bleibt inaktiv bis zum Neustart über Ubisoft Connect.");
+                return;
+            }
+            _active = true;
 
             string pluginDir = Path.GetDirectoryName(Info.Location);
             _dataDir = Path.Combine(Paths.ConfigPath, "StbcAiCrew");
@@ -269,6 +283,7 @@ namespace StbcAiCrew
 
         void BindConfig()
         {
+            SkipLauncherInstance = Config.Bind("Diagnose", "StartinstanzUeberspringen", true, "Mod nur in der über Ubisoft Connect neu gestarteten Spielinstanz aktivieren (Kommandozeile enthält \"uplay\"). false, wenn du das Spiel anders startest.");
             UseJobObject = Config.Bind("Diagnose", "JobObjekt", false, "Kindprozesse per Windows-Job-Objekt an das Spiel binden (im Spiel-Mono fehlerhaft, daher aus).");
             UseExternalServer = Config.Bind("LLM", "ExternenServerNutzen", false, "true = llama-server nicht selbst starten, sondern einen bereits laufenden auf dem Port nutzen.");
             LlamaServerExe = Config.Bind("LLM", "LlamaServerExe", "llama/llama-server.exe", "Pfad zu llama-server.exe (relativ zum Plugin-Ordner oder absolut).");
@@ -386,6 +401,7 @@ namespace StbcAiCrew
 
         void Update()
         {
+            if (!_active) return;
             MainThread.Drain(e => Log.LogError(e));
             EventLog.Update();
 
@@ -437,6 +453,7 @@ namespace StbcAiCrew
 
         void OnGUI()
         {
+            if (!_active) return;
             _panel.Draw(_brain.InMission);
             if (!_showOverlay) return;
 
@@ -512,7 +529,7 @@ namespace StbcAiCrew
 
         void Shutdown()
         {
-            if (_shutDown) return;
+            if (_shutDown || !_active) return;
             _shutDown = true;
             if (_brain != null && _brain.InMission) _brain.SaveForShutdown();
             if (_voice != null) _voice.Dispose();
