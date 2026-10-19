@@ -25,6 +25,9 @@ namespace StbcAiCrew
             Patch(harmony, typeof(DaikonForge.VoIP.UnityAudioPlayer), "BufferAudio", nameof(RemoteAudioPrefix));
             Patch(harmony, typeof(WwiseAudioPlayer), "BufferAudio", nameof(RemoteAudioPrefix));
             Patch(harmony, typeof(DaikonForge.VoIP.VoiceControllerBase), "LOEAHNOJEOK", nameof(MicBufferPrefix));
+            // Spiel-Mikrofon: ohne Rift nicht das stumme Oculus-Mikrofon nehmen
+            Patch(harmony, typeof(WwiseMicrophoneInputDevice), "NJIJNNMMLIG", nameof(MicSelectPostfix), postfix: true);
+            Patch(harmony, typeof(WwiseMicrophoneInputDevice), "PBDGLAKFHCM", nameof(MicSelectPostfix), postfix: true);
             PatchAllOverloads(harmony, typeof(PlayerSpacecraft), "takeHit", nameof(TakeHitPostfix));
         }
 
@@ -103,6 +106,8 @@ namespace StbcAiCrew
             try { var tap = RemoteVoiceTap.Instance; if (tap != null && LGNKMOBGEAD != null) tap.OnRemoteAudio(__instance, LGNKMOBGEAD); }
             catch (Exception e) { Plugin.Log.LogDebug("VoIP-Hook: " + e.Message); }
         }
+
+        static void MicSelectPostfix(object __instance) => GameMicFix.AfterSelect(__instance);
 
         // VoiceControllerBase.LOEAHNOJEOK(Puffer, Rate): Mikrofonpuffer zum Senden; ruht, solange die Crew über den Sprachchat spricht
         static bool MicBufferPrefix()

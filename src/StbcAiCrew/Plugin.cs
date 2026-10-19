@@ -70,6 +70,7 @@ namespace StbcAiCrew
         public ConfigEntry<bool> NoProfanity;
         public ConfigEntry<bool> Multiplayer;
         public ConfigEntry<bool> OwnMicrophone;
+        public ConfigEntry<string> GameMicrophone;
         public ConfigEntry<string> GameVoiceLanguage;
         public ConfigEntry<float> StaleSpeechSec;
         public ConfigEntry<float> SpeechTempo;
@@ -192,6 +193,7 @@ namespace StbcAiCrew
             if (TtsEnabled.Value) StartTts(pluginDir);
             _panel = new CrewPanel(this, _roster, _llm, _brain, _tts, _qwen);
 
+            GameMicFix.Preferred = (GameMicrophone.Value ?? "").Trim();
             GamePatches.Apply(new Harmony(Guid));
             _server.Start();
             if (VoiceEnabled.Value) StartVoice(pluginDir);
@@ -420,6 +422,7 @@ namespace StbcAiCrew
             PiperVoiceDir = Config.Bind("Stimme", "StimmenOrdner", "piper/voices", "Ordner mit Piper-Stimmen (*.onnx + *.onnx.json).");
             SpeakerDevice = Config.Bind("Stimme", "Lautsprecher", "", "Leer lassen = dasselbe Ausgabegerät wie das Spiel (Oculus-Einstellung bzw. Windows-Standard). Nur für Sonderfälle: Teil eines Gerätenamens aus dem Log.");
             SpeakerVolume = Config.Bind("Stimme", "LautstaerkeFaktor", 1f, "Faktor auf die Lautstärke aus dem Optionsmenü des Spiels (Master × Sprachchat). 1 = genau wie Mitspieler.");
+            GameMicrophone = Config.Bind("Sprache", "SpielMikrofon", "", "Mikrofon für Sprachchat und Mikrofontest des Spiels (Teil des Gerätenamens, z. B. Plantronics). Leer = automatisch: ohne Rift nie das stumme Oculus-Mikrofon.");
             OwnMicrophone = Config.Bind("Sprache", "EigenesMikrofon", true, "Die Mod öffnet das Mikrofon selbst (winmm). Aus, falls das Spiel sonst kein Mikrofon bekommt (Mikrofontest im Mehrspieler).");
             Multiplayer = Config.Bind("Sprache", "Mehrspieler", true, "Mehrspieler (nur beim Host nötig): Crew hört die Mitspieler über den Sprachchat und spricht für alle hörbar über den Sprachchat.");
             NoProfanity = Config.Bind("Crew", "KeineKraftausdruecke", false, "Crew vermeidet Flüche und vulgäre Wörter (auch beim Zitieren).");
