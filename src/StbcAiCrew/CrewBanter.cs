@@ -199,6 +199,8 @@ namespace StbcAiCrew
             foreach (char c in s)
                 if (c > 0x024F && !(c >= 0x2000 && c <= 0x206F)) return null;   // nur lateinische Schrift und Satzzeichen
             if (s.Length < 20 || s.Length > 260) return null;   // zu lang: neu erfinden lassen
+            // Nacherzählung statt Witz ("Ich habe gerade einen Witz … gehört"): neu erfinden lassen
+            if (System.Text.RegularExpressions.Regex.IsMatch(s, @"\b(einen|den|diesen) Witz\b[^.!?]{0,60}\b(gehört|erzählt bekommen)", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) return null;
             return s;
         }
         // ---------------- Reaktionen ----------------
