@@ -124,7 +124,10 @@ namespace StbcAiCrew
         static bool MicBufferPrefix()
         {
             var s = CrewVoiceSender.Instance;
-            return CrewVoiceSender.Injecting || s == null || !s.Active;
+            if (CrewVoiceSender.Injecting || s == null || !s.Active) return true;
+            // Der Mensch spricht über die Crew hinweg: seine Stimme geht vor (sonst klang er für die anderen zerhackt)
+            if (CrewVoiceSender.HostTalking()) { s.Clear(); return true; }
+            return false;
         }
 
         /// <summary>Wird gesetzt, wenn das Mithören läuft: (Ereignisname, Sprecher).</summary>

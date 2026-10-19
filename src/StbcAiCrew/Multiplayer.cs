@@ -212,6 +212,21 @@ namespace StbcAiCrew
 
         public bool Active => _pending.Count > 0;
 
+        /// <summary>Der Mensch spricht: Crew-Stimme für die Mitspieler abbrechen, sein Mikrofon hat Vorrang.</summary>
+        public void Clear() { _pending.Clear(); _carry = 0; }
+
+        /// <summary>Liegt das eigene Spiel-Mikrofon gerade über der Sprechschwelle des Spiels?</summary>
+        public static bool HostTalking()
+        {
+            try
+            {
+                var mgr = VoIpManager.IEFBKOMBFGO;
+                var dev = mgr != null ? mgr.GetLocalMicrophoneInputDevice() : null;
+                return dev != null && dev.BBDPHCJHMEG;
+            }
+            catch { return false; }
+        }
+
         /// <summary>Crew-Satz zum Senden vormerken (pcm in der Abtastrate rate).</summary>
         public void Enqueue(short[] pcm, int rate)
         {
