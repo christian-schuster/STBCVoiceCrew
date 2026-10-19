@@ -137,6 +137,8 @@ namespace StbcAiCrew
         {
             var crew = Crew;
             if (crew == null) return false;
+            // Mehrspieler: Sitzt dort ein Mensch, ist die Station nicht frei (der Bot-Status flackerte im Test)
+            if (station != Station.Captain && Net.HumanAt(station)) return false;
             switch (station)
             {
                 case Station.Helm: return crew.IsConsoleAI(FLCHMJJDKDL.Helm);

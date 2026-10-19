@@ -49,6 +49,20 @@ namespace StbcAiCrew
             catch { return null; }
         }
 
+        /// <summary>Stationen, auf denen laut Spielerliste ein Mensch sitzt (Mehrspieler).</summary>
+        public static bool HumanAt(Station st)
+        {
+            try
+            {
+                var mgr = NovaPlayerManager.IEFBKOMBFGO;
+                if (mgr == null || !Online) return false;
+                foreach (var info in mgr.GetPlayers())
+                    if (info != null && GameBridge.FromGameStation(info.FJMHMOOJNJG) == st) return true;
+            }
+            catch { }
+            return false;
+        }
+
         public static string NameOf(int photonId)
         {
             try { var p = CBBCCGMALMP.Find(photonId); return p != null ? p.GPICMMEIAPM : null; }
@@ -64,8 +78,12 @@ namespace StbcAiCrew
             public int PlayerId;
             public readonly List<float> Samples = new List<float>();
             public int Rate;
-            public float LastAudio;
+            public float LastVoice = -999f;   // zuletzt Sprache (Pegel über der Schwelle), nicht nur Audio
+            public bool Voiced;               // in der laufenden Äußerung wurde gesprochen
         }
+
+        /// <summary>RMS-Schwelle für "spricht" (Sprachchat liefert auch in Pausen Audio).</summary>
+        public float VoiceThreshold = 0.015f;
 
         readonly ManualLogSource _log;
         readonly string _sttUrl;
@@ -101,11 +119,16 @@ namespace StbcAiCrew
             Talker t;
             if (!_talkers.TryGetValue(id, out t)) _talkers[id] = t = new Talker { PlayerId = id };
             t.Rate = NJPHCGOEOPO.GetOutputSampleRate();
-            int n = chunk.PICFPDJILEK;
+            int n = Math.Min(chunk.PICFPDJILEK, chunk.BMFLNPNGNDF.Length);
             var data = chunk.BMFLNPNGNDF;
-            for (int i = 0; i < n && i < data.Length; i++) t.Samples.Add(data[i]);
-            t.LastAudio = Time.realtimeSinceStartup;
-            LastRemoteSpeech = t.LastAudio;
+            double sum = 0;
+            for (int i = 0; i < n; i++) sum += data[i] * data[i];
+            bool voice = n > 0 && Math.Sqrt(sum / n) > VoiceThreshold;
+            float now = Time.realtimeSinceStartup;
+            if (voice) { t.LastVoice = now; t.Voiced = true; LastRemoteSpeech = now; }
+            // Stille vor einer Äußerung nicht sammeln, nur ein kurzes Polster
+            if (!t.Voiced && t.Samples.Count > t.Rate / 2) t.Samples.RemoveRange(0, t.Samples.Count - t.Rate / 2);
+            for (int i = 0; i < n; i++) t.Samples.Add(data[i]);
             if (t.Samples.Count > t.Rate * 30) Flush(t);   // sehr lange Rede: zwischendurch abschicken
         }
 
@@ -114,13 +137,15 @@ namespace StbcAiCrew
         {
             float now = Time.realtimeSinceStartup;
             foreach (var t in _talkers.Values)
-                if (t.Samples.Count > 0 && now - t.LastAudio > 0.7f) Flush(t);
+                if (t.Voiced && now - t.LastVoice > 0.7f) Flush(t);
         }
 
         void Flush(Talker t)
         {
             int rate = t.Rate > 0 ? t.Rate : 24000;
-            if (t.Samples.Count < rate * 0.35f) { t.Samples.Clear(); return; }   // nur ein Geräusch
+            bool voiced = t.Voiced;
+            t.Voiced = false;
+            if (!voiced || t.Samples.Count < rate * 0.35f) { t.Samples.Clear(); return; }   // Stille oder nur ein Geräusch
             var pcm = To16k(t.Samples, rate);
             t.Samples.Clear();
             lock (_jobs) _jobs.Enqueue(new KeyValuePair<int, short[]>(t.PlayerId, pcm));
