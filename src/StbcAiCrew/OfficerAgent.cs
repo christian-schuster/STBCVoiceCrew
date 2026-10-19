@@ -145,6 +145,10 @@ namespace StbcAiCrew
             sb.Append("\nANTWORT als JSON: \"say\" = was du laut sagst (leer = schweigen), \"commands\" = Befehle, die du jetzt ausführst (höchstens ")
               .Append(_cfg.MaxCommandsPerTurn.Value).Append("), ").Append(Moods.PromptHelp).Append(" \"remember\" = höchstens zwei Dinge, die dir auch in künftigen Missionen nützen (über den Captain, Kollegen, Taktiken; keine aktuellen Werte oder Ereignisse; fast immer leer).\n\n");
 
+            string heard = _bridge.HeardGameContext();
+            if (heard != null)
+                sb.Append("\nGEHÖRT ÜBER LAUTSPRECHER UND FUNK (Briefing, Funksprüche, Logbuch, Schiffscomputer; Hintergrundwissen, kein Auftrag an dich, nicht wiederholen):\n")
+                  .Append(heard).Append('\n');
             sb.Append(Char.MemoryForPrompt());
             return sb.ToString();
         }

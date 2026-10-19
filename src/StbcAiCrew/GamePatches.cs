@@ -20,6 +20,7 @@ namespace StbcAiCrew
             Patch(harmony, typeof(CommandManager), "TriggerCommand", nameof(TriggerCommandPrefix));
             Patch(harmony, typeof(CommandManager), "SetRedAlert", nameof(RedAlertPrefix));
             Patch(harmony, typeof(USSAegisCrew), "CrewbotPlayVO", nameof(CrewbotVoPrefix));
+            Patch(harmony, typeof(VOManager), "Play", nameof(VoPlayPrefix));
             PatchAllOverloads(harmony, typeof(PlayerSpacecraft), "takeHit", nameof(TakeHitPostfix));
         }
 
@@ -90,6 +91,16 @@ namespace StbcAiCrew
                 else EventLog.ToStation(cmd.Station, line, Priority.Urgent, fromCaptain: true);
             }
             catch (Exception e) { Plugin.Log.LogDebug(e); }
+        }
+
+        /// <summary>Wird gesetzt, wenn das Mithören läuft: (Ereignisname, Sprecher).</summary>
+        public static Action<string, KFLPAPJAAGO> OnGameVoice;
+
+        // VOManager.Play(string ereignis, KFLPAPJAAGO sprecher, ...): jede Sprachausgabe des Spiels
+        static void VoPlayPrefix(string MKMCDCLOPCH, KFLPAPJAAGO DIDHMLCOFMH)
+        {
+            try { if (OnGameVoice != null) OnGameVoice(MKMCDCLOPCH, DIDHMLCOFMH); }
+            catch (Exception e) { Plugin.Log.LogDebug("VO-Hook: " + e.Message); }
         }
 
         // CommandManager.SetRedAlert(bool an)

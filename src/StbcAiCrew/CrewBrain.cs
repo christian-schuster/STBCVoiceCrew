@@ -146,8 +146,30 @@ namespace StbcAiCrew
             }
         }
 
+        // ---- Mitgehört: Briefing, Funk, Logbuch, Schiffscomputer (für alle auf der Brücke hörbar) ----
+        readonly List<string> _heardGame = new List<string>();
+        const int HeardMaxChars = 2500;
+
+        /// <summary>Eine Sprachausgabe des Spiels wurde abgehört (Hauptthread).</summary>
+        public void HeardGameVoice(string speaker, string text)
+        {
+            _heardGame.Add(speaker + ": \"" + text + "\"");
+            int total = 0;
+            foreach (var s in _heardGame) total += s.Length;
+            while (_heardGame.Count > 1 && total > HeardMaxChars) { total -= _heardGame[0].Length; _heardGame.RemoveAt(0); }
+            AddLine(speaker + " (Spiel)", text);
+        }
+
+        /// <summary>Kontext für die Offiziere: was über Lautsprecher und Funk zu hören war (kein Auftrag).</summary>
+        public string HeardGameContext()
+        {
+            if (_heardGame.Count == 0) return null;
+            return string.Join("\n", _heardGame.ToArray());
+        }
+
         public void EndMission(string reason)
         {
+            _heardGame.Clear();
             if (!InMission) return;
             InMission = false;
             Plugin.Log.LogInfo("Mission beendet (" + reason + ").");

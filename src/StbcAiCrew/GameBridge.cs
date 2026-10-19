@@ -63,6 +63,55 @@ namespace StbcAiCrew
             }
         }
 
+        /// <summary>Wer spricht da? null = nicht mithören (stumme Bots, Hintergrundgemurmel, Konsolen-Piepser).</summary>
+        public static string SpeakerName(KFLPAPJAAGO v)
+        {
+            if (IgnoredVoice((int)v)) return null;
+            switch (v)
+            {
+                case KFLPAPJAAGO.HelmConsole_Computer:
+                case KFLPAPJAAGO.TacticalConsole_Computer:
+                case KFLPAPJAAGO.EngineeringConsole_Computer:
+                case KFLPAPJAAGO.CaptainConsole_Computer:
+                case KFLPAPJAAGO.Invalid:
+                    return null;
+                case KFLPAPJAAGO.Starfleet_Admiral_Woodward: return "Admiral Woodward (Sternenflotte)";
+                case KFLPAPJAAGO.Comms_Officer_Mori: return "Kommunikationsoffizier Mori (Sternenflotte)";
+                case KFLPAPJAAGO.Science_Officer_Velis: return "Wissenschaftsoffizierin Velis";
+                case KFLPAPJAAGO.FSC_Officer_Scheer: return "Offizier Scheer";
+                case KFLPAPJAAGO.Ship_Computer: return "Schiffscomputer";
+                case KFLPAPJAAGO.Captain_Female:
+                case KFLPAPJAAGO.Captain_Male: return "Logbuch/Captain";
+                case KFLPAPJAAGO.Captain_Salvok_Raleigh: return "Captain Salvok (USS Raleigh)";
+                case KFLPAPJAAGO.Captain_Stillwater_Suribachi: return "Captain Stillwater (USS Suribachi)";
+                case KFLPAPJAAGO.Captain_Ukwu_Huxley: return "Captain Ukwu (USS Huxley)";
+                case KFLPAPJAAGO.Klingon_Captain_2:
+                case KFLPAPJAAGO.Klingon_Flagship_Capt: return "klingonischer Captain";
+                case KFLPAPJAAGO.Romulan_Admiral: return "romulanischer Admiral";
+                case KFLPAPJAAGO.Romulan_Captain: return "romulanischer Captain";
+                case KFLPAPJAAGO.Borg: return "die Borg";
+                case KFLPAPJAAGO.Independent_Capt_1:
+                case KFLPAPJAAGO.Independent_Capt_2:
+                case KFLPAPJAAGO.Independent_Capt_3:
+                case KFLPAPJAAGO.Independent_Capt_4: return "Captain eines fremden Schiffs";
+                default:
+                    string n = v.ToString();
+                    return n.StartsWith("Ops_Chief") ? "Einsatzleitung" : n.Replace('_', ' ');
+            }
+        }
+
+        /// <summary>Sprache der Sprachausgabe (Wwise), z. B. "German"; null, wenn nicht ermittelbar.</summary>
+        public static string VoiceLanguage()
+        {
+            try
+            {
+                var t = Type.GetType("AkSoundEngine, Assembly-CSharp-firstpass");
+                var m = t != null ? t.GetMethod("GetCurrentLanguage", Type.EmptyTypes) : null;
+                return m != null ? m.Invoke(null, null) as string : null;
+            }
+            catch { return null; }
+        }
+
         public static bool GameVoicePlaying()
         {
             try

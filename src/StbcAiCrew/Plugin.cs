@@ -66,6 +66,8 @@ namespace StbcAiCrew
         public ConfigEntry<float> SpeakerVolume;
         public ConfigEntry<bool> DeafWhileCrewSpeaks;
         public ConfigEntry<float> PauseBetweenLinesSec;
+        public ConfigEntry<bool> ListenToGameVoice;
+        public ConfigEntry<string> GameVoiceLanguage;
         public ConfigEntry<float> StaleSpeechSec;
         public ConfigEntry<float> SpeechTempo;
 
@@ -117,6 +119,7 @@ namespace StbcAiCrew
         QwenTts _qwen;
         WavePlayer _player;
         VoiceInput _voice;
+        VoListener _voListener;
         bool _voiceWarmed;
         LlmClient _llm;
         Roster _roster;
@@ -207,6 +210,22 @@ namespace StbcAiCrew
             };
             _voice = new VoiceInput(Log, vs, url, OnHeard);
             _voice.Start();
+
+            if (ListenToGameVoice.Value)
+            {
+                // Mithören: Sprachausgaben des Spiels (Briefing, Funk) live abhören wie der Captain
+                string lang = GameVoiceLanguage.Value;
+                if (string.IsNullOrEmpty(lang) || lang == "auto") lang = GameBridge.VoiceLanguage() ?? "German";
+                string banks = Path.Combine(Path.Combine(Path.Combine(Application.streamingAssetsPath, "Audio"), "GeneratedSoundBanks"), "Windows");
+                var sttServer = _sttServer;
+                _voListener = new VoListener(Log, banks, lang, url, () => sttServer.State == ServerState.Ready,
+                                             (speaker, text) => { if (_brain != null) _brain.HeardGameVoice(speaker, text); });
+                GamePatches.OnGameVoice = (ev, who) =>
+                {
+                    string speaker = GameBridge.SpeakerName(who);
+                    if (speaker != null && _voListener != null) _voListener.OnPlay(ev, speaker);
+                };
+            }
         }
 
         void StartTts(string pluginDir)
@@ -372,6 +391,8 @@ namespace StbcAiCrew
             PiperVoiceDir = Config.Bind("Stimme", "StimmenOrdner", "piper/voices", "Ordner mit Piper-Stimmen (*.onnx + *.onnx.json).");
             SpeakerDevice = Config.Bind("Stimme", "Lautsprecher", "", "Leer lassen = dasselbe Ausgabegerät wie das Spiel (Oculus-Einstellung bzw. Windows-Standard). Nur für Sonderfälle: Teil eines Gerätenamens aus dem Log.");
             SpeakerVolume = Config.Bind("Stimme", "LautstaerkeFaktor", 1f, "Faktor auf die Lautstärke aus dem Optionsmenü des Spiels (Master × Sprachchat). 1 = genau wie Mitspieler.");
+            ListenToGameVoice = Config.Bind("Sprache", "SpielstimmenMithoeren", true, "Die Crew hört Briefing, Funksprüche und Logbuch des Spiels mit (Whisper hört die abgespielten Aufnahmen ab).");
+            GameVoiceLanguage = Config.Bind("Sprache", "SpielstimmenSprache", "auto", "Sprache der Sprachausgabe des Spiels (Ordnername in GeneratedSoundBanks: German, English(US), French(France)); auto = vom Spiel.");
             PauseBetweenLinesSec = Config.Bind("Stimme", "PauseZwischenSaetzenSek", 2.5f, "Pause nach jedem Satz der Crew, in der der Captain zu Wort kommt. Notfälle unterbrechen sofort.");
             StaleSpeechSec = Config.Bind("Stimme", "VerfallNachSek", 20f, "Sätze, die so lange auf ihren Einsatz warten mussten, werden verworfen (außer Notfällen).");
             SpeechTempo = Config.Bind("Stimme", "Sprechtempo", 1.25f, "Grundtempo der Qwen-Stimmen (1 = unverändert, 1.25 = 25 % schneller, Tonhöhe bleibt).");
@@ -553,6 +574,7 @@ namespace StbcAiCrew
             if (_player != null) _player.Dispose();
             if (_qwen != null) _qwen.Dispose();
             if (_tts != null) _tts.Dispose();
+            if (_voListener != null) _voListener.Dispose();
             if (_sttServer != null) _sttServer.Dispose();
             if (_server != null) _server.Dispose();
         }
