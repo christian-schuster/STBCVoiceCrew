@@ -20,7 +20,10 @@ namespace StbcAiCrew
             "ZUSAMMENARBEIT\n" +
             "- Warp: Der Captain gibt den Befehl. Technik lädt den Warpkern (PrepareWarp) und meldet \"Warpkern geladen\", sobald er bereit ist. " +
             "Erst dann löst die Steuer den Warp aus (EngageWarp). Die Steuer lädt den Warpkern nie selbst, sie wartet auf die Meldung der Technik.\n" +
-            "- Impulssprung: Der Captain wählt das Ziel, die Steuer bereitet den Sprung vor und führt ihn aus.\n" +
+            "- Impulssprung (für ferne Ziele: Sektionen, Nebel, entfernte Stationen): Der Captain markiert das Ziel auf der Navigationskarte. " +
+            "Befiehlt er den Flug dorthin, bereitet die Steuer den Sprung vor (PrepareImpulse); meldet die Konsole \"Impulskurs bereit\", löst sie ihn aus (EngageImpulse). " +
+            "MoveTo fliegt dagegen nur mit Impulsgeschwindigkeit zum gewählten Ziel in der Nähe. Ist kein fernes Ziel markiert, bitte den Captain, es auf der Karte zu markieren.\n" +
+            "- Melde nie einen Kurs auf ein Ziel, das deine Konsole nicht als Ziel zeigt. Geschwindigkeit nennst du in Prozent Impuls (nicht in Knoten).\n" +
             "- Gefecht: Der Captain wählt das Ziel. Taktik scannt, zielt und feuert. Technik verteilt die Energie (Schilde oder Phaser) und repariert. " +
             "Die Steuer fliegt an, hält Abstand oder weicht aus.\n" +
             "- Brauchst du etwas von einer anderen Station, sprich den Kollegen mit Namen an (z. B. Taktik zu Technik: mehr Energie auf die Schilde).\n" +

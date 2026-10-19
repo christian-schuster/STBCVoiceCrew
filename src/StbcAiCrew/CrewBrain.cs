@@ -268,10 +268,41 @@ namespace StbcAiCrew
         public void Say(OfficerAgent speaker, string text, string mood = null)
         {
             if (speaker.Char == null) return;
+            if (IsRepeat(speaker.Char, text)) { Plugin.Log.LogInfo(speaker.Char.Name + " wiederholt sich, verworfen: " + text); return; }
             // Notfall: dringende/ängstliche Meldung bei Alarm oder Beschuss darf anderen ins Wort fallen
             string m = Moods.Normalize(mood);
             bool emergency = InMission && (m == Moods.Urgent || m == Moods.Afraid) && EventLog.UnderThreat(20f);
             SayAs(speaker.Char, speaker.Station, text, null, mood, emergency);
+        }
+
+        readonly Dictionary<Character, List<KeyValuePair<float, string>>> _recentLines = new Dictionary<Character, List<KeyValuePair<float, string>>>();
+
+        /// <summary>Hat dieser Offizier in den letzten 2 Minuten fast dasselbe gesagt? (gleiche Wörter zu ≥ 70 %)</summary>
+        bool IsRepeat(Character c, string text)
+        {
+            var words = Words(text);
+            List<KeyValuePair<float, string>> list;
+            if (!_recentLines.TryGetValue(c, out list)) _recentLines[c] = list = new List<KeyValuePair<float, string>>();
+            list.RemoveAll(e => Time.time - e.Key > 120f);
+            bool repeat = false;
+            foreach (var e in list)
+            {
+                var old = Words(e.Value);
+                int common = 0;
+                foreach (var w in words) if (old.Contains(w)) common++;
+                int max = Math.Max(words.Count, old.Count);
+                if (max > 0 && common >= 0.7 * max) { repeat = true; break; }
+            }
+            if (!repeat) list.Add(new KeyValuePair<float, string>(Time.time, text));
+            return repeat;
+        }
+
+        static HashSet<string> Words(string s)
+        {
+            var set = new HashSet<string>();
+            foreach (var w in System.Text.RegularExpressions.Regex.Split(s.ToLowerInvariant(), @"[^\p{L}\p{N}]+"))
+                if (w.Length > 2) set.Add(w);
+            return set;
         }
 
         /// <summary>

@@ -235,6 +235,36 @@ namespace StbcAiCrew
         }
 
         /// <summary>Entfernt das Lokalisierungs-Präfix "1234|" aus Spieltexten.</summary>
+        static System.Collections.Generic.Dictionary<int, string> _loc;
+        static readonly object _locLock = new object();
+        /// <summary>Lokalisierungsdatei (StreamingAssets/Localization/german.txt: ID, Schlüssel, Text).</summary>
+        public static string LocalizationFile = "german.txt";
+
+        static bool Localized(int id, out string text)
+        {
+            text = null;
+            lock (_locLock)
+            {
+                if (_loc == null)
+                {
+                    _loc = new System.Collections.Generic.Dictionary<int, string>();
+                    try
+                    {
+                        string path = System.IO.Path.Combine(System.IO.Path.Combine(Application.streamingAssetsPath, "Localization"), LocalizationFile);
+                        if (System.IO.File.Exists(path))
+                            foreach (var line in System.IO.File.ReadAllLines(path, System.Text.Encoding.UTF8))
+                            {
+                                var p = line.Split('\t');
+                                int k;
+                                if (p.Length >= 3 && int.TryParse(p[0], out k) && p[2].Trim().Length > 0) _loc[k] = p[2].Trim();
+                            }
+                    }
+                    catch (Exception e) { Plugin.Log.LogWarning("Lokalisierung nicht lesbar: " + e.Message); }
+                }
+                return _loc.TryGetValue(id, out text);
+            }
+        }
+
         public static string StripLocId(string s)
         {
             if (string.IsNullOrEmpty(s)) return s;
@@ -243,7 +273,14 @@ namespace StbcAiCrew
             {
                 bool digits = true;
                 for (int i = 0; i < bar; i++) if (!char.IsDigit(s[i])) { digits = false; break; }
-                if (digits) return s.Substring(bar + 1);
+                if (digits)
+                {
+                    // Wie das Spiel: ID in der Lokalisierungsdatei nachschlagen (deutsch), sonst der englische Text
+                    string loc;
+                    int id;
+                    if (int.TryParse(s.Substring(0, bar), out id) && Localized(id, out loc)) return loc;
+                    return s.Substring(bar + 1);
+                }
             }
             return s;
         }
