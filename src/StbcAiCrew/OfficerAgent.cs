@@ -279,6 +279,9 @@ namespace StbcAiCrew
         void ExecuteCommands(List<object> commands, bool captainSpoke)
         {
             if (commands == null) return;
+            // Ein Befehl des Captains gilt eine Weile: Die nächste Überlegung kommt oft erst nach einer anderen
+            // Meldung (im Test blieb "Warp, Energie!" deshalb an der Rangsperre hängen)
+            captainSpoke = captainSpoke || Time.realtimeSinceStartup - _bridge.LastCaptainTime < 60f;
             var autonomy = (Autonomy)_cfg.AutonomyLevel.Value;
             bool mayAct = captainSpoke || autonomy == Autonomy.Act;
             int executed = 0;
