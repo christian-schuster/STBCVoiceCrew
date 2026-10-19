@@ -187,10 +187,13 @@ namespace StbcAiCrew
                 CreateNoWindow = true,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
+                RedirectStandardError = true,
                 WorkingDirectory = Path.GetDirectoryName(_exe)
             };
             var proc = Process.Start(psi);
             JobObject.Add(proc.Id);
+            var errStream = proc.StandardError.BaseStream;   // stderr leeren (Unity gibt sonst ungültige Kanäle mit)
+            new Thread(() => { try { var b = new byte[4096]; while (errStream.Read(b, 0, b.Length) > 0) { } } catch { } }) { IsBackground = true }.Start();
             e = new Engine
             {
                 Proc = proc,

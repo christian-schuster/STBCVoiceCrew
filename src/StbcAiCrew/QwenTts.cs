@@ -240,11 +240,13 @@ namespace StbcAiCrew
                 "\" --lang " + _language + " -o \"" + outFile + "\"")
             {
                 UseShellExecute = false, CreateNoWindow = true,
-                RedirectStandardInput = true, RedirectStandardError = true,
+                RedirectStandardInput = true, RedirectStandardError = true, RedirectStandardOutput = true,
                 WorkingDirectory = Path.GetDirectoryName(_designExe)
             };
             var p = Process.Start(psi);
             JobObject.Add(p.Id);
+            var outStream = p.StandardOutput.BaseStream;   // stdout leeren, sonst kann eine volle Pipe blockieren
+            new Thread(() => { try { var b = new byte[4096]; while (outStream.Read(b, 0, b.Length) > 0) { } } catch { } }) { IsBackground = true }.Start();
             byte[] text = Encoding.UTF8.GetBytes(refText);
             p.StandardInput.BaseStream.Write(text, 0, text.Length);
             p.StandardInput.Close();

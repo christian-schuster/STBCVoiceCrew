@@ -60,15 +60,24 @@ namespace StbcAiCrew
                     if (!File.Exists(_exePath))
                         throw new FileNotFoundException(_name + " nicht gefunden: " + _exePath);
 
+                    // Ausgaben selbst umleiten: Unity gibt Kindprozessen sonst ungültige stdout/stderr-Kanäle mit,
+                    // und die Server brechen ab, sobald sie beim Laden etwas schreiben. Die Ausgabe landet in einer Log-Datei.
                     var psi = new ProcessStartInfo(_exePath, _arguments)
                     {
                         UseShellExecute = false,
                         CreateNoWindow = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        RedirectStandardInput = true,
                         WorkingDirectory = Path.GetDirectoryName(_exePath)
                     };
                     _log.LogInfo("Starte " + _name + ": \"" + _exePath + "\" " + _arguments);
                     _process = Process.Start(psi);
+                    _started = DateTime.UtcNow;
                     JobObject.Add(_process.Id);
+                    OpenOutputLog();
+                    Drain(_process.StandardOutput.BaseStream, "out");
+                    Drain(_process.StandardError.BaseStream, "err");
                 }
                 else
                 {
@@ -78,8 +87,9 @@ namespace StbcAiCrew
                 var deadline = DateTime.UtcNow.AddSeconds(_startupTimeoutSec);
                 while (DateTime.UtcNow < deadline)
                 {
-                    if (_process != null && _process.HasExited)
-                        throw new Exception(_name + " wurde beendet (Exit-Code " + _process.ExitCode + "). Details im Log des Servers.");
+                    if (_process != null && _process.HasExited && !StillRunning(_process.Id))
+                        throw new Exception(_name + " wurde nach " + (DateTime.UtcNow - _started).TotalSeconds.ToString("0.0") +
+                                            " s beendet (Exit-Code " + SafeExitCode() + "). Ausgabe: " + OutputLogPath);
                     if (IsHealthy())
                     {
                         _state = ServerState.Ready;
@@ -96,6 +106,50 @@ namespace StbcAiCrew
                 _state = ServerState.Failed;
                 _log.LogError(_name + "-Start fehlgeschlagen: " + e);
             }
+        }
+
+        DateTime _started;
+        StreamWriter _outLog;
+        readonly object _outLock = new object();
+
+        string OutputLogPath => Path.Combine(Path.GetDirectoryName(_exePath), _name + ".ausgabe.log");
+
+        void OpenOutputLog()
+        {
+            try { _outLog = new StreamWriter(OutputLogPath, false, new System.Text.UTF8Encoding(false)) { AutoFlush = true }; }
+            catch (Exception e) { _log.LogWarning(_name + ": Ausgabe-Log nicht schreibbar: " + e.Message); }
+        }
+
+        /// <summary>Ausgabe auf eigenem Thread lesen (Mono 2.x: die asynchronen Process-Ereignisse sind unzuverlässig).</summary>
+        void Drain(Stream s, string tag)
+        {
+            var t = new Thread(() =>
+            {
+                var buf = new byte[4096];
+                try
+                {
+                    int n;
+                    while ((n = s.Read(buf, 0, buf.Length)) > 0)
+                    {
+                        if (_outLog == null) continue;
+                        string text = System.Text.Encoding.UTF8.GetString(buf, 0, n);
+                        lock (_outLock) _outLog.Write(text);
+                    }
+                }
+                catch { }
+            }) { IsBackground = true, Name = "StbcAiCrew." + _name + "." + tag };
+            t.Start();
+        }
+
+        static bool StillRunning(int pid)
+        {
+            try { var p = Process.GetProcessById(pid); return !p.HasExited; }
+            catch { return false; }
+        }
+
+        string SafeExitCode()
+        {
+            try { return _process.ExitCode.ToString(); } catch { return "?"; }
         }
 
         bool IsHealthy()
