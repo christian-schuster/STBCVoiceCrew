@@ -265,6 +265,9 @@ namespace StbcAiCrew
             }
         }
 
+        /// <summary>Brücken-Wortschatz als Whisper-Prompt (Namen der Crew werden ergänzt).</summary>
+        public static string Vocabulary = "Brücke der Aegis. Warp, Impuls, Phaser, Photonentorpedos, Schilde, Rot-Alarm, Traktorstrahl, Transporter, Kurs setzen, Ziel erfassen, scannen, rufen.";
+
         public static string Transcribe(string sttUrl, short[] pcm, string language)
         {
             byte[] wav = Wav(pcm);
@@ -279,6 +282,8 @@ namespace StbcAiCrew
             Field("response_format", "json");
             Field("temperature", "0.0");
             Field("language", language);
+            // Fachwörter vorgeben, sonst wird aus "Warp" "Varp" oder "war"
+            Field("prompt", Vocabulary);
             var head = Encoding.UTF8.GetBytes("--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"rede.wav\"\r\nContent-Type: audio/wav\r\n\r\n");
             body.Write(head, 0, head.Length);
             body.Write(wav, 0, wav.Length);

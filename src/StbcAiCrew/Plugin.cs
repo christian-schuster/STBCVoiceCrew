@@ -173,6 +173,9 @@ namespace StbcAiCrew
             _llm = new LlmClient(Log, baseUrl, RequestTimeoutSec.Value * 1000) { Temperature = Temperature.Value };
             _roster = new Roster(Path.Combine(_dataDir, "crew"));
             _roster.Load();
+            var names = new System.Collections.Generic.List<string>();
+            foreach (var c in _roster.All) names.Add(c.Name);
+            if (names.Count > 0) VoiceInput.Vocabulary += " Crew: " + string.Join(", ", names.ToArray()) + ".";
             _brain = new CrewBrain(_llm, this, _roster, _dataDir);
             if (TtsEnabled.Value) StartTts(pluginDir);
             _panel = new CrewPanel(this, _roster, _llm, _brain, _tts, _qwen);
