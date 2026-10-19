@@ -266,8 +266,8 @@ namespace StbcAiCrew
         {
             UseJobObject = Config.Bind("Diagnose", "JobObjekt", false, "Kindprozesse per Windows-Job-Objekt an das Spiel binden (im Spiel-Mono fehlerhaft, daher aus).");
             UseExternalServer = Config.Bind("LLM", "ExternenServerNutzen", false, "true = llama-server nicht selbst starten, sondern einen bereits laufenden auf dem Port nutzen.");
-            LlamaServerExe = Config.Bind("LLM", "LlamaServerExe", @"llama\llama-server.exe", "Pfad zu llama-server.exe (relativ zum Plugin-Ordner oder absolut).");
-            ModelPath = Config.Bind("LLM", "Modell", @"models\crew.gguf", "Pfad zur GGUF-Modelldatei (relativ zum Plugin-Ordner oder absolut).");
+            LlamaServerExe = Config.Bind("LLM", "LlamaServerExe", "llama/llama-server.exe", "Pfad zu llama-server.exe (relativ zum Plugin-Ordner oder absolut).");
+            ModelPath = Config.Bind("LLM", "Modell", "models/crew.gguf", "Pfad zur GGUF-Modelldatei (relativ zum Plugin-Ordner oder absolut).");
             Port = Config.Bind("LLM", "Port", 8089, "Lokaler Port des llama-server.");
             Slots = Config.Bind("LLM", "ParalleleSlots", 3, "Gleichzeitige Anfragen (ein Slot je KI-Offizier).");
             ContextPerSlot = Config.Bind("LLM", "KontextProSlot", 6144, "Kontextfenster je Slot in Tokens. Mehr = mehr VRAM.");
@@ -282,8 +282,8 @@ namespace StbcAiCrew
             MicDevice = Config.Bind("Sprache", "Mikrofon", "", "Leer lassen = dasselbe Mikrofon wie das Spiel (Oculus-Einstellung bzw. Windows-Standard). Nur für Sonderfälle: Teil eines Gerätenamens aus dem Log.");
             MicLanguage = Config.Bind("Sprache", "Sprachcode", "de", "Sprache für die Erkennung (de, en, …).");
             MyStation = Config.Bind("Sprache", "MeineStation", "Captain", "An welcher Station du sitzt: Captain, Steuer, Taktik oder Technik. Nur Worte des Captains gelten als Befehl.");
-            WhisperServerExe = Config.Bind("Sprache", "WhisperServerExe", @"whisper\Release\whisper-server.exe", "Pfad zu whisper-server.exe (relativ zum Plugin-Ordner oder absolut).");
-            WhisperModel = Config.Bind("Sprache", "WhisperModell", @"whisper\ggml-large-v3-turbo-q5_0.bin", "Whisper-Modell (relativ zum Plugin-Ordner oder absolut).");
+            WhisperServerExe = Config.Bind("Sprache", "WhisperServerExe", "whisper/Release/whisper-server.exe", "Pfad zu whisper-server.exe (relativ zum Plugin-Ordner oder absolut).");
+            WhisperModel = Config.Bind("Sprache", "WhisperModell", "whisper/ggml-large-v3-turbo-q5_0.bin", "Whisper-Modell (relativ zum Plugin-Ordner oder absolut).");
             WhisperPort = Config.Bind("Sprache", "WhisperPort", 8090, "Lokaler Port des whisper-server.");
             WhisperGpu = Config.Bind("Sprache", "WhisperGpu", true, "Spracherkennung auf der GPU (false = CPU).");
             WhisperThreads = Config.Bind("Sprache", "WhisperThreads", 4, "CPU-Threads für whisper-server.");
@@ -326,16 +326,16 @@ namespace StbcAiCrew
 
             TtsEnabled = Config.Bind("Stimme", "Aktiv", true, "Crew spricht mit eigenen Stimmen. false = nur Text auf den Konsolen.");
             TtsEngine = Config.Bind("Stimme", "Engine", "qwen", "qwen = Qwen3-TTS (hochwertig, entworfene Stimme je Charakter, GPU), piper = Piper (schnell, CPU, einfacher Klang).");
-            QwenServerExe = Config.Bind("Stimme", "QwenServerExe", @"qwentts\tts-server.exe", "qwentts.cpp-Server.");
-            QwenTtsExe = Config.Bind("Stimme", "QwenTtsExe", @"qwentts\qwen-tts.exe", "qwentts.cpp-Kommandozeile (für den Stimmentwurf).");
-            QwenBaseModel = Config.Bind("Stimme", "QwenBaseModell", @"qwentts\models\qwen-talker-1.7b-base-Q4_K_M.gguf", "Qwen3-TTS-Base-Modell (Sprachausgabe mit geklonter Stimme). Q4_K_M spart gegenüber Q8_0 ca. 0,8 GB VRAM bei gleicher Verständlichkeit.");
-            QwenDesignModel = Config.Bind("Stimme", "QwenDesignModell", @"qwentts\models\qwen-talker-1.7b-voicedesign-Q8_0.gguf", "Qwen3-TTS-VoiceDesign-Modell (Stimmentwurf aus Beschreibung).");
-            QwenCodec = Config.Bind("Stimme", "QwenCodec", @"qwentts\models\qwen-tokenizer-12hz-Q8_0.gguf", "Qwen3-TTS-Tokenizer.");
+            QwenServerExe = Config.Bind("Stimme", "QwenServerExe", "qwentts/tts-server.exe", "qwentts.cpp-Server.");
+            QwenTtsExe = Config.Bind("Stimme", "QwenTtsExe", "qwentts/qwen-tts.exe", "qwentts.cpp-Kommandozeile (für den Stimmentwurf).");
+            QwenBaseModel = Config.Bind("Stimme", "QwenBaseModell", "qwentts/models/qwen-talker-1.7b-base-Q4_K_M.gguf", "Qwen3-TTS-Base-Modell (Sprachausgabe mit geklonter Stimme). Q4_K_M spart gegenüber Q8_0 ca. 0,8 GB VRAM bei gleicher Verständlichkeit.");
+            QwenDesignModel = Config.Bind("Stimme", "QwenDesignModell", "qwentts/models/qwen-talker-1.7b-voicedesign-Q8_0.gguf", "Qwen3-TTS-VoiceDesign-Modell (Stimmentwurf aus Beschreibung).");
+            QwenCodec = Config.Bind("Stimme", "QwenCodec", "qwentts/models/qwen-tokenizer-12hz-Q8_0.gguf", "Qwen3-TTS-Tokenizer.");
             QwenPort = Config.Bind("Stimme", "QwenPort", 8091, "Lokaler Port des tts-server.");
             QwenMaxPitchHz = Config.Bind("Stimme", "MaxTonhoeheHz", 260f, "Piepskontrolle: Entworfene Stimmen über dieser Grundfrequenz werden tiefer neu entworfen (0 = aus).");
             QwenLanguage = Config.Bind("Stimme", "QwenSprache", "german", "Sprache für Qwen3-TTS (german, english, …).");
-            PiperExe = Config.Bind("Stimme", "PiperExe", @"piper\piper\piper.exe", "Pfad zu piper.exe (relativ zum Plugin-Ordner oder absolut).");
-            PiperVoiceDir = Config.Bind("Stimme", "StimmenOrdner", @"piper\voices", "Ordner mit Piper-Stimmen (*.onnx + *.onnx.json).");
+            PiperExe = Config.Bind("Stimme", "PiperExe", "piper/piper/piper.exe", "Pfad zu piper.exe (relativ zum Plugin-Ordner oder absolut).");
+            PiperVoiceDir = Config.Bind("Stimme", "StimmenOrdner", "piper/voices", "Ordner mit Piper-Stimmen (*.onnx + *.onnx.json).");
             SpeakerDevice = Config.Bind("Stimme", "Lautsprecher", "", "Leer lassen = dasselbe Ausgabegerät wie das Spiel (Oculus-Einstellung bzw. Windows-Standard). Nur für Sonderfälle: Teil eines Gerätenamens aus dem Log.");
             SpeakerVolume = Config.Bind("Stimme", "LautstaerkeFaktor", 1f, "Faktor auf die Lautstärke aus dem Optionsmenü des Spiels (Master × Sprachchat). 1 = genau wie Mitspieler.");
             DeafWhileCrewSpeaks = Config.Bind("Stimme", "MikroTaubWennCrewSpricht", true, "Mikrofon ignorieren, solange die Crew spricht (verhindert, dass die Crew sich selbst als Captain hört).");
@@ -372,6 +372,9 @@ namespace StbcAiCrew
         static string ResolvePath(string baseDir, string p)
         {
             if (string.IsNullOrEmpty(p)) return p;
+            // BepInEx liest "\t", "\n", "\r" in Config-Texten als Steuerzeichen ("qwentts\tts-server" wird zu einem Tabulator).
+            // In Pfaden kommen solche Zeichen nie vor, also zurückverwandeln.
+            p = p.Replace("\t", "\\t").Replace("\n", "\\n").Replace("\r", "\\r").Trim();
             return Path.IsPathRooted(p) ? p : Path.GetFullPath(Path.Combine(baseDir, p));
         }
 
