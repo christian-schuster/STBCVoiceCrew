@@ -252,6 +252,7 @@ namespace StbcAiCrew
                 {
                     var s = r as string;
                     if (string.IsNullOrEmpty(s)) continue;
+                    if (KnownNote(s)) continue;   // im Test merkte sich Venn bei jeder Überlegung dieselben Sätze
                     Char.MissionNotes.Add(s);
                     Plugin.Log.LogInfo(Char.Name + " merkt sich: " + s);
                 }
@@ -266,6 +267,29 @@ namespace StbcAiCrew
         }
 
         readonly Dictionary<string, float> _lastRun = new Dictionary<string, float>();
+
+        /// <summary>Steht das (fast wortgleich) schon in den Notizen oder Lektionen?</summary>
+        bool KnownNote(string s)
+        {
+            var w = NoteWords(s);
+            foreach (var list in new[] { Char.MissionNotes, Char.Lessons })
+                foreach (var old in list)
+                {
+                    var o = NoteWords(old);
+                    int common = 0;
+                    foreach (var x in w) if (o.Contains(x)) common++;
+                    if (Math.Max(w.Count, o.Count) > 0 && common >= 0.7 * Math.Max(w.Count, o.Count)) return true;
+                }
+            return false;
+        }
+
+        static HashSet<string> NoteWords(string s)
+        {
+            var set = new HashSet<string>();
+            foreach (var x in System.Text.RegularExpressions.Regex.Split(s.ToLowerInvariant(), @"[^\p{L}\p{N}]+"))
+                if (x.Length > 2) set.Add(x);
+            return set;
+        }
 
         /// <summary>Hat die Längengrenze den Satz abgeschnitten, bis zum letzten vollständigen Satz kürzen.</summary>
         static string CompleteSentences(string s)
