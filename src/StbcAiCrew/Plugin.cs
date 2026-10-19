@@ -67,6 +67,7 @@ namespace StbcAiCrew
         public ConfigEntry<bool> DeafWhileCrewSpeaks;
         public ConfigEntry<float> PauseBetweenLinesSec;
         public ConfigEntry<bool> ListenToGameVoice;
+        public ConfigEntry<bool> NoProfanity;
         public ConfigEntry<string> GameVoiceLanguage;
         public ConfigEntry<float> StaleSpeechSec;
         public ConfigEntry<float> SpeechTempo;
@@ -391,6 +392,7 @@ namespace StbcAiCrew
             PiperVoiceDir = Config.Bind("Stimme", "StimmenOrdner", "piper/voices", "Ordner mit Piper-Stimmen (*.onnx + *.onnx.json).");
             SpeakerDevice = Config.Bind("Stimme", "Lautsprecher", "", "Leer lassen = dasselbe Ausgabegerät wie das Spiel (Oculus-Einstellung bzw. Windows-Standard). Nur für Sonderfälle: Teil eines Gerätenamens aus dem Log.");
             SpeakerVolume = Config.Bind("Stimme", "LautstaerkeFaktor", 1f, "Faktor auf die Lautstärke aus dem Optionsmenü des Spiels (Master × Sprachchat). 1 = genau wie Mitspieler.");
+            NoProfanity = Config.Bind("Crew", "KeineKraftausdruecke", false, "Crew vermeidet Flüche und vulgäre Wörter (auch beim Zitieren).");
             ListenToGameVoice = Config.Bind("Sprache", "SpielstimmenMithoeren", true, "Die Crew hört Briefing, Funksprüche und Logbuch des Spiels mit (Whisper hört die abgespielten Aufnahmen ab).");
             GameVoiceLanguage = Config.Bind("Sprache", "SpielstimmenSprache", "auto", "Sprache der Sprachausgabe des Spiels (Ordnername in GeneratedSoundBanks: German, English(US), French(France)); auto = vom Spiel.");
             PauseBetweenLinesSec = Config.Bind("Stimme", "PauseZwischenSaetzenSek", 2.5f, "Pause nach jedem Satz der Crew, in der der Captain zu Wort kommt. Notfälle unterbrechen sofort.");

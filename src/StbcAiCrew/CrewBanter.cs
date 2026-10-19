@@ -162,7 +162,8 @@ namespace StbcAiCrew
             sb.Append("Du erinnerst dich ").Append(inMission ? "in einer ruhigen Minute auf der Brücke" : "im Bereitschaftsraum")
               .Append(" an diesen komischen Moment aus einer früheren Mission: ").Append(memory).Append('\n');
             sb.Append("Erzähl ihn deinen Kollegen oder dem Captain in deiner Art, etwa beginnend mit \"Wissen Sie noch …\". Höchstens zwei kurze Sätze mit Pointe. ");
-            sb.Append("Keine Flüche oder vulgären Wörter. Schreib nur die Worte, die gesprochen werden, ohne Anführungszeichen. Auf ").Append(_cfg.Language.Value).Append(".");
+            if (_cfg.NoProfanity.Value) sb.Append("Keine Flüche oder vulgären Wörter. ");
+            sb.Append("Schreib nur die Worte, die gesprochen werden, ohne Anführungszeichen. Auf ").Append(_cfg.Language.Value).Append(".");
             string prompt = sb.ToString();
             _llm.Send(new List<ChatMessage> { new ChatMessage("user", prompt) }, null, 140, (content, error, latency) =>
             {

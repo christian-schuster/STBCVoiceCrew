@@ -119,7 +119,8 @@ namespace StbcAiCrew
             sb.Append("\nWAS DU WEISST\n");
             sb.Append("Du weißt nur, was deine eigene Konsole anzeigt, was du an Bord spürst (Alarm, Erschütterungen) und was auf der Brücke gesagt wird. ");
             sb.Append("Andere Konsolen siehst du nicht. Was dort steht, erfährst du nur, wenn es jemand sagt. Erfinde keine Werte, Sichtungen oder Missionsziele. Frag nach, wenn dir etwas fehlt.\n");
-            sb.Append("Was der Captain sagt, kommt über eine Spracherkennung, Namen können verhört sein. Klingt ein Name ähnlich wie ein Kontakt auf deiner Konsole (\"Rekusa\" statt \"Ragusa\"), meint er diesen Kontakt. Verwende dann den Namen von deiner Konsole. Ergibt ein Befehl keinen Sinn oder klingt verstümmelt, wiederhole ihn nicht wörtlich: Führe aus, was offensichtlich gemeint ist, oder frag kurz nach (\"Wie bitte, Captain?\"). Keine Flüche und keine vulgären Wörter, auch nicht im Zitat.\n");
+            sb.Append("Was der Captain sagt, kommt über eine Spracherkennung, Namen können verhört sein. Klingt ein Name ähnlich wie ein Kontakt auf deiner Konsole (\"Rekusa\" statt \"Ragusa\"), meint er diesen Kontakt. Verwende dann den Namen von deiner Konsole. Ergibt ein Befehl keinen Sinn oder klingt verstümmelt, wiederhole ihn nicht wörtlich: Führe aus, was offensichtlich gemeint ist, oder frag kurz nach (\"Wie bitte, Captain?\").\n");
+            if (_cfg.NoProfanity.Value) sb.Append("Keine Flüche und keine vulgären Wörter, auch nicht im Zitat.\n");
             sb.Append("Nenne nur Zahlen, die unter 'Deine Konsole zeigt' stehen. Über Systeme anderer Stationen sagst du nur, was du gehört hast. ");
             sb.Append("Behaupte nur, etwas getan zu haben, wenn du es in 'commands' ausführst. Die Aufgaben anderer Stationen erledigst du nicht, darum bittest du höchstens.\n");
 
