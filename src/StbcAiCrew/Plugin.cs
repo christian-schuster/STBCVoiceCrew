@@ -373,7 +373,7 @@ namespace StbcAiCrew
             SpeakerVolume = Config.Bind("Stimme", "LautstaerkeFaktor", 1f, "Faktor auf die Lautstärke aus dem Optionsmenü des Spiels (Master × Sprachchat). 1 = genau wie Mitspieler.");
             PauseBetweenLinesSec = Config.Bind("Stimme", "PauseZwischenSaetzenSek", 2.5f, "Pause nach jedem Satz der Crew, in der der Captain zu Wort kommt. Notfälle unterbrechen sofort.");
             StaleSpeechSec = Config.Bind("Stimme", "VerfallNachSek", 20f, "Sätze, die so lange auf ihren Einsatz warten mussten, werden verworfen (außer Notfällen).");
-            SpeechTempo = Config.Bind("Stimme", "Sprechtempo", 1.15f, "Grundtempo der Qwen-Stimmen (1 = unverändert, 1.15 = 15 % schneller, Tonhöhe bleibt).");
+            SpeechTempo = Config.Bind("Stimme", "Sprechtempo", 1.25f, "Grundtempo der Qwen-Stimmen (1 = unverändert, 1.25 = 25 % schneller, Tonhöhe bleibt).");
             DeafWhileCrewSpeaks = Config.Bind("Stimme", "MikroTaubWennCrewSpricht", true, "Mikrofon ignorieren, solange die Crew spricht (verhindert, dass die Crew sich selbst als Captain hört).");
 
             KeyMute = Config.Bind("Tasten", "MikrofonStumm", KeyCode.F5, "Dauerhaftes Zuhören stumm schalten / wieder an.");

@@ -9,7 +9,7 @@ namespace StbcAiCrew
     public static class AudioTempo
     {
         /// <summary>Grundtempo für alle Qwen-Stimmen (aus der Konfiguration), mal Tempo des Charakters.</summary>
-        public static float GlobalTempo = 1.15f;
+        public static float GlobalTempo = 1.25f;
 
         public static short[] Process(short[] pcm, int rate, float tempo)
         {
