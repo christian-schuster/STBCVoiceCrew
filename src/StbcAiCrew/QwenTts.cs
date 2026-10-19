@@ -312,6 +312,8 @@ namespace StbcAiCrew
                     });
                     byte[] wav = PostBytes("/v1/audio/speech", body);
                     pcm = PiperTts.ParseWav(wav, out rate);
+                    // Qwen spricht recht gemächlich: Tempo anheben (ohne Tonhöhe) und Stille kappen
+                    pcm = AudioTempo.Process(pcm, rate, AudioTempo.GlobalTempo * c.VoiceSpeed);
                     Error = null;
                 }
                 catch (Exception e)

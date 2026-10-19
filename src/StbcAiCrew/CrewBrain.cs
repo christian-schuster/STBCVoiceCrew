@@ -36,7 +36,12 @@ namespace StbcAiCrew
             public int Rate;
             public bool Ready;
             public float QueuedAt;
+            public bool Emergency;
         }
+
+        /// <summary>Spricht gerade ein Mensch ins Mikrofon? Dann wartet die Crew.</summary>
+        public Func<bool> HumanSpeaking = () => false;
+        bool _currentEmergency;
 
         readonly Queue<SpeechItem> _speech = new Queue<SpeechItem>();
 
@@ -205,6 +210,8 @@ namespace StbcAiCrew
             string who = isCaptain ? "Captain" : "Mensch an " + OfficerAgent.StationDe(speaker);
             AddLine(who, text);
             LastHumanSpeech = Time.realtimeSinceStartup;
+            // Nach einem Menschen kurz Luft lassen, statt sofort weiterzureden
+            _floorFreeAt = Mathf.Max(_floorFreeAt, Time.time + 1f);
             if (isCaptain)
             {
                 Banter.OnCaptainSpeech(text);
@@ -229,19 +236,32 @@ namespace StbcAiCrew
         /// <summary>Satz vormerken; die Stimme wird sofort im Hintergrund erzeugt, damit sie bereitliegt.</summary>
         public void Say(OfficerAgent speaker, string text, string mood = null)
         {
-            if (speaker.Char != null) SayAs(speaker.Char, speaker.Station, text, null, mood);
+            if (speaker.Char == null) return;
+            // Notfall: dringende/ängstliche Meldung bei Alarm oder Beschuss darf anderen ins Wort fallen
+            string m = Moods.Normalize(mood);
+            bool emergency = InMission && (m == Moods.Urgent || m == Moods.Afraid) && EventLog.UnderThreat(20f);
+            SayAs(speaker.Char, speaker.Station, text, null, mood, emergency);
         }
 
         /// <summary>
         /// Ein Charakter sagt etwas, auch außerhalb einer Mission (Lobby). onSpoken läuft, sobald der Satz
         /// tatsächlich gesprochen wurde (z. B. damit Kollegen erst danach auf einen Witz reagieren).
         /// </summary>
-        public void SayAs(Character c, Station station, string text, Action onSpoken, string mood = null)
+        public void SayAs(Character c, Station station, string text, Action onSpoken, string mood = null, bool emergency = false)
         {
             text = StripStageDirections(text);
             if (text.Length == 0) return;
-            var item = new SpeechItem { Char = c, Station = station, Text = text, Mood = Moods.Normalize(mood), OnSpoken = onSpoken, QueuedAt = Time.time };
-            _speech.Enqueue(item);
+            var item = new SpeechItem { Char = c, Station = station, Text = text, Mood = Moods.Normalize(mood), OnSpoken = onSpoken, QueuedAt = Time.time, Emergency = emergency };
+            if (emergency)
+            {
+                // Notfälle vor alle normalen Sätze stellen
+                var rest = _speech.ToArray();
+                _speech.Clear();
+                foreach (var s in rest) if (s.Emergency) _speech.Enqueue(s);
+                _speech.Enqueue(item);
+                foreach (var s in rest) if (!s.Emergency) _speech.Enqueue(s);
+            }
+            else _speech.Enqueue(item);
             if (Tts != null)
                 Tts.Speak(c, text, item.Mood, (pcm, rate) => { item.Pcm = pcm; item.Rate = rate; item.Ready = true; });
             else item.Ready = true;
@@ -280,10 +300,23 @@ namespace StbcAiCrew
         /// <summary>Immer nur einer spricht; die Dauer richtet sich nach der Sprachausgabe bzw. Textlänge.</summary>
         void ReleaseSpeech()
         {
-            if (_speech.Count == 0 || Time.time < _floorFreeAt || (Player != null && Player.Playing)) return;
+            // Veraltetes Gerede verwerfen (wer 20 s warten musste, dessen Satz passt meist nicht mehr)
+            while (_speech.Count > 0 && !_speech.Peek().Emergency && Time.time - _speech.Peek().QueuedAt > _cfg.StaleSpeechSec.Value)
+                _speech.Dequeue();
+            if (_speech.Count == 0) return;
             var item = _speech.Peek();
+            bool busy = Time.time < _floorFreeAt || (Player != null && Player.Playing);
+            if (item.Emergency && item.Ready && !_currentEmergency)
+            {
+                // Notfall: dem gerade Sprechenden ins Wort fallen, ohne Pause
+                if (Player != null && Player.Playing) Player.Stop();
+                busy = false;
+            }
+            if (busy) return;
+            if (!item.Emergency && HumanSpeaking()) return;   // der Captain hat das Wort
             if (!item.Ready && Time.time - item.QueuedAt < 4f) return;   // Stimme ist gleich fertig
             _speech.Dequeue();
+            _currentEmergency = item.Emergency;
             string text = item.Text;
             string name = item.Char.Title;
             AddLine(name + " (" + OfficerAgent.StationDe(item.Station) + ")", text);
@@ -292,10 +325,11 @@ namespace StbcAiCrew
             if (item.Pcm != null && Player != null) seconds = Player.Play(item.Pcm, item.Rate);
             if (seconds > 0f)
             {
-                _floorFreeAt = Time.time + seconds + 0.35f;
-                if (CrewSpeaking != null) CrewSpeaking(seconds + 0.4f);
+                // Nach jedem Satz eine Pause, in der das Mikrofon offen ist und der Captain dazwischenreden kann
+                _floorFreeAt = Time.time + seconds + _cfg.PauseBetweenLinesSec.Value;
+                if (CrewSpeaking != null) CrewSpeaking(seconds + 0.3f);
             }
-            else _floorFreeAt = Time.time + 1.2f + text.Length / 15f;
+            else _floorFreeAt = Time.time + 1.2f + text.Length / 15f + _cfg.PauseBetweenLinesSec.Value;
             if (item.OnSpoken != null) item.OnSpoken();
             if (!InMission) return;
 
@@ -305,7 +339,7 @@ namespace StbcAiCrew
                 if (other.Char == item.Char) { p.Add("Du hast gesagt: \"" + text + "\"", Priority.Background); continue; }
                 bool addressed = other.Char != null && Mentions(text, other, topics: false);
                 p.Add(name + " (" + OfficerAgent.StationDe(item.Station) + ") sagt: \"" + text + "\"" + (addressed ? " (an dich)" : ""),
-                      addressed ? Priority.Urgent : Priority.Background, addressed: addressed);
+                      addressed ? Priority.Important : Priority.Background, addressed: addressed);
             }
         }
 

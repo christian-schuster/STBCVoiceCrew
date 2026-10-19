@@ -65,6 +65,9 @@ namespace StbcAiCrew
         public ConfigEntry<string> SpeakerDevice;
         public ConfigEntry<float> SpeakerVolume;
         public ConfigEntry<bool> DeafWhileCrewSpeaks;
+        public ConfigEntry<float> PauseBetweenLinesSec;
+        public ConfigEntry<float> StaleSpeechSec;
+        public ConfigEntry<float> SpeechTempo;
 
         // ---- Besetzung ----
         public ConfigEntry<string> CrewHelm;
@@ -246,6 +249,8 @@ namespace StbcAiCrew
             Log.LogInfo("Mikrofone: " + string.Join(" | ", AudioDevices.List(true).ToArray()));
             _brain.Tts = (ISpeechEngine)_qwen ?? _tts;
             _brain.Player = _player;
+            AudioTempo.GlobalTempo = SpeechTempo.Value;
+            _brain.HumanSpeaking = () => _voice != null && _voice.Speaking;
             _brain.CrewSpeaking = secs => { if (_voice != null && DeafWhileCrewSpeaks.Value) _voice.Deafen(secs); };
         }
 
@@ -327,9 +332,9 @@ namespace StbcAiCrew
             AutonomyLevel = Config.Bind("Crew", "Autonomie", 2, new ConfigDescription(
                 "0 = nur auf Ansprache/Befehl, 1 = meldet sich selbst, handelt aber nur auf Befehl, 2 = spielt selbst mit.",
                 new AcceptableValueRange<int>(0, 2)));
-            ReactionIntervalSec = Config.Bind("Crew", "ReaktionsabstandSek", 5f, "Mindestabstand zwischen eigenständigen Reaktionen eines Offiziers.");
-            IdleMinSec = Config.Bind("Crew", "RuhephaseMinSek", 25f, "Frühestens so oft schaut ein Offizier in ruhigen Phasen von sich aus auf die Lage.");
-            IdleMaxSec = Config.Bind("Crew", "RuhephaseMaxSek", 50f, "Spätestens so oft.");
+            ReactionIntervalSec = Config.Bind("Crew", "ReaktionsabstandSek", 12f, "Mindestabstand zwischen eigenständigen Reaktionen eines Offiziers.");
+            IdleMinSec = Config.Bind("Crew", "RuhephaseMinSek", 45f, "Frühestens so oft schaut ein Offizier in ruhigen Phasen von sich aus auf die Lage.");
+            IdleMaxSec = Config.Bind("Crew", "RuhephaseMaxSek", 90f, "Spätestens so oft.");
             ChatterChance = Config.Bind("Crew", "Plauderlaune", 0.3f, "Wahrscheinlichkeit für persönliche Bemerkungen in ruhigen Phasen (0–1, wirkt mit Beredsamkeit).");
             AllowMajorWithoutOrder = Config.Bind("Crew", "WeitreichendOhneBefehl", false, "true = auch Fähnriche dürfen ohne Befehl feuern, warpen usw. (sonst abhängig von Rang und Gefahr).");
             MaxCommandsPerTurn = Config.Bind("Crew", "MaxBefehleProAntwort", 2, "Obergrenze ausgeführter Befehle pro Antwort eines Offiziers.");
@@ -366,6 +371,9 @@ namespace StbcAiCrew
             PiperVoiceDir = Config.Bind("Stimme", "StimmenOrdner", "piper/voices", "Ordner mit Piper-Stimmen (*.onnx + *.onnx.json).");
             SpeakerDevice = Config.Bind("Stimme", "Lautsprecher", "", "Leer lassen = dasselbe Ausgabegerät wie das Spiel (Oculus-Einstellung bzw. Windows-Standard). Nur für Sonderfälle: Teil eines Gerätenamens aus dem Log.");
             SpeakerVolume = Config.Bind("Stimme", "LautstaerkeFaktor", 1f, "Faktor auf die Lautstärke aus dem Optionsmenü des Spiels (Master × Sprachchat). 1 = genau wie Mitspieler.");
+            PauseBetweenLinesSec = Config.Bind("Stimme", "PauseZwischenSaetzenSek", 2.5f, "Pause nach jedem Satz der Crew, in der der Captain zu Wort kommt. Notfälle unterbrechen sofort.");
+            StaleSpeechSec = Config.Bind("Stimme", "VerfallNachSek", 20f, "Sätze, die so lange auf ihren Einsatz warten mussten, werden verworfen (außer Notfällen).");
+            SpeechTempo = Config.Bind("Stimme", "Sprechtempo", 1.15f, "Grundtempo der Qwen-Stimmen (1 = unverändert, 1.15 = 15 % schneller, Tonhöhe bleibt).");
             DeafWhileCrewSpeaks = Config.Bind("Stimme", "MikroTaubWennCrewSpricht", true, "Mikrofon ignorieren, solange die Crew spricht (verhindert, dass die Crew sich selbst als Captain hört).");
 
             KeyMute = Config.Bind("Tasten", "MikrofonStumm", KeyCode.F5, "Dauerhaftes Zuhören stumm schalten / wieder an.");
