@@ -127,7 +127,8 @@ namespace StbcAiCrew
             s.Shields = Try(() =>
             {
                 var sh = ship.HBLINKJLOKB;
-                return sh != null && sh.HCHPFKBAIPJ > 0f ? sh.DNMGBKPIOOC / sh.HCHPFKBAIPJ * 100f : -1f;
+                // Schildpunkte im Verhältnis zum Schild-Maximum (NPPHMOIOCJD, wie die Schild-Anzeige des Spiels), nicht zu den Trefferpunkten des Subsystems
+                return sh != null && sh.NPPHMOIOCJD > 0.1f ? sh.DNMGBKPIOOC / sh.NPPHMOIOCJD * 100f : -1f;
             });
             try { s.ShieldState = ship.HBLINKJLOKB != null ? ship.HBLINKJLOKB.statusReport().ToString() : "?"; } catch { }
             try { s.TorpedoesFore = ship.HGGDEFFGBKA != null ? ship.HGGDEFFGBKA.TotalAmmo : -1; } catch { }

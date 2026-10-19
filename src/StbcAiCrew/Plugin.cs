@@ -178,7 +178,7 @@ namespace StbcAiCrew
             _roster.Load();
             var names = new System.Collections.Generic.List<string>();
             foreach (var c in _roster.All) names.Add(c.Name);
-            if (names.Count > 0) VoiceInput.Vocabulary += " Crew: " + string.Join(", ", names.ToArray()) + ".";
+            if (names.Count > 0) VoiceInput.Vocabulary += " Mit " + string.Join(", ", names.ToArray()) + " an den Stationen.";
             _brain = new CrewBrain(_llm, this, _roster, _dataDir);
             if (TtsEnabled.Value) StartTts(pluginDir);
             _panel = new CrewPanel(this, _roster, _llm, _brain, _tts, _qwen);
@@ -251,6 +251,7 @@ namespace StbcAiCrew
             _brain.Player = _player;
             AudioTempo.GlobalTempo = SpeechTempo.Value;
             _brain.HumanSpeaking = () => _voice != null && _voice.Speaking;
+            _brain.GameVoicePlaying = GameBridge.GameVoicePlaying;
             _brain.CrewSpeaking = secs => { if (_voice != null && DeafWhileCrewSpeaks.Value) _voice.Deafen(secs); };
         }
 

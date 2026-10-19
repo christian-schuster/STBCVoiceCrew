@@ -41,6 +41,9 @@ namespace StbcAiCrew
 
         /// <summary>Spricht gerade ein Mensch ins Mikrofon? Dann wartet die Crew.</summary>
         public Func<bool> HumanSpeaking = () => false;
+        /// <summary>Spricht gerade eine Stimme des Spiels (Missionssprecher)? Dann schweigt die Crew.</summary>
+        public Func<bool> GameVoicePlaying = () => false;
+        float _gameVoiceUntil = -1f;
         bool _currentEmergency;
 
         readonly Queue<SpeechItem> _speech = new Queue<SpeechItem>();
@@ -309,8 +312,15 @@ namespace StbcAiCrew
             // Veraltetes Gerede verwerfen (wer 20 s warten musste, dessen Satz passt meist nicht mehr)
             while (_speech.Count > 0 && !_speech.Peek().Emergency && Time.time - _speech.Peek().QueuedAt > _cfg.StaleSpeechSec.Value)
                 _speech.Dequeue();
+            // Missionssprecher haben Vorrang: laufenden Crew-Satz abbrechen und bis kurz nach ihrem Ende schweigen
+            if (GameVoicePlaying())
+            {
+                _gameVoiceUntil = Time.time + 1.5f;
+                if (!_currentEmergency && Player != null && Player.Playing) Player.Stop();
+            }
             if (_speech.Count == 0) return;
             var item = _speech.Peek();
+            if (!item.Emergency && Time.time < _gameVoiceUntil) return;
             bool busy = Time.time < _floorFreeAt || (Player != null && Player.Playing);
             if (item.Emergency && item.Ready && !_currentEmergency)
             {

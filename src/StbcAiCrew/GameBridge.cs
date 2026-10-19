@@ -36,6 +36,33 @@ namespace StbcAiCrew
         }
 
         /// <summary>Wird die Station von einem Bot bedient (true) oder von einem Menschen (false)?</summary>
+        static System.Reflection.FieldInfo _voQueues;
+
+        /// <summary>
+        /// Spricht gerade eine Stimme des Spiels (Missionssprecher, Sternenflotte, fremde Captains, Schiffscomputer)?
+        /// VOManager führt je Sprecher eine Warteschlange; die stummgeschalteten Bot-Stimmen zählen nicht.
+        /// </summary>
+        public static bool GameVoicePlaying()
+        {
+            try
+            {
+                var vm = VOManager.Instance;
+                if (vm == null) return false;
+                if (_voQueues == null)
+                    _voQueues = typeof(VOManager).GetField("NJONONPGJGB", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                var list = _voQueues != null ? _voQueues.GetValue(vm) as System.Collections.IList : null;
+                if (list == null) return false;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (i == (int)KFLPAPJAAGO.Crewbot_Eng_Tnar || i == (int)KFLPAPJAAGO.Crewbot_Helm_Rao || i == (int)KFLPAPJAAGO.Crewbot_Tac_Hoyle) continue;
+                    var q = list[i] as DHECOBKMDDB;
+                    try { if (q != null && q.IsPlaying()) return true; } catch { }   // leere Warteschlange wirft
+                }
+            }
+            catch { }
+            return false;
+        }
+
         public static bool IsStationAI(Station station)
         {
             var crew = Crew;
