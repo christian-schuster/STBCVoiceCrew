@@ -268,6 +268,33 @@ namespace StbcAiCrew
 
         readonly Dictionary<string, float> _lastRun = new Dictionary<string, float>();
 
+        /// <summary>
+        /// Sofort-Befehl des Captains (ohne LLM erkannt): gleich ausführen, danach bestätigt der Offizier nur noch.
+        /// </summary>
+        public bool QuickExecute(string name)
+        {
+            var cmd = CrewCommands.Find(name);
+            if (cmd == null || cmd.Owner != Station || Char == null) return false;
+            float last;
+            if (_lastRun.TryGetValue(cmd.Name, out last) && Time.time - last < 3f) return false;   // eben erst gedrückt
+            try
+            {
+                GameBridge.Trigger(cmd);
+                _lastRun[cmd.Name] = Time.time;
+                _commands++;
+                _ordersFollowed++;
+                Plugin.Log.LogInfo("Sofortbefehl: " + Char.Name + " führt aus: " + cmd.Name);
+                P.Add("Auf Befehl des Captains hast du sofort ausgeführt: " + cmd.Description +
+                      ". Bestätige knapp (\"Aye, Captain\" o. ä.) und führe es nicht noch einmal aus.", Priority.Urgent, fromCaptain: true, addressed: true);
+                return true;
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError(Char.Name + ": Sofortbefehl " + cmd.Name + " fehlgeschlagen: " + e.Message);
+                return false;
+            }
+        }
+
         /// <summary>Steht das (fast wortgleich) schon in den Notizen oder Lektionen?</summary>
         bool KnownNote(string s)
         {
@@ -317,7 +344,7 @@ namespace StbcAiCrew
                 if (cmd == null || cmd.Owner != Station) continue;
                 bool ordered = OrderHints.Orders(Station, cmd.Name, orderWords);
                 float last;
-                if (!ordered && _lastRun.TryGetValue(cmd.Name, out last) && Time.time - last < 20f) continue;   // nicht dauernd dasselbe drücken
+                if (_lastRun.TryGetValue(cmd.Name, out last) && Time.time - last < (ordered ? 8f : 20f)) continue;   // nicht dauernd dasselbe drücken (auch nicht nach einem Sofortbefehl)
                 if (!mayAct && !ordered) { Plugin.Log.LogInfo(Char.Name + " schlägt vor (nicht ausgeführt): " + cmd.Name); continue; }
                 if (!ordered && CrewCommands.OrderOnly(cmd))
                 {

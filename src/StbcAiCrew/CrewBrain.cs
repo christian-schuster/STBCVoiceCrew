@@ -253,6 +253,12 @@ namespace StbcAiCrew
             }
             if (!InMission) return;
 
+            // Sofort-Befehle: eindeutige Kommandos des Captains ohne LLM gleich ausführen
+            if (isCaptain && _cfg.QuickOrders.Value)
+                foreach (var q in QuickOrders.Parse(text))
+                    foreach (var a in Agents)
+                        if (a.Station == q.Key && a.Active) a.QuickExecute(q.Value);
+
             var addressed = new List<OfficerAgent>();
             foreach (var a in Agents) if (a.Char != null && a.Station != speaker && Mentions(text, a, topics: true)) addressed.Add(a);
             foreach (var a in Agents)
