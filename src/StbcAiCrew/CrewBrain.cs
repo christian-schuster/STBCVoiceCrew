@@ -119,10 +119,10 @@ namespace StbcAiCrew
                 c.Save();
                 a.Assign(c);
             }
-            string lineup = Lineup(null);
-            Plugin.Log.LogInfo("Mission beginnt. " + lineup);
-            Notice("Besatzung: " + lineup);
-            EventLog.ToAll("Mission beginnt. Besatzung: " + lineup, Priority.Background);
+            // Die Besatzung erst melden, wenn die Bots ihre Plätze eingenommen haben (direkt zu Missionsbeginn
+            // meldet das Spiel noch alle Stationen als unbesetzt/menschlich)
+            _lineupAnnounceAt = Time.time + 8f;
+            Plugin.Log.LogInfo("Mission beginnt.");
 
             // Beförderungen werden vor der Crew verkündet
             foreach (var a in Agents)
@@ -154,9 +154,26 @@ namespace StbcAiCrew
             foreach (var a in Agents) a.Snapshot();
         }
 
+        float _lineupAnnounceAt = -1f;
+
+        void AnnounceLineupWhenReady()
+        {
+            if (_lineupAnnounceAt < 0f) return;
+            bool anyActive = false;
+            foreach (var a in Agents) if (a.Active) anyActive = true;
+            if (!anyActive && Time.time < _lineupAnnounceAt + 22f) return;   // spätestens nach 30 s melden
+            if (!anyActive && Time.time < _lineupAnnounceAt) return;
+            _lineupAnnounceAt = -1f;
+            string lineup = Lineup(null);
+            Plugin.Log.LogInfo("Besatzung: " + lineup);
+            Notice("Besatzung: " + lineup);
+            EventLog.ToAll("Besatzung auf der Brücke: " + lineup, Priority.Background);
+        }
+
         public void Tick(ShipStatus status)
         {
             ReleaseSpeech();
+            if (InMission) AnnounceLineupWhenReady();
             Banter.Tick(InMission);
             if (InMission)
             {

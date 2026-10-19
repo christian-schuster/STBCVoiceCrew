@@ -128,7 +128,7 @@ namespace StbcAiCrew
             sb.Append("- Hältst du einen Befehl für falsch oder gefährlich, sag es respektvoll. Besteht der Captain darauf, führst du ihn aus.\n");
             sb.Append("- In ruhigen Momenten darfst du gelegentlich etwas Persönliches sagen, passend zu deiner Figur, aber nicht dauernd.\n");
             sb.Append("- Sprich nur, wenn du etwas beizutragen hast. Spricht der Captain gezielt eine andere Station an, schweigst du.\n");
-            sb.Append("- Sprich ").Append(_cfg.Language.Value).Append(". Wie viel du redest, richtet sich nach deiner Beredsamkeit, höchstens drei kurze Sätze.\n");
+            sb.Append("- Sprich immer ").Append(_cfg.Language.Value).Append(", auch wenn Meldungen der Konsole englisch sind (übersetze sie sinngemäß). Wie viel du redest, richtet sich nach deiner Beredsamkeit, höchstens drei kurze Sätze.\n");
             sb.Append("- Schreib so, wie man wirklich spricht: Füllwörter und Laute (äh, hm, puh, pff), Pausen mit …, Betonung mit ! oder ?!. Sparsam und passend zu deiner Figur.\n");
             sb.Append("- Lachen (lautmalerisch) nur, wenn etwas wirklich lustig ist, nie bei Gefahr. Keine Regieanweisungen in Klammern oder Sternchen: Alles in \"say\" wird laut gesprochen.\n");
 
