@@ -73,7 +73,7 @@ namespace StbcAiCrew
             bool urgent = P.HasPending && P.Pending == Priority.Urgent;
             bool news = autonomy != Autonomy.OnlyOrders && P.HasPending && P.Pending >= Priority.Important
                         && since >= _cfg.ReactionIntervalSec.Value;
-            bool idle = autonomy != Autonomy.OnlyOrders && Time.time >= _nextIdle;
+            bool idle = autonomy != Autonomy.OnlyOrders && Time.time >= _nextIdle && !EventLog.UnderThreat(30f);
             if (urgent) Decide("urgent", status);
             else if (news) Decide("news", status);
             else if (idle) Decide("idle", status);
@@ -87,6 +87,7 @@ namespace StbcAiCrew
             _lastDecision = Time.time;
             _nextIdle = Time.time + UnityEngine.Random.Range(_cfg.IdleMinSec.Value, _cfg.IdleMaxSec.Value);
             bool captainSpoke = P.CaptainSinceMark;
+            AnsweringCaptain = captainSpoke || P.AddressedSinceMark;
             string user = SituationPrompt(reason, status);
             P.Mark();
 
@@ -144,8 +145,8 @@ namespace StbcAiCrew
             foreach (var c in CrewCommands.ForOfficer(Station))
                 sb.Append("- ").Append(c.Name).Append(": ").Append(c.Description).Append(c.Major ? " [weitreichend]" : "").Append('\n');
 
-            sb.Append("\nANTWORT als JSON: \"say\" = was du laut sagst (leer = schweigen), \"commands\" = Befehle, die du jetzt ausführst (höchstens ")
-              .Append(_cfg.MaxCommandsPerTurn.Value).Append("), ").Append(Moods.PromptHelp).Append(" \"remember\" = höchstens zwei Dinge, die dir auch in künftigen Missionen nützen (über den Captain, Kollegen, Taktiken; keine aktuellen Werte oder Ereignisse; fast immer leer).\n\n");
+            sb.Append("\nANTWORT als JSON: \"commands\" = Befehle, die du jetzt ausführst (höchstens ")
+              .Append(_cfg.MaxCommandsPerTurn.Value).Append("), ").Append(Moods.PromptHelp).Append(" \"say\" = was du laut sagst, ein knapper Satz (leer = schweigen, das ist oft richtig).\n\n");
 
             string heard = _bridge.HeardGameContext();
             if (heard != null)
@@ -172,6 +173,8 @@ namespace StbcAiCrew
                 string hint = OrderHints.For(Station, _bridge.LastCaptainWords);
                 if (hint != null) sb.Append("Passend zu den Worten des Captains wäre für deine Station: ").Append(hint).Append(" (prüfe selbst, ob es zur Lage passt)\n");
             }
+            string standing = _bridge.Orders.Describe();
+            if (standing != null) sb.Append("DAUERANWEISUNGEN DES CAPTAINS (halte dich daran): ").Append(standing).Append('\n');
             sb.Append("Zuletzt wahrgenommen:\n").Append(P.Recent(_cfg.EventsInPrompt.Value));
             if (Char.MissionNotes.Count > 0)
             {
@@ -198,6 +201,8 @@ namespace StbcAiCrew
                         : "Gerade ist es ruhig. Melde dich nur, wenn es etwas Wichtiges gibt; sonst schweig.");
                     break;
             }
+            if (!P.AddressedSinceMark && !P.CaptainSinceMark && !_bridge.MaySpeakUnprompted(this))
+                sb.Append(" Es wurde gerade genug geredet: say bleibt leer, du handelst nur.");
             if (autonomy != Autonomy.Act && reason != "urgent")
                 sb.Append(" Ohne Befehl des Captains führst du nichts aus (commands leer), du darfst nur melden und vorschlagen.");
             sb.Append('\n');
@@ -213,8 +218,6 @@ namespace StbcAiCrew
                 { "type", "object" },
                 { "properties", new Dictionary<string, object>
                     {
-                        { "say", new Dictionary<string, object> { { "type", "string" }, { "maxLength", 240 } } },
-                        { "mood", new Dictionary<string, object> { { "type", "string" }, { "enum", Moods.Enum() } } },
                         { "commands", new Dictionary<string, object>
                             {
                                 { "type", "array" },
@@ -222,16 +225,12 @@ namespace StbcAiCrew
                                 { "items", new Dictionary<string, object> { { "type", "string" }, { "enum", cmds } } }
                             }
                         },
-                        { "remember", new Dictionary<string, object>
-                            {
-                                { "type", "array" },
-                                { "maxItems", 2 },
-                                { "items", new Dictionary<string, object> { { "type", "string" } } }
-                            }
-                        }
+                        { "mood", new Dictionary<string, object> { { "type", "string" }, { "enum", Moods.Enum() } } },
+                        { "say", new Dictionary<string, object> { { "type", "string" }, { "maxLength", 160 } } }
                     }
                 },
-                { "required", new List<object> { "say", "mood", "commands", "remember" } }
+                // Reihenfolge = Erzeugungsreihenfolge: erst entscheiden, dann (kurz) reden. Notizen macht die Nachbesprechung.
+                { "required", new List<object> { "commands", "mood", "say" } }
             };
         }
 
@@ -267,6 +266,28 @@ namespace StbcAiCrew
         }
 
         readonly Dictionary<string, float> _lastRun = new Dictionary<string, float>();
+
+        /// <summary>Die laufende Überlegung antwortet auf den Captain (Rede-Budget gilt dann nicht).</summary>
+        public bool AnsweringCaptain { get; private set; }
+
+        /// <summary>Reflex aus dem Code: Routine ausführen, wenn keine Daueranweisung dagegen spricht.</summary>
+        public void Reflex(string name, string reason, float cooldown)
+        {
+            var cmd = CrewCommands.Find(name);
+            if (cmd == null || cmd.Owner != Station || Char == null) return;
+            float last;
+            if (_lastRun.TryGetValue(cmd.Name, out last) && Time.time - last < cooldown) return;
+            if (_bridge.Orders.Blocks(cmd.Name) != null) return;
+            try
+            {
+                GameBridge.Trigger(cmd);
+                _lastRun[cmd.Name] = Time.time;
+                _commands++;
+                Plugin.Log.LogInfo("Reflex: " + Char.Name + " führt aus: " + cmd.Name + " (" + reason + ")");
+                P.Add("Routine: Du hast " + cmd.Description + " (" + reason + ").", Priority.Background);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning(Char.Name + ": Reflex " + cmd.Name + " fehlgeschlagen: " + e.Message); }
+        }
 
         /// <summary>
         /// Sofort-Befehl des Captains (ohne LLM erkannt): gleich ausführen, danach bestätigt der Offizier nur noch.
@@ -346,6 +367,13 @@ namespace StbcAiCrew
                 float last;
                 if (_lastRun.TryGetValue(cmd.Name, out last) && Time.time - last < (ordered ? 8f : 20f)) continue;   // nicht dauernd dasselbe drücken (auch nicht nach einem Sofortbefehl)
                 if (!mayAct && !ordered) { Plugin.Log.LogInfo(Char.Name + " schlägt vor (nicht ausgeführt): " + cmd.Name); continue; }
+                string blocked = ordered ? null : _bridge.Orders.Blocks(cmd.Name);
+                if (blocked != null)
+                {
+                    Plugin.Log.LogInfo(Char.Name + ": " + cmd.Name + " widerspricht der Daueranweisung (" + blocked + ").");
+                    P.Add("Du wolltest " + cmd.Description + ", aber die Daueranweisung des Captains gilt: " + blocked + ".", Priority.Background);
+                    continue;
+                }
                 if (!ordered && CrewCommands.OrderOnly(cmd))
                 {
                     Plugin.Log.LogInfo(Char.Name + " darf " + cmd.Name + " nur auf Befehl.");

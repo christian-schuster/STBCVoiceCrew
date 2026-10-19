@@ -37,6 +37,7 @@ namespace StbcAiCrew
             public bool Ready;
             public float QueuedAt;
             public bool Emergency;
+            public bool ToCaptain;   // Antwort an den Captain: darf etwas länger warten
         }
 
         /// <summary>Spricht gerade ein Mensch ins Mikrofon? Dann wartet die Crew.</summary>
@@ -70,8 +71,13 @@ namespace StbcAiCrew
         /// <summary>Niemand spricht und nichts wartet aufs Sprechen.</summary>
         public bool FloorFree => _speech.Count == 0 && Time.time >= _floorFreeAt && (Player == null || !Player.Playing);
 
+        readonly LlmClient _llm;
+        /// <summary>Daueranweisungen des Captains (gelten bis aufgehoben oder Missionsende).</summary>
+        public readonly StandingOrders Orders = new StandingOrders();
+
         public CrewBrain(LlmClient llm, Plugin cfg, Roster roster, string dataDir)
         {
+            _llm = llm;
             _cfg = cfg;
             Roster = roster;
             Debriefer = new Debriefer(llm, cfg, this);
@@ -117,6 +123,7 @@ namespace StbcAiCrew
         public void StartMission()
         {
             InMission = true;
+            Orders.Reset();
             EventLog.ResetMission();
             _speech.Clear();
             var taken = new List<Character>();
@@ -174,6 +181,7 @@ namespace StbcAiCrew
             _heardGame.Clear();
             if (!InMission) return;
             InMission = false;
+            Orders.Reset();
             Plugin.Log.LogInfo("Mission beendet (" + reason + ").");
             foreach (var a in Agents) a.EndMission();
             EventLog.ResetMission();
@@ -215,6 +223,7 @@ namespace StbcAiCrew
             Banter.Tick(InMission);
             if (InMission)
             {
+                if (_cfg.Reflexes.Value) Reflexes(status);
                 foreach (var a in Agents) a.Tick(status);
                 if (Time.time >= _nextSnapshot)
                 {
@@ -258,6 +267,7 @@ namespace StbcAiCrew
                 foreach (var q in QuickOrders.Parse(text))
                     foreach (var a in Agents)
                         if (a.Station == q.Key && a.Active) a.QuickExecute(q.Value);
+            if (isCaptain && StandingOrders.Worth(text)) ClassifyStandingOrders(text);
 
             var addressed = new List<OfficerAgent>();
             foreach (var a in Agents) if (a.Char != null && a.Station != speaker && Mentions(text, a, topics: true)) addressed.Add(a);
@@ -270,6 +280,74 @@ namespace StbcAiCrew
                 else if (addressed.Contains(a)) p.Add(line + " (an dich)", Priority.Urgent, fromCaptain: isCaptain, addressed: true);
                 else p.Add(line + " (an andere)", Priority.Background);
             }
+        }
+
+        /// <summary>Worte des Captains per LLM in Daueranweisungen einordnen (nur Auswahl aus festen Listen).</summary>
+        void ClassifyStandingOrders(string words)
+        {
+            var prompt = StandingOrders.Prompt(Orders, words);
+            _llm.Send(new List<ChatMessage> { new ChatMessage("user", prompt) }, StandingOrders.Schema(), 80, (content, error, latency) =>
+            {
+                if (error != null || !InMission) return;
+                object root;
+                try { root = Json.Parse(content); } catch { return; }
+                var changed = Orders.Merge(root);
+                if (changed.Count == 0) return;
+                string now = Orders.Describe() ?? "keine (alles wieder nach Lage)";
+                Notice("Daueranweisungen: " + now + " (" + latency.ToString("0.0") + " s)");
+                EventLog.ToAll("Neue Daueranweisung des Captains: " + now + ". Bestätige knapp, wenn sie deine Station betrifft.", Priority.Important);
+                // gleich umsetzen
+                foreach (var ch in changed)
+                    foreach (var q in StandingOrders.ApplyNow(ch.Key, ch.Value))
+                        foreach (var a in Agents)
+                            if (a.Station == q.Key && a.Active) a.QuickExecute(q.Value);
+            }, temperature: 0f);
+        }
+
+        // ---------------- Reflexe (Code), gebunden an die Daueranweisungen ----------------
+
+        float _nextReflex;
+
+        void Reflexes(ShipStatus st)
+        {
+            if (st == null || Time.time < _nextReflex) return;
+            _nextReflex = Time.time + 2f;
+            bool threat = EventLog.UnderThreat(20f);
+            bool recentHit = Time.time - EventLog.LastHitTime < 10f;
+            foreach (var a in Agents)
+            {
+                if (!a.Active) continue;
+                switch (a.Station)
+                {
+                    case Station.Tactical:
+                        // Unter Beschuss oder Rotalarm: Schilde hoch, wenn sie aus sind
+                        if (threat && (st.ShieldState == "PoweredOff")) a.Reflex("RaiseShields", "Gefahr, Schilde waren unten", 15f);
+                        break;
+                    case Station.Engineering:
+                        if (recentHit && st.Shields >= 0f && st.Shields < 50f) a.Reflex("PowerToShields", "Treffer, Schilde unter 50 %", 30f);
+                        // Reparatur des am stärksten beschädigten Systems
+                        string worst = null; float min = 75f;
+                        if (st.Engines >= 0 && st.Engines < min) { min = st.Engines; worst = "RepairEngines"; }
+                        if (st.Phasers >= 0 && st.Phasers < min) { min = st.Phasers; worst = "RepairPhasers"; }
+                        if (st.WarpCore >= 0 && st.WarpCore < min) { min = st.WarpCore; worst = "RepairWarpcore"; }
+                        if (worst != null) a.Reflex(worst, "System bei " + UnityEngine.Mathf.RoundToInt(min) + " %", 25f);
+                        break;
+                }
+            }
+        }
+
+        // ---------------- Rede-Budget ----------------
+
+        float _lastUnprompted = -999f;
+        readonly Dictionary<OfficerAgent, float> _lastSpokeAt = new Dictionary<OfficerAgent, float>();
+
+        /// <summary>Darf dieser Offizier gerade ungefragt reden? (Antworten an den Captain gehen immer.)</summary>
+        public bool MaySpeakUnprompted(OfficerAgent a)
+        {
+            float gap = EventLog.UnderThreat(30f) ? 6f : 15f;
+            float mine;
+            if (_lastSpokeAt.TryGetValue(a, out mine) && Time.time - mine < 20f) return false;
+            return Time.time - _lastUnprompted >= gap && _speech.Count == 0;
         }
 
         /// <summary>Satz vormerken; die Stimme wird sofort im Hintergrund erzeugt, damit sie bereitliegt.</summary>
@@ -286,7 +364,10 @@ namespace StbcAiCrew
             // Notfall: dringende/ängstliche Meldung bei Alarm oder Beschuss darf anderen ins Wort fallen
             string m = Moods.Normalize(mood);
             bool emergency = InMission && (m == Moods.Urgent || m == Moods.Afraid) && EventLog.UnderThreat(20f);
+            _lastSpokeAt[speaker] = Time.time;
+            if (!speaker.AnsweringCaptain) _lastUnprompted = Time.time;
             SayAs(speaker.Char, speaker.Station, text, null, mood, emergency);
+            if (_speech.Count > 0) { var last = _speech.ToArray()[_speech.Count - 1]; last.ToCaptain = speaker.AnsweringCaptain; }
         }
 
         readonly Dictionary<Character, List<KeyValuePair<float, string>>> _recentLines = new Dictionary<Character, List<KeyValuePair<float, string>>>();
@@ -389,8 +470,12 @@ namespace StbcAiCrew
         void ReleaseSpeech()
         {
             // Veraltetes Gerede verwerfen (wer 20 s warten musste, dessen Satz passt meist nicht mehr)
-            while (_speech.Count > 0 && !_speech.Peek().Emergency && Time.time - _speech.Peek().QueuedAt > _cfg.StaleSpeechSec.Value)
-                _speech.Dequeue();
+            while (_speech.Count > 0 && !_speech.Peek().Emergency &&
+                   Time.time - _speech.Peek().QueuedAt > (_speech.Peek().ToCaptain ? _cfg.StaleSpeechSec.Value : Math.Min(10f, _cfg.StaleSpeechSec.Value)))
+            {
+                var old = _speech.Dequeue();
+                Plugin.Log.LogInfo(old.Char.Name + ": Satz veraltet, verworfen: " + old.Text);
+            }
             // Missionssprecher haben Vorrang: laufenden Crew-Satz abbrechen und bis kurz nach ihrem Ende schweigen
             if (GameVoicePlaying())
             {
