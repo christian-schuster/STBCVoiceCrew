@@ -497,6 +497,7 @@ namespace StbcAiCrew
             }
 
             if (_server.State == ServerState.Ready && host) _brain.Tick(_status);
+            GameMicFix.Probe();
             if (_remoteTap != null) _remoteTap.Tick();
             if (_crewSender != null) _crewSender.Tick();
             if (_voice != null && !_voiceWarmed && _sttServer.State == ServerState.Ready)
