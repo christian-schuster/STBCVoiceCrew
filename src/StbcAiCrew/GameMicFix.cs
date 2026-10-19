@@ -27,6 +27,9 @@ namespace StbcAiCrew
         {
             try
             {
+                // Nur das eigene Mikrofon (jeder Mitspieler hat auch so eine Komponente, die nie ein Gerät wählt)
+                var wmic = device as WwiseMicrophoneInputDevice;
+                if (wmic == null || !wmic.EOHGJMMKPPC) return;
                 if (_deviceField == null)
                     _deviceField = typeof(DaikonForge.VoIP.AudioInputDeviceBase).GetField("GMNCBFBICKK", BindingFlags.Instance | BindingFlags.NonPublic);
                 string current = _deviceField != null ? _deviceField.GetValue(device) as string : null;

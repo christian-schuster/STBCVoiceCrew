@@ -14,6 +14,9 @@ namespace StbcAiCrew
     /// </summary>
     public static class GamePatches
     {
+        /// <summary>Zur Fehlersuche abschaltbar (Konfiguration [Diagnose]).</summary>
+        public static bool VoipHooks = true, MicSelectHook = true;
+
         public static void Apply(Harmony harmony)
         {
             Patch(harmony, typeof(Bridge), "SendConsoleMessage", nameof(ConsoleMessagePrefix));
@@ -21,13 +24,21 @@ namespace StbcAiCrew
             Patch(harmony, typeof(CommandManager), "SetRedAlert", nameof(RedAlertPrefix));
             Patch(harmony, typeof(USSAegisCrew), "CrewbotPlayVO", nameof(CrewbotVoPrefix));
             Patch(harmony, typeof(VOManager), "Play", nameof(VoPlayPrefix));
-            // Mehrspieler: Stimmen der Mitspieler abhören, eigenes Mikro ruhen lassen, solange die Crew spricht
-            Patch(harmony, typeof(DaikonForge.VoIP.UnityAudioPlayer), "BufferAudio", nameof(RemoteAudioPrefix));
-            Patch(harmony, typeof(WwiseAudioPlayer), "BufferAudio", nameof(RemoteAudioPrefix));
-            Patch(harmony, typeof(DaikonForge.VoIP.VoiceControllerBase), "LOEAHNOJEOK", nameof(MicBufferPrefix));
-            // Spiel-Mikrofon: ohne Rift nicht das stumme Oculus-Mikrofon nehmen
-            Patch(harmony, typeof(WwiseMicrophoneInputDevice), "NJIJNNMMLIG", nameof(MicSelectPostfix), postfix: true);
-            Patch(harmony, typeof(WwiseMicrophoneInputDevice), "PBDGLAKFHCM", nameof(MicSelectPostfix), postfix: true);
+            if (VoipHooks)
+            {
+                // Mehrspieler: Stimmen der Mitspieler abhören, eigenes Mikro ruhen lassen, solange die Crew spricht
+                Patch(harmony, typeof(DaikonForge.VoIP.UnityAudioPlayer), "BufferAudio", nameof(RemoteAudioPrefix));
+                Patch(harmony, typeof(WwiseAudioPlayer), "BufferAudio", nameof(RemoteAudioPrefix));
+                Patch(harmony, typeof(DaikonForge.VoIP.VoiceControllerBase), "LOEAHNOJEOK", nameof(MicBufferPrefix));
+            }
+            else Plugin.Log.LogInfo("Sprachchat-Hooks aus (Konfiguration).");
+            if (MicSelectHook)
+            {
+                // Spiel-Mikrofon: ohne Rift nicht das stumme Oculus-Mikrofon nehmen
+                Patch(harmony, typeof(WwiseMicrophoneInputDevice), "NJIJNNMMLIG", nameof(MicSelectPostfix), postfix: true);
+                Patch(harmony, typeof(WwiseMicrophoneInputDevice), "PBDGLAKFHCM", nameof(MicSelectPostfix), postfix: true);
+            }
+            else Plugin.Log.LogInfo("Mikrofonauswahl-Hook aus (Konfiguration).");
             PatchAllOverloads(harmony, typeof(PlayerSpacecraft), "takeHit", nameof(TakeHitPostfix));
         }
 

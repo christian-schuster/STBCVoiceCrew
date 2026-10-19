@@ -194,6 +194,8 @@ namespace StbcAiCrew
             _panel = new CrewPanel(this, _roster, _llm, _brain, _tts, _qwen);
 
             GameMicFix.Preferred = (GameMicrophone.Value ?? "").Trim();
+            GamePatches.VoipHooks = Config.Bind("Diagnose", "SprachchatHooks", true, "Eingriffe in den Sprachchat des Spiels (Mitspieler hören, Crew-Stimmen senden). Aus zur Fehlersuche.").Value;
+            GamePatches.MicSelectHook = Config.Bind("Diagnose", "MikrofonauswahlHook", true, "Korrektur der Mikrofonauswahl des Spiels. Aus zur Fehlersuche.").Value;
             GamePatches.Apply(new Harmony(Guid));
             _server.Start();
             if (VoiceEnabled.Value) StartVoice(pluginDir);
