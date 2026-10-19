@@ -43,8 +43,8 @@ namespace StbcAiCrew
             new object[] { AI.IAHDEGHOPAK.CanFireTorpedoesOnTarget, Station.Tactical, "Torpedos auf das Ziel feuern" },
             new object[] { AI.IAHDEGHOPAK.CanScanTarget, Station.Tactical, "Ziel scannen" },
             new object[] { AI.IAHDEGHOPAK.CanModulateShields, Station.Tactical, "Schildfrequenz modulieren" },
-            new object[] { AI.IAHDEGHOPAK.CanMoveToTarget, Station.Helm, "Ziel anfliegen" },
-            new object[] { AI.IAHDEGHOPAK.CanSetYaw, Station.Helm, "Kurs ändern" },
+            // CanMoveToTarget / CanSetYaw nicht: die bleiben dauerhaft gesetzt (auch ohne Ziel, siehe F10-Dumps)
+            // und verleiteten die Steuer zu ständigem MoveTo
             new object[] { AI.IAHDEGHOPAK.CanSetImpulseTarget, Station.Helm, "Impulssprung-Ziel setzen" },
             new object[] { AI.IAHDEGHOPAK.CanSetWarpDirection, Station.Helm, "Warpkurs setzen" },
             new object[] { AI.IAHDEGHOPAK.CanSetPhaserPower, Station.Engineering, "Energie auf Phaser" },
@@ -139,12 +139,26 @@ namespace StbcAiCrew
             try { s.TorpedoesFore = ship.HGGDEFFGBKA != null ? ship.HGGDEFFGBKA.TotalAmmo : -1; } catch { }
             try { s.TorpedoesAft = ship.OAPDHHGKBLJ != null ? ship.OAPDHHGKBLJ.TotalAmmo : -1; } catch { }
             try { s.ReadBlackboard(); } catch { }
+            try { s.ReadPower(ship); } catch { }
             try { s.ReadTarget(); } catch { }
             s.HelmTarget = Contacts.TargetOf(Station.Helm);
             s.TacticalTarget = Contacts.TargetOf(Station.Tactical);
             try { s.ContactList = Contacts.Read(); } catch { }
             try { s.MeasureSpeed(ship); } catch { }
             return s;
+        }
+
+        /// <summary>
+        /// Echte Energieverteilung wie auf der Technik-Konsole (Warpkern: GetCurrentPower + Boost je System).
+        /// Die Werte im Schwarzen Brett sind nur Befehlsparameter (im Test 0/0/0 bei tatsächlich Schilde 4).
+        /// </summary>
+        void ReadPower(OBIMAHNLBCJ ship)
+        {
+            var core = ship.OANIPEEJPKG as FEOECPBPBIE;
+            if (core == null) return;
+            PowerEngines = core.GetCurrentPower(BaseSpacecraft.HGKJKJMPFMB.Engines) + core.EMMAJJCKENC;
+            PowerShields = core.GetCurrentPower(BaseSpacecraft.HGKJKJMPFMB.Shields) + core.FBBOLLNBICG;
+            PowerPhasers = core.GetCurrentPower(BaseSpacecraft.HGKJKJMPFMB.Phasers) + core.EEJHGLKFCOB;
         }
 
         static Vector3d _lastPos;
