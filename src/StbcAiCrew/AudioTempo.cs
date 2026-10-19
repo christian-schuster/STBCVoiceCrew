@@ -19,11 +19,11 @@ namespace StbcAiCrew
             return Stretch(pcm, rate, Math.Max(0.6f, Math.Min(1.6f, tempo)));
         }
 
-        /// <summary>Stille vorne und hinten bis auf 60 ms kürzen.</summary>
+        /// <summary>Stille vorne und hinten bis auf 150 ms kürzen.</summary>
         static short[] TrimSilence(short[] pcm, int rate)
         {
-            const int threshold = 500;
-            int keep = rate * 60 / 1000;
+            const int threshold = 250;
+            int keep = rate * 150 / 1000;
             int start = 0, end = pcm.Length - 1;
             while (start < pcm.Length && Math.Abs((int)pcm[start]) < threshold) start++;
             while (end > start && Math.Abs((int)pcm[end]) < threshold) end--;
@@ -41,7 +41,6 @@ namespace StbcAiCrew
             int frame = rate * 30 / 1000;        // 30-ms-Blöcke
             int overlap = frame / 2;
             int hopOut = frame - overlap;
-            int hopIn = (int)Math.Round(hopOut * tempo);
             int search = rate * 8 / 1000;         // ±8 ms Suchbereich
             if (src.Length < frame * 3) return src;
 
@@ -55,10 +54,14 @@ namespace StbcAiCrew
             int outPos = hopOut;
             int prevIn = 0;
             int written = frame;
+            int block = 0;
 
             while (true)
             {
-                int nominal = prevIn + hopIn;
+                // Sollposition absolut aus der Blocknummer, nicht relativ zum letzten Block:
+                // sonst zieht die Ähnlichkeitssuche das Tempo immer wieder auf 1 zurück
+                block++;
+                int nominal = (int)Math.Round(block * hopOut * (double)tempo);
                 if (nominal + frame + search >= src.Length) break;
 
                 // Stelle suchen, die am besten an das Ende des letzten Blocks anschließt
@@ -74,7 +77,7 @@ namespace StbcAiCrew
                     if (corr > best) { best = corr; bestOff = off; }
                 }
                 int inPos = nominal + bestOff;
-                if (outPos + frame >= outLen) break;
+                if (outPos + frame >= outLen) break;   // sollte nicht vorkommen
 
                 for (int i = 0; i < overlap; i++)
                     dst[outPos + i] = dst[outPos + i] * (1f - window[i]) + src[inPos + i] * window[i];
@@ -83,6 +86,16 @@ namespace StbcAiCrew
                 written = outPos + frame;
                 prevIn = inPos;
                 outPos += hopOut;
+            }
+
+            // Rest hinter dem letzten Block mit Überblendung anhängen
+            int tail = prevIn + frame;
+            if (tail < src.Length)
+            {
+                int extra = src.Length - tail;
+                if (written + extra > dst.Length) Array.Resize(ref dst, written + extra);
+                for (int i = 0; i < extra; i++) dst[written + i] = src[tail + i];
+                written += extra;
             }
 
             var r = new short[written];
