@@ -90,7 +90,9 @@ namespace StbcAiCrew
             string user = SituationPrompt(reason, status);
             P.Mark();
 
-            var messages = new List<ChatMessage> { new ChatMessage("system", SystemPrompt()) };
+            string system = SystemPrompt();
+            FitHistory(system.Length + user.Length);
+            var messages = new List<ChatMessage> { new ChatMessage("system", system) };
             messages.AddRange(_history);
             messages.Add(new ChatMessage("user", user));
 
@@ -100,7 +102,7 @@ namespace StbcAiCrew
             {
                 _busy = false;
                 if (Char != who) return;   // Mission inzwischen vorbei / neu besetzt
-                if (error != null) { Status = "LLM-Fehler"; return; }
+                if (error != null) { Status = "LLM-Fehler"; if (error.Contains("context")) _history.Clear(); return; }
                 Status = "auf Posten (" + latency.ToString("0.0") + " s)";
                 Remember(user, content);
                 Apply(content, captainSpoke);
@@ -200,7 +202,7 @@ namespace StbcAiCrew
                 { "type", "object" },
                 { "properties", new Dictionary<string, object>
                     {
-                        { "say", new Dictionary<string, object> { { "type", "string" } } },
+                        { "say", new Dictionary<string, object> { { "type", "string" }, { "maxLength", 320 } } },
                         { "mood", new Dictionary<string, object> { { "type", "string" }, { "enum", Moods.Enum() } } },
                         { "commands", new Dictionary<string, object>
                             {
@@ -287,8 +289,28 @@ namespace StbcAiCrew
             }
         }
 
+        /// <summary>
+        /// Älteste Wortwechsel verwerfen, bis die Anfrage ins Kontextfenster des Slots passt
+        /// (grob 3 Zeichen je Token, Platz für die Antwort und etwas Reserve).
+        /// </summary>
+        void FitHistory(int fixedChars)
+        {
+            int budgetChars = (_cfg.ContextPerSlot.Value - _cfg.MaxTokens.Value - 300) * 3;
+            int total = fixedChars;
+            foreach (var m in _history) total += m.Content.Length;
+            while (_history.Count >= 2 && total > budgetChars)
+            {
+                total -= _history[0].Content.Length + _history[1].Content.Length;
+                _history.RemoveRange(0, 2);
+            }
+        }
+
+        const int HistoryUserChars = 700;
+
         void Remember(string user, string assistant)
         {
+            // Frühere Lagebilder nur gekürzt behalten: das Ende enthält die Wahrnehmungen, die Werte sind ohnehin veraltet
+            if (user.Length > HistoryUserChars) user = "(frühere Lage, gekürzt) …" + user.Substring(user.Length - HistoryUserChars);
             _history.Add(new ChatMessage("user", user));
             _history.Add(new ChatMessage("assistant", assistant));
             int max = Math.Max(0, _cfg.HistoryTurns.Value) * 2;
