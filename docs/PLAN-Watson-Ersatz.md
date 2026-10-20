@@ -176,6 +176,18 @@ sofort.
 - **Komplexe Anweisungen** sollen funktionieren, z. B. „Umfliege das Minenfeld“, „Fahre alle Systeme auf Minimum,
   damit wir nicht entdeckt werden“, „Bleibe außerhalb der gegnerischen Sensoren und nähere dich dem markierten Ziel“.
 
+### Messung Vosk (2026-10-20, kleines deutsches Modell 0.15, 12 Testsätze per Piper)
+
+| | frei | mit Befehlsgrammatik |
+|---|---|---|
+| richtig | 9/12 (Fehler: „warb“, „Typus“, „leib“) | **11/12** (nur „Typos“ fehlt, unbekanntes Wort) |
+| Zeit je Satz (ganze Datei) | 310–590 ms | **30–115 ms** |
+
+Folgerung: **Zwei Erkenner gleichzeitig auf derselben Aufnahme**: mit Grammatik für den Befehl, frei für
+Eigennamen. Unbekannte Namen wie „Typos“ oder „Ragusa“ werden per Klangabgleich (Kölner Phonetik + Levenshtein)
+gegen die aktuelle Kontaktliste und die Kartenziele aufgelöst. Whisper wird für Befehle nicht mehr gebraucht. Ob es für
+das Mithören der Spielstimmen bleibt, entscheiden wir später (das Spiel hat die Texte in seiner Lokalisierungsdatei).
+
 ## 7. Manöver: komplexe Anweisungen ohne LLM
 
 Ohne LLM gibt es kein freies Verstehen beliebiger Sätze. Wir bauen stattdessen eine **Manöver-Bibliothek**, die
