@@ -204,8 +204,14 @@ der Code selbst fliegt, und **Satzvorlagen**, die sie auslösen. Jede Vorlage ha
 | **Flucht** | „Bring uns hier raus“, „Rückzug“ | weg vom nächsten Feind, ggf. Warp/Impuls-Ablauf |
 | **Kreisen / Halten** | „Kreise um die Station“, „Position halten“ | Wegpunkte auf Kreisbahn bzw. Stopp |
 
-Die Kurssteuerung läuft über das Schwarze Brett der Bot-Steuer (`ManualHeading`, `DesiredElevation`, `Destination`,
-`IsEvading`, `AvoidanceTarget` …). Wie genau, ermitteln wir im Spielcode (Meilenstein 3).
+**Kurssteuerung (Befund im Spielcode, 2026-10-20):** Die Bot-Steuer fliegt einen festen Kurs, wenn auf dem
+Schwarzen Brett `IsManualHeading.bVal = true` und `ManualHeading.fVal` = Kurswinkel in Grad steht, berechnet als
+`Atan2(forward.x, forward.z)` wie im Spiel. Die Höhe läuft über `DesiredElevation`/`DesiredElevationValue`.
+Mehrere Bot-Verhaltensknoten lesen diese Werte. Ein Wegpunkt wird also so angeflogen: Winkel von der eigenen
+Position zum Wegpunkt berechnen, `ManualHeading` setzen, Fahrt über `SetSpeed*`, und bei Erreichen den nächsten
+Wegpunkt nehmen. **Erster Schritt in Meilenstein 3:** eine Testtaste, die einen Kurs setzt, um im Spiel zu prüfen,
+ob die Bot-Steuer zuverlässig folgt. Falls nicht, steuern wir direkt über den Antrieb (`SimpleEngineServer`).
+`Destination`/`MoveTo` funktioniert nur mit auswählbaren Zielen, nicht mit freien Punkten.
 
 **Grenze:** Anweisungen, für die es keine Vorlage gibt, werden nicht verstanden. Die Crew sagt dann
 „Verstehe ich nicht, Captain“, statt etwas zu raten. Neue Vorlagen ergänzen wir aus den Testprotokollen.
