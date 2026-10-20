@@ -3,8 +3,6 @@ using AI;
 
 namespace StbcAiCrew
 {
-    public enum Station { Captain, Helm, Tactical, Engineering }
-
     public sealed class CrewCommand
     {
         public readonly BHPPPGKNAHK GameCommand;   // obfuskiertes Befehls-Enum des Spiels

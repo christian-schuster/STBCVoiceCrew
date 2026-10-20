@@ -217,8 +217,8 @@ ob die Bot-Steuer zuverlässig folgt. Falls nicht, steuern wir direkt über den 
 „Verstehe ich nicht, Captain“, statt etwas zu raten. Neue Vorlagen ergänzen wir aus den Testprotokollen.
 **Optional** könnte ein LLM nur für nicht erkannte Sätze einspringen. Das ist aber nicht die Voreinstellung.
 
-## 8. Offene Fragen an Christian
+## 8. Weitere Entscheidungen (2026-10-20)
 
-1. Zuhör-Modus als Voreinstellung: Push-to-talk, Ansprache per Station oder dauernd?
-2. Sollen die Bots die **Original-Charaktere** (Rao, Hoyle, T'nar) bleiben, oder unsere Charaktere mit Namen und
-   XP, dann aber ohne eigene Stimme?
+1. **Zuhör-Modus: beides.** Ansprache per Station oder Name („Steuer, …“, „Rao, …“) **und** Push-to-talk. Wer die
+   Taste drückt, braucht keine Ansprache.
+2. **Crew: die Original-Charaktere** Rao (Steuer), Hoyle (Taktik), T'nar (Technik) mit ihren echten Spielstimmen.
