@@ -169,10 +169,38 @@ sofort.
 - Warp und Impuls mit **einem** Satz, ohne Konsolenklicks.
 - Läuft ohne LLM, ohne Internet, mit wenig Grafikspeicher.
 
-## 6. Offene Fragen an Christian
+## 6. Entscheidungen (2026-10-20)
+
+- **Jeder Mensch darf Befehle geben**, nicht nur der Captain.
+- **Vosk** wird ausprobiert (mit Grammatik).
+- **Komplexe Anweisungen** sollen funktionieren, z. B. „Umfliege das Minenfeld“, „Fahre alle Systeme auf Minimum,
+  damit wir nicht entdeckt werden“, „Bleibe außerhalb der gegnerischen Sensoren und nähere dich dem markierten Ziel“.
+
+## 7. Manöver: komplexe Anweisungen ohne LLM
+
+Ohne LLM gibt es kein freies Verstehen beliebiger Sätze. Wir bauen stattdessen eine **Manöver-Bibliothek**, die
+der Code selbst fliegt, und **Satzvorlagen**, die sie auslösen. Jede Vorlage hat viele Formulierungen und Platzhalter
+(Ziel, Gefahr, Abstand).
+
+| Manöver | Beispiel-Anweisungen | Umsetzung im Code |
+|---|---|---|
+| **Umfliegen** | „Umfliege das Minenfeld“, „flieg um die Anomalie herum“, „weich den Minen aus“ | Routenplaner: Gefahrenzonen (Kontakte der Art Mine/Anomalie/Feind mit Radius) → Wegpunkte außen herum → Kurs je Wegpunkt setzen |
+| **Schleichfahrt** | „Alle Systeme auf Minimum, damit wir nicht entdeckt werden“, „Schleichfahrt“, „leise“ | Daueranweisung „unauffällig“: Schilde aus, Torpedos entschärft, Fahrt gering, Signatur verringern (`ReduceSignature`), Energie minimal; Reflexe dagegen gesperrt |
+| **Außer Ortung annähern** | „Bleib außerhalb der gegnerischen Sensoren und nähere dich dem markierten Ziel“ | Ortungsradius der Gegner aus den Spielwerten schätzen (10–40 km je nach Schilden/Torpedos/Fahrt) → Route zum Ziel, die alle Ortungskreise meidet; Fahrt so wählen, dass die eigene Signatur klein bleibt |
+| **Abstand halten** | „Halte 10 km Abstand zur Bird of Prey“, „bleib auf Distanz“ | Regelkreis: Entfernung messen, `MoveTo`/`MoveAwayFrom`/Stopp |
+| **Annähern / Abfangen** | „Fang den Frachter ab“, „ran an das Ziel“ | Ziel setzen + `MoveTo`, ggf. Impuls |
+| **Flucht** | „Bring uns hier raus“, „Rückzug“ | weg vom nächsten Feind, ggf. Warp/Impuls-Ablauf |
+| **Kreisen / Halten** | „Kreise um die Station“, „Position halten“ | Wegpunkte auf Kreisbahn bzw. Stopp |
+
+Die Kurssteuerung läuft über das Schwarze Brett der Bot-Steuer (`ManualHeading`, `DesiredElevation`, `Destination`,
+`IsEvading`, `AvoidanceTarget` …). Wie genau, ermitteln wir im Spielcode (Meilenstein 3).
+
+**Grenze:** Anweisungen, für die es keine Vorlage gibt, werden nicht verstanden. Die Crew sagt dann
+„Verstehe ich nicht, Captain“, statt etwas zu raten. Neue Vorlagen ergänzen wir aus den Testprotokollen.
+**Optional** könnte ein LLM nur für nicht erkannte Sätze einspringen. Das ist aber nicht die Voreinstellung.
+
+## 8. Offene Fragen an Christian
 
 1. Zuhör-Modus als Voreinstellung: Push-to-talk, Ansprache per Station oder dauernd?
 2. Sollen die Bots die **Original-Charaktere** (Rao, Hoyle, T'nar) bleiben, oder unsere Charaktere mit Namen und
    XP, dann aber ohne eigene Stimme?
-3. Vosk für die Befehlserkennung ausprobieren (Download ca. 50 MB)?
-4. Sollen menschliche Offiziere im Mehrspieler auch Bots ansprechen dürfen?
