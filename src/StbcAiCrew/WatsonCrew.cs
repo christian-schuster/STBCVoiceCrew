@@ -60,9 +60,9 @@ namespace StbcAiCrew
             var rG = CommandParser.Parse(grammar, names);
             var rF = CommandParser.Parse(free, names);
             var r = rG.Understood ? rG : rF;
-            // Anzeige: immer der frei erkannte Satz (wie gesprochen); was daraus wurde, steht unter "Befehl"
-            if (free.Length > 0) LastHeard = free;
+            // Anzeige: ergab die Befehlsgrammatik einen Befehl, ihre Fassung (bei Befehlen meist die genauere), sonst der frei erkannte Satz
             string matched = r == rG ? grammar : free;
+            LastHeard = rG.Understood || free.Length == 0 ? grammar : free;
             // Namen fehlen in der Grammatik: aus dem freien Text auflösen
             foreach (var c in r.Commands)
             {
@@ -114,7 +114,7 @@ namespace StbcAiCrew
             }
             if (r.Commands.TrueForAll(c => c.Intent == Intent.Confirm || c.Intent == Intent.Deny)) return;   // "Ja"/"Nein" im Gespräch
             LastResult = r.ToString();
-            Note(speakerName + ": „" + LastHeard + "“ → " + LastResult + (matched != LastHeard ? "  (verstanden als „" + matched + "“)" : ""));
+            Note(speakerName + ": „" + LastHeard + "“ → " + LastResult + (free != LastHeard && free.Length > 0 ? "  (frei: „" + free + "“)" : ""));
             Beep(true);
             Execute(r);
         }
