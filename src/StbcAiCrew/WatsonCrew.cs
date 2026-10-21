@@ -60,8 +60,9 @@ namespace StbcAiCrew
             var rG = CommandParser.Parse(grammar, names);
             var rF = CommandParser.Parse(free, names);
             var r = rG.Understood ? rG : rF;
-            // Anzeige: Grammatik-Fassung nur, wenn sie einen Befehl ergab; sonst den frei erkannten Satz ("funktioniert" statt "full hundert")
-            if (!rG.Understood && free.Length > 0) LastHeard = free;
+            // Anzeige: immer der frei erkannte Satz (wie gesprochen); was daraus wurde, steht unter "Befehl"
+            if (free.Length > 0) LastHeard = free;
+            string matched = r == rG ? grammar : free;
             // Namen fehlen in der Grammatik: aus dem freien Text auflösen
             foreach (var c in r.Commands)
             {
