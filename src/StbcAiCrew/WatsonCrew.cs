@@ -82,8 +82,8 @@ namespace StbcAiCrew
             if (!addressed && !ptt && r == rG)
             {
                 // Gerede, das die Grammatik zu Befehlen verbiegt ("ganz genau so" → "dann scanne phaser"), klingt anders als
-                // die freie Fassung: gemessen an echten Spielsätzen liegt Gerede unter 0,52, Befehle fast immer darüber.
-                if (!rF.Understood && free.Length > 0 && Phonetics.Similarity(grammar, free) < 0.52f)
+                // die freie Fassung: gemessen an echten Spielsätzen liegt verbogenes Gerede bei 0,25–0,35, Befehle ab 0,45.
+                if (!rF.Understood && free.Length > 0 && Phonetics.Similarity(grammar, free) < 0.40f)
                 {
                     Note("Unsicher erkannt, nicht ausgeführt: „" + grammar + "“ / „" + free + "“");
                     return;
