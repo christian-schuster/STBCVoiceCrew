@@ -393,30 +393,58 @@ namespace StbcAiCrew
 
         void WarpSequence()
         {
-            Exec(Station.Engineering, "PrepareWarp", force: true);
             if (Orders.Blocks("SetSpeedFull") == null) Exec(Station.Helm, "SetSpeedFull");
-            Vector3d start = Contacts.OwnPosition;
-            Repeat(10f, 25f, 3f, "Warp", () =>
-            {
-                if (Jumped(start)) return true;
-                Exec(Station.Helm, "EngageWarp", force: true);
-                return false;
-            });
+            Exec(Station.Engineering, "PrepareWarp", force: true);
+            JumpSequence("Warp", AI.IAHDEGHOPAK.PrepareWarp, "EngageWarp", 10f, "Kein Warp – ist ein Warpziel auf der Karte gewählt?");
         }
 
         void ImpulseSequence()
         {
             if (Orders.Blocks("SetSpeedFull") == null) Exec(Station.Helm, "SetSpeedFull");
             Exec(Station.Helm, "PrepareImpulse", force: true);
+            JumpSequence("Impuls", AI.IAHDEGHOPAK.PrepareImpulse, "EngageImpulse", 4f, "Kein Impulssprung – ist ein Impulsziel auf der Karte markiert?");
+        }
+
+        /// <summary>
+        /// Sprung auslösen, sobald die Vorbereitung fertig ist (das Spiel setzt ihr Flag auf dem Schwarzen Brett zurück),
+        /// spätestens nach fallback Sekunden. Höchstens zwei Versuche; ein neuer Befehl ersetzt den laufenden Ablauf.
+        /// </summary>
+        void JumpSequence(string what, AI.IAHDEGHOPAK prepareFlag, string engage, float fallback, string failHint)
+        {
+            _steps.RemoveAll(x => x.What == what);
             Vector3d start = Contacts.OwnPosition;
-            Repeat(6f, 20f, 3f, "Impuls", () =>
+            float t0 = Time.time, lastEngage = 0f;
+            bool seenPreparing = false;
+            int engages = 0;
+            Repeat(0.5f, 40f, 0.5f, what, () =>
             {
-                if (Jumped(start)) return true;
-                Exec(Station.Helm, "EngageImpulse", force: true);
+                if (Jumped(start)) { Note(what + ": Sprung ausgeführt"); return true; }
+                bool preparing = Flag(prepareFlag);
+                if (preparing) seenPreparing = true;
+                bool ready = (seenPreparing && !preparing) || Time.time - t0 > fallback + (seenPreparing ? 8f : 0f);
+                if (!ready) return false;
+                if (engages < 2 && (engages == 0 || Time.time - lastEngage > 8f))
+                {
+                    Exec(Station.Helm, engage, force: true);
+                    engages++;
+                    lastEngage = Time.time;
+                    return false;
+                }
+                if (Time.time - lastEngage > 8f) { Note(failHint); Beep(false); return true; }
                 return false;
             });
         }
 
+        static bool Flag(AI.IAHDEGHOPAK key)
+        {
+            try
+            {
+                var bb = AI.CommandManager.JOMJCMPJGEK != null ? AI.CommandManager.JOMJCMPJGEK.AACGBEMCAGH : null;
+                AI.OJADMPIBCFG v;
+                return bb != null && bb.TryGetValue(key, out v) && v.bVal;
+            }
+            catch { return false; }
+        }
         static bool Jumped(Vector3d start)
         {
             var d = Contacts.OwnPosition - start;
