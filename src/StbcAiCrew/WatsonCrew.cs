@@ -51,7 +51,7 @@ namespace StbcAiCrew
         /// <summary>Erkanntes von Vosk: "mit Grammatik ‖ frei". ptt = Push-to-talk war gedrückt.</summary>
         public void Heard(Station speaker, string speakerName, string recognized, bool ptt)
         {
-            if (!GameBridge.InMission) { LastHeard = Plain(recognized); LastResult = "kein Einsatz"; return; }
+            if (!GameBridge.InMission) { string g0, f0; Split(recognized, out g0, out f0); LastHeard = f0.Length > 0 ? f0 : g0; LastResult = "kein Einsatz"; return; }
             string grammar, free;
             Split(recognized, out grammar, out free);
             LastHeard = grammar.Length > 0 ? grammar : free;
@@ -81,12 +81,19 @@ namespace StbcAiCrew
             // Befehle ohne Anrede/Taste nur, wenn auch die freie Erkennung sie verstanden hat.
             if (!addressed && !ptt && r == rG)
             {
+                // Gerede, das die Grammatik zu Befehlen verbiegt ("ganz genau so" → "dann scanne phaser"), klingt anders als
+                // die freie Fassung: gemessen an echten Spielsätzen liegt Gerede unter 0,52, Befehle fast immer darüber.
+                if (!rF.Understood && free.Length > 0 && Phonetics.Similarity(grammar, free) < 0.52f)
+                {
+                    Note("Unsicher erkannt, nicht ausgeführt: „" + grammar + "“ / „" + free + "“");
+                    return;
+                }
                 int removed = r.Commands.RemoveAll(c => Risky(c.Intent) && !rF.Commands.Exists(f => f.Intent == c.Intent));
                 if (removed > 0) Note("Unsicher erkannt, nicht ausgeführt: " + grammar + " / " + free);
                 if (r.Commands.Count == 0) return;
             }
             // Ohne Anrede: ein Satz, der vollständig als Befehl verstanden wurde (Gespräche ergeben keine oder nur Teilbefehle)
-            bool shortOrder = r.Understood && r.NotUnderstood.Count == 0 && WordCount(LastHeard) <= 8;
+            bool shortOrder = r.Understood && r.NotUnderstood.Count == 0 && WordCount(matched) <= 8;
             bool accept = ptt || Listen == ListenMode.Always ||
                           (Listen == ListenMode.Both && (addressed || shortOrder)) ||
                           (Listen == ListenMode.Address && addressed);
@@ -107,7 +114,7 @@ namespace StbcAiCrew
             }
             if (r.Commands.TrueForAll(c => c.Intent == Intent.Confirm || c.Intent == Intent.Deny)) return;   // "Ja"/"Nein" im Gespräch
             LastResult = r.ToString();
-            Note(speakerName + ": „" + LastHeard + "“ → " + LastResult);
+            Note(speakerName + ": „" + LastHeard + "“ → " + LastResult + (matched != LastHeard ? "  (verstanden als „" + matched + "“)" : ""));
             Beep(true);
             Execute(r);
         }
