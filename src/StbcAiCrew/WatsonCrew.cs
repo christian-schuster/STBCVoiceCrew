@@ -90,7 +90,12 @@ namespace StbcAiCrew
                 }
                 int removed = r.Commands.RemoveAll(c => Risky(c.Intent) && !rF.Commands.Exists(f => f.Intent == c.Intent));
                 if (removed > 0) Note("Unsicher erkannt, nicht ausgeführt: " + grammar + " / " + free);
-                if (r.Commands.Count == 0) return;
+                if (r.Commands.Count == 0)
+                {
+                    if (!rF.Understood) return;
+                    r = rF;   // die freie Fassung ergab einen Befehl ("feuer frei" statt "feuer schleichen")
+                    matched = free;
+                }
             }
             // Ohne Anrede: ein Satz, der vollständig als Befehl verstanden wurde (Gespräche ergeben keine oder nur Teilbefehle)
             bool shortOrder = r.Understood && r.NotUnderstood.Count == 0 && WordCount(matched) <= 8;
