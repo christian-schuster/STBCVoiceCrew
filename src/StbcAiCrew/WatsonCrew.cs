@@ -49,8 +49,11 @@ namespace StbcAiCrew
         // ---------------- Hören ----------------
 
         /// <summary>Erkanntes von Vosk: "mit Grammatik ‖ frei". ptt = Push-to-talk war gedrückt.</summary>
+        Station _speaker = Station.Captain;
+
         public void Heard(Station speaker, string speakerName, string recognized, bool ptt)
         {
+            _speaker = speaker;
             if (!GameBridge.InMission) { string g0, f0; Split(recognized, out g0, out f0); LastHeard = f0.Length > 0 ? f0 : g0; LastResult = "kein Einsatz"; return; }
             string grammar, free;
             Split(recognized, out grammar, out free);
@@ -69,6 +72,8 @@ namespace StbcAiCrew
                 bool fire = c.Intent == Intent.FirePhasers || c.Intent == Intent.FireTorpedoes || c.Intent == Intent.Analyze;
                 // Feuerbefehle nur mit ausdrücklichem Ziel ("Feuer auf …"), sonst bleibt das gewählte Ziel
                 string tail = fire ? After(free, " auf ") : free;
+                string said = After(matched, " auf ") ?? "";
+                if (fire && System.Text.RegularExpressions.Regex.IsMatch(said, @"^(das\s+|dem\s+|den\s+)?(markierte\w*\s+|aktuelle\w*\s+)?ziel\w*$")) continue;
                 if (c.Resolved != null || (!NeedsName(c.Intent) && !(fire && (c.Name != null || tail != null)))) continue;
                 float s;
                 c.Resolved = (tail != null ? Phonetics.BestMatch(tail, names, out s) : null) ??
@@ -324,57 +329,82 @@ namespace StbcAiCrew
         }
 
         /// <summary>
-        /// Waffen und Subsysteme brauchen einen Gegner auf der Taktik-Konsole ("Brauche einen Zielpunkt"). Ist keiner
-        /// gewählt, den nächsten Feind wählen, wie es ein Captain tun würde.
-        /// </summary>
-        /// <summary>
         /// Eigene oder verbündete Schiffe nur auf ausdrücklichen Befehl mit Namen beschießen ("Feuer auf die Nicholson"),
         /// nie mit einem allgemeinen "Feuer frei", nur weil sie gerade als Ziel gewählt sind.
         /// </summary>
         bool FriendlyTarget()
         {
-            string current = Contacts.TargetOf(Station.Tactical);
-            Contact cur = current != null ? _contacts.Find(x => x.Name == current) : null;
+            var t = ConsoleTarget(Station.Tactical);
+            Contact cur = t != null ? _contacts.Find(x => ReferenceEquals(x.Detectable, t)) : null;
             if (cur == null || (cur.Category != HHHDDNLEDBN.Friendly && cur.Category != HHHDDNLEDBN.Self)) return false;
-            Note("Nicht gefeuert: " + current + " ist verbündet (zum Beschuss ausdrücklich nennen)");
+            Note("Nicht gefeuert: " + cur.Name + " ist verbündet (zum Beschuss ausdrücklich nennen)");
             Beep(false);
             return true;
         }
 
+        /// <summary>
+        /// Waffen und Subsysteme brauchen ein Ziel auf der Taktik-Konsole ("Brauche einen Zielpunkt"). Das gewählte bleibt
+        /// (auch zivile Schiffe: Antrieb lahmlegen); fehlt es, wird genau das Objekt von Captain oder Steuer übernommen
+        /// (nicht über den Namen: mehrere Minen heißen gleich), sonst der nächste Feind.
+        /// </summary>
         void EnsureEnemyTarget()
         {
-            // Gewähltes Ziel bleibt (auch zivile Schiffe: Antrieb lahmlegen); fehlt es an der Taktik-Konsole,
-            // das Ziel von Captain oder Steuer übernehmen
-            string current = Contacts.TargetOf(Station.Tactical);
-            if (current != null) { Note("Taktik-Ziel: " + current); return; }
-            string other = Contacts.TargetOf(Station.Captain) ?? Contacts.TargetOf(Station.Helm);
-            if (other != null && Select(other) != null) return;
+            // Das Ziel, das der Befehlende an seiner Konsole markiert hat, gilt; sonst das eigene der Taktik, sonst Captain/Steuer
+            var mine = _speaker != Station.Tactical ? ConsoleTarget(_speaker) : null;
+            var tac = ConsoleTarget(Station.Tactical);
+            if (mine != null) { if (mine != tac) SetAll(mine, Contacts.TargetOf(_speaker)); else Note("Taktik-Ziel: " + Contacts.TargetOf(Station.Tactical)); return; }
+            if (tac != null) { Note("Taktik-Ziel: " + Contacts.TargetOf(Station.Tactical)); return; }
+            var other = ConsoleTarget(Station.Captain) ?? ConsoleTarget(Station.Helm);
+            if (other != null) { SetAll(other, Contacts.TargetOf(Station.Captain) ?? Contacts.TargetOf(Station.Helm)); return; }
             Contact best = null;
             foreach (var c in _contacts) if (c.Category == HHHDDNLEDBN.Enemy && (best == null || c.DistanceKm < best.DistanceKm)) best = c;
-            if (best == null) { Note("Kein Gegner in Sicht" + (current != null ? " (Ziel: " + current + ")" : "")); return; }
+            if (best == null) { Note("Kein Gegner in Sicht"); return; }
             Select(best.Name);
         }
 
+        /// <summary>Kontakt per Name auf allen Konsolen wählen; bei gleichen Namen den nächsten.</summary>
         string Select(string name)
         {
             if (name == null) return null;
-            Contact contact = _contacts.Find(x => x.Name == name);
-            var t = contact != null ? contact.Detectable as DIENHALJFIO : null;
-            if (t == null) return null;
-            var ship = GameBridge.PlayerShip;
-            if (ship == null) return null;
-            try
-            {
-                foreach (ConsoleShipInterface console in new ConsoleShipInterface[] {
-                    ship.GetComponent<Crew.ConsoleCaptainShipInterface>(), ship.GetComponent<Crew.ConsoleHelmShipInterface>(),
-                    ship.GetComponent<Crew.ConsoleTacticalShipInterface>(), ship.GetComponent<Crew.ConsoleEngineeringShipInterface>() })
-                    if (console != null && console.GetTarget() != t) console.SetTarget(t);
-                Note("Ziel: " + name);
-                return name;
-            }
-            catch (Exception e) { Plugin.Log.LogWarning("Ziel nicht gesetzt: " + e.Message); return null; }
+            Contact contact = null;
+            foreach (var c in _contacts)
+                if (c.Name == name && c.Detectable is DIENHALJFIO && (contact == null || c.DistanceKm < contact.DistanceKm)) contact = c;
+            if (contact == null) return null;
+            return SetAll((DIENHALJFIO)contact.Detectable, name) ? name : null;
         }
 
+        static ConsoleShipInterface[] Consoles()
+        {
+            var ship = GameBridge.PlayerShip;
+            if (ship == null) return new ConsoleShipInterface[0];
+            return new ConsoleShipInterface[] {
+                ship.GetComponent<Crew.ConsoleCaptainShipInterface>(), ship.GetComponent<Crew.ConsoleHelmShipInterface>(),
+                ship.GetComponent<Crew.ConsoleTacticalShipInterface>(), ship.GetComponent<Crew.ConsoleEngineeringShipInterface>() };
+        }
+
+        static DIENHALJFIO ConsoleTarget(Station st)
+        {
+            try
+            {
+                var c = Consoles();
+                if (c.Length == 0) return null;
+                var console = st == Station.Captain ? c[0] : st == Station.Helm ? c[1] : st == Station.Tactical ? c[2] : c[3];
+                return console != null ? console.GetTarget() : null;
+            }
+            catch { return null; }
+        }
+
+        bool SetAll(DIENHALJFIO t, string name)
+        {
+            try
+            {
+                foreach (var console in Consoles())
+                    if (console != null && console.GetTarget() != t) console.SetTarget(t);
+                Note("Ziel: " + name);
+                return true;
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("Ziel nicht gesetzt: " + e.Message); return false; }
+        }
         void SetOrder(string field, string value)
         {
             switch (field)
