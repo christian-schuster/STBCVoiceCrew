@@ -251,6 +251,9 @@ namespace StbcAiCrew.Voice
             // "Schilde anvisieren" meint die gegnerischen (die Schilde-hoch-Regel steht davor)
             if (seen.Contains(Intent.TargetShields))
                 result.Commands.RemoveAll(c => c.Clause == clause && c.Intent == Intent.ShieldsUp);
+            // "Ziel stören" ist Stören, kein Ziel namens "stören"
+            if (seen.Contains(Intent.Hack))
+                result.Commands.RemoveAll(c => c.Clause == clause && c.Intent == Intent.SelectTarget);
             if (matched) return;
             // Nur ein Name, der zum vorigen Befehl gehört ("Nimm Kurs auf, Frachter Alpha 2")
             var prev = result.Commands.Count > 0 ? result.Commands[result.Commands.Count - 1] : null;
