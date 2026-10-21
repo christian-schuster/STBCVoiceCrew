@@ -234,7 +234,7 @@ namespace StbcAiCrew
             if (_qwen != null) _qwen.Host.After = _sttServer;   // Sprachausgabe erst nach der Spracherkennung (wartet noch in der Startverzögerung)
             var vs = new VoiceSettings
             {
-                Device = MicDevice.Value, GameDeviceId = () => GameBridge.GameAudioInId, Language = MicLanguage.Value, MarginDb = MicMarginDb.Value,
+                Device = MicDevice.Value, GameDeviceId = () => GameBridge.GameAudioInId, GameDeviceName = () => GameMicFix.CurrentGameMic, Language = MicLanguage.Value, MarginDb = MicMarginDb.Value,
                 MinDb = MicMinDb.Value, EndSilenceMs = MicEndSilenceMs.Value, MinSpeechMs = MicMinSpeechMs.Value
             };
             _voice = new VoiceInput(Log, vs, url, OnHeard);
@@ -403,7 +403,7 @@ namespace StbcAiCrew
             {
                 var vs = new VoiceSettings
                 {
-                    Device = MicDevice.Value, GameDeviceId = () => GameBridge.GameAudioInId, Language = MicLanguage.Value, MarginDb = MicMarginDb.Value,
+                    Device = MicDevice.Value, GameDeviceId = () => GameBridge.GameAudioInId, GameDeviceName = () => GameMicFix.CurrentGameMic, Language = MicLanguage.Value, MarginDb = MicMarginDb.Value,
                     MinDb = MicMinDb.Value, EndSilenceMs = MicEndSilenceMs.Value, MinSpeechMs = MicMinSpeechMs.Value
                 };
                 _voice = new VoiceInput(Log, vs, "http://127.0.0.1:0", OnHeardWatson) { Transcriber = transcribe, SttReady = true };

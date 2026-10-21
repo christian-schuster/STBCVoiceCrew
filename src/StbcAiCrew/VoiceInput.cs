@@ -20,6 +20,8 @@ namespace StbcAiCrew
         public string Device = "";
         /// <summary>Mikrofon des Spiels (Oculus-Endpunkt-GUID, leer = Windows-Standard).</summary>
         public Func<string> GameDeviceId = () => "";
+        /// <summary>Im Spiel gewähltes Mikrofon (Unity-Name); hat Vorrang vor Oculus/Windows-Standard.</summary>
+        public Func<string> GameDeviceName = () => null;
         public string Language = "de";
         public float MarginDb = 12f;
         public float MinDb = -50f;
@@ -102,7 +104,7 @@ namespace StbcAiCrew
             string lastError = null;
             while (_running)
             {
-                var want = AudioDevices.ResolveInput(_cfg.Device, _cfg.GameDeviceId());
+                var want = AudioDevices.ResolveInput(_cfg.Device, _cfg.GameDeviceId(), _cfg.GameDeviceName());
                 bool switchDevice = _mic != null && _mic.Running && want.Valid && want.Id != _mic.DeviceId;
                 if (switchDevice)
                 {

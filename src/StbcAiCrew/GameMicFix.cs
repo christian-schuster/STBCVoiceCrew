@@ -64,11 +64,14 @@ namespace StbcAiCrew
         static float _nextProbe;
         static string _lastProbe;
 
+        /// <summary>Mikrofon, das im Spiel gewählt ist (Unity-Gerätename); die Mod hört über dasselbe Gerät.</summary>
+        public static volatile string CurrentGameMic;
+
         /// <summary>Nur beobachten (ändert nichts): Gerät, Aufnahme und Pegel des eigenen Spiel-Mikrofons ins Log, wenn sich etwas ändert.</summary>
         public static void Probe()
         {
             if (Time.realtimeSinceStartup < _nextProbe) return;
-            _nextProbe = Time.realtimeSinceStartup + 5f;
+            _nextProbe = Time.realtimeSinceStartup + 2f;
             try
             {
                 var mgr = VoIpManager.IEFBKOMBFGO;
@@ -81,6 +84,7 @@ namespace StbcAiCrew
                     if (_deviceField == null)
                         _deviceField = typeof(DaikonForge.VoIP.AudioInputDeviceBase).GetField("GMNCBFBICKK", BindingFlags.Instance | BindingFlags.NonPublic);
                     string name = _deviceField != null ? _deviceField.GetValue(dev) as string : "?";
+                    if (!string.IsNullOrEmpty(name) && name != "?") CurrentGameMic = name;
                     bool rec = !string.IsNullOrEmpty(name) && Microphone.IsRecording(name);
                     s = dev.GetType().Name + ", Gerät \"" + name + "\", nimmt auf: " + (rec ? "ja" : "nein") +
                         ", Pegel " + (dev.IEBPIBFAIKE > 1f ? "hoch" : dev.IEBPIBFAIKE > 0.01f ? "Signal" : "still") +

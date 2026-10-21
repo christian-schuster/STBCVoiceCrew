@@ -25,8 +25,21 @@ namespace StbcAiCrew
         public static AudioDevice ResolveOutput(string configFilter, string gameEndpointGuid) =>
             Resolve(false, configFilter, gameEndpointGuid);
 
-        public static AudioDevice ResolveInput(string configFilter, string gameEndpointGuid) =>
-            Resolve(true, configFilter, gameEndpointGuid);
+        public static AudioDevice ResolveInput(string configFilter, string gameEndpointGuid, string gameDeviceName = null)
+        {
+            // Im Spiel ausgewähltes Mikrofon: winmm kürzt Namen auf 31 Zeichen, daher Präfixvergleich
+            if (string.IsNullOrEmpty(configFilter) && !string.IsNullOrEmpty(gameDeviceName))
+            {
+                int count = waveInGetNumDevs();
+                for (uint i = 0; i < count; i++)
+                {
+                    string n = Name(true, i);
+                    if (n.Length >= 4 && (gameDeviceName.StartsWith(n, StringComparison.OrdinalIgnoreCase) || n.StartsWith(gameDeviceName, StringComparison.OrdinalIgnoreCase)))
+                        return new AudioDevice { Id = i, Name = n, Source = "im Spiel gewählt", Valid = true };
+                }
+            }
+            return Resolve(true, configFilter, gameEndpointGuid);
+        }
 
         static AudioDevice Resolve(bool input, string filter, string gameGuid)
         {
