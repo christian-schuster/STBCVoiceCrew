@@ -154,7 +154,7 @@ namespace StbcAiCrew
             try
             {
                 var p = Plugin.Instance;
-                if (p != null && p.MuteBotVoiceLines.Value && !GameBridge.Injecting &&
+                if (p != null && !p.WatsonMode && p.MuteBotVoiceLines.Value && !GameBridge.Injecting &&
                     (KFLGELOFJDK == KFLPAPJAAGO.Crewbot_Helm_Rao || KFLGELOFJDK == KFLPAPJAAGO.Crewbot_Tac_Hoyle || KFLGELOFJDK == KFLPAPJAAGO.Crewbot_Eng_Tnar))
                     return false;
             }

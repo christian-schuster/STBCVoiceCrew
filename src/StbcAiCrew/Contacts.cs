@@ -17,6 +17,9 @@ namespace StbcAiCrew
         public string Bearing;
         public bool Helm, Tactical, Engineering, Captain;
         public JMHPEPBOFIB Detectable;
+        /// <summary>Position im Sternsystem (Meter); nur für Navigation im Code, nicht für Prompts.</summary>
+        public Vector3d Position;
+        public bool HasPosition;
 
         public string KindDe()
         {
@@ -49,6 +52,11 @@ namespace StbcAiCrew
     /// </summary>
     public static class Contacts
     {
+        /// <summary>Eigene Position und Ausrichtung (aus der letzten Abfrage).</summary>
+        public static Vector3d OwnPosition;
+        public static Vector3 OwnForward, OwnRight;
+        public static bool HasOwn;
+
         public static List<Contact> Read()
         {
             var list = new List<Contact>();
@@ -57,6 +65,7 @@ namespace StbcAiCrew
             SystemTransform own = null;
             foreach (var bi in nav.BodyInfos)
                 if (bi != null && bi.Body != null && bi.Body == nav.OwnShip) own = bi.Transform;
+            if (own != null) { OwnPosition = own.Position; OwnForward = own.Forward; OwnRight = own.Right; HasOwn = true; }
 
             foreach (var bi in nav.BodyInfos)
             {
@@ -81,6 +90,8 @@ namespace StbcAiCrew
                     {
                         var rel = st.Position - own.Position;
                         c.DistanceKm = rel.magnitude / 1000.0;
+                        c.Position = st.Position;
+                        c.HasPosition = true;
                         c.Bearing = BearingDe((Vector3)rel, own.Forward, own.Right);
                     }
                     if (!string.IsNullOrEmpty(c.Name)) list.Add(c);

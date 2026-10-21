@@ -106,6 +106,19 @@ foreach (var (text, intents, name) in cases)
     }
 }
 
+// Dieselben Sätze so, wie Vosk sie liefert: klein, ohne Satzzeichen (nur Bericht, zählt nicht als Fehler)
+int vOk = 0;
+foreach (var (text, intents, name) in cases)
+{
+    string vosk = System.Text.RegularExpressions.Regex.Replace(text.ToLowerInvariant(), @"[^\p{L}\p{Nd}' ]+", " ").Trim();
+    var r = CommandParser.Parse(vosk, names);
+    var got = r.Commands.Select(c => c.Intent.ToString()).OrderBy(x => x).ToArray();
+    var want = intents.Split(',', StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x).ToArray();
+    if (got.SequenceEqual(want)) vOk++;
+    else Console.WriteLine($"VOSK    \"{vosk}\"  erwartet: {intents}  bekommen: {r}");
+}
+Console.WriteLine($"Vosk-Form: {vOk}/{cases.Length}");
+
 // Klangabgleich einzeln
 foreach (var (heard, want) in new[] { ("Rekusa", "Ragusa"), ("Akusa", "Ragusa"), ("Typus", "Typos"), ("Plazmakülmittel C", "Plasma-Kühlmittel C"), ("Talin", "Tallinn") })
 {

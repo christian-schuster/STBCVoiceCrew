@@ -98,6 +98,8 @@ namespace StbcAiCrew
         public static RemoteVoiceTap Instance;
         /// <summary>Echtzeit, zu der zuletzt ein Mitspieler gesprochen hat.</summary>
         public float LastRemoteSpeech = -999f;
+        /// <summary>Statt Whisper: eigene Erkennung (Watson-Modus: Vosk).</summary>
+        public Func<short[], string> Transcriber;
 
         public RemoteVoiceTap(ManualLogSource log, string sttBaseUrl, string language, Func<bool> ready, Action<int, string> heard)
         {
@@ -180,7 +182,8 @@ namespace StbcAiCrew
                     if (!_ready()) continue;
                     try
                     {
-                        string text = VoiceInput.Clean(VoiceInput.Transcribe(_sttUrl, job.Value, _language));
+                        string raw = Transcriber != null ? Transcriber(job.Value) : VoiceInput.Transcribe(_sttUrl, job.Value, _language);
+                        string text = VoiceInput.Clean(raw);
                         if (string.IsNullOrEmpty(text)) continue;
                         int id = job.Key;
                         MainThread.Post(() => _heard(id, text));

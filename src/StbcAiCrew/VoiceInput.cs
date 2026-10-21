@@ -54,6 +54,14 @@ namespace StbcAiCrew
         volatile bool _running;
 
         public volatile bool Muted;
+        /// <summary>Eigener Erkenner (z. B. Vosk) statt Whisper per HTTP; null = Whisper.</summary>
+        public Func<short[], string> Transcriber;
+        /// <summary>Push-to-talk-Taste gedrückt (vom Hauptthread gesetzt).</summary>
+        public volatile bool PttDown;
+        bool _pttSeen;
+        readonly Queue<bool> _pendingPtt = new Queue<bool>();
+        /// <summary>Wurde während der zuletzt gemeldeten Äußerung Push-to-talk gedrückt?</summary>
+        public bool LastPtt { get; private set; }
         long _deafUntilTicks;
 
         /// <summary>Mikrofon für n Sekunden ignorieren, solange die Crew spricht (sonst hört es sie als Captain).</summary>
@@ -168,6 +176,7 @@ namespace StbcAiCrew
                 if (_speechRun >= 3)
                 {
                     _speaking = true;
+                    if (PttDown) _pttSeen = true;
                     _utterance.AddRange(_preroll);
                     _preroll.Clear();
                     _speechFrames = _speechRun;
@@ -190,7 +199,7 @@ namespace StbcAiCrew
                     int total = _utterance.Count * FrameSamples;
                     var pcm = new short[total];
                     for (int i = 0; i < _utterance.Count; i++) Array.Copy(_utterance[i], 0, pcm, i * FrameSamples, FrameSamples);
-                    lock (_pending) _pending.Enqueue(pcm);
+                    lock (_pending) { _pending.Enqueue(pcm); _pendingPtt.Enqueue(_pttSeen || PttDown); }
                     _signal.Set();
                     State = "erkennt …";
                 }
@@ -199,9 +208,13 @@ namespace StbcAiCrew
             }
         }
 
+        /// <summary>Vom Hauptthread je Frame: Taste während einer laufenden Äußerung gedrückt?</summary>
+        public void NotePtt(bool down) { PttDown = down; if (down && _speaking) _pttSeen = true; }
+
         void ResetUtterance()
         {
             _speaking = false;
+            _pttSeen = false;
             _utterance.Clear();
             _speechRun = _silenceRun = _speechFrames = 0;
         }
@@ -234,15 +247,17 @@ namespace StbcAiCrew
                 while (true)
                 {
                     short[] pcm;
+                    bool ptt;
                     lock (_pending)
                     {
                         if (_pending.Count == 0) break;
                         pcm = _pending.Dequeue();
+                        ptt = _pendingPtt.Count > 0 && _pendingPtt.Dequeue();
                     }
                     try
                     {
                         var started = DateTime.UtcNow;
-                        string raw = Transcribe(_sttUrl, pcm, _cfg.Language);
+                        string raw = Transcriber != null ? Transcriber(pcm) : Transcribe(_sttUrl, pcm, _cfg.Language);
                         string text = Clean(raw);
                         double secs = (DateTime.UtcNow - started).TotalSeconds;
                         if (text == null)
@@ -254,7 +269,7 @@ namespace StbcAiCrew
                         LastHeard = text;
                         _log.LogInfo("Gehört (" + secs.ToString("0.00") + " s): " + text);
                         if (!_speaking) State = Muted ? "stumm" : "hört zu";
-                        MainThread.Post(() => _onText(text));
+                        MainThread.Post(() => { LastPtt = ptt; _onText(text); });
                     }
                     catch (Exception e)
                     {

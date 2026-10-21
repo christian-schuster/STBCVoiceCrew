@@ -4,6 +4,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using StbcAiCrew.Voice;
 using UnityEngine;
 
 namespace StbcAiCrew
@@ -118,6 +119,19 @@ namespace StbcAiCrew
         public ConfigEntry<KeyCode> KeyTalk;
         public ConfigEntry<KeyCode> KeyEndMission;
         public ConfigEntry<KeyCode> KeyStateDump;
+        public ConfigEntry<KeyCode> KeyPushToTalk;
+
+        // ---- Watson-Ersatz ----
+        public ConfigEntry<string> Mode;
+        public ConfigEntry<string> ListenModeSetting;
+        public ConfigEntry<bool> WatsonBeeps;
+        public ConfigEntry<string> VoskModel;
+        bool _watson;
+        WatsonCrew _crew;
+        VoskEngine _vosk;
+        string _vocabKey;
+        /// <summary>Watson-Modus: Befehle ohne Sprachmodell, Original-Crew mit Spielstimmen.</summary>
+        public bool WatsonMode => _watson;
 
         ServerHost _server;
         ServerHost _sttServer;
@@ -175,6 +189,8 @@ namespace StbcAiCrew
             _dataDir = Path.Combine(Paths.ConfigPath, "StbcAiCrew");
             JobObject.Enabled = UseJobObject.Value;
             KillLeftovers(pluginDir);
+            _watson = !Mode.Value.Trim().Equals("llm", StringComparison.OrdinalIgnoreCase);
+            if (_watson) { AwakeWatson(pluginDir); return; }
 
             string baseUrl = "http://127.0.0.1:" + Port.Value;
             string exe = UseExternalServer.Value ? null : ResolvePath(pluginDir, LlamaServerExe.Value);
@@ -348,6 +364,144 @@ namespace StbcAiCrew
             }
         }
 
+        // ================= Watson-Modus =================
+
+        void AwakeWatson(string pluginDir)
+        {
+            GameMicFix.Preferred = (GameMicrophone.Value ?? "").Trim();
+            GamePatches.VoipHooks = Config.Bind("Diagnose", "SprachchatHooks", true, "Eingriffe in den Sprachchat des Spiels (Mitspieler hören, Crew-Stimmen senden). Aus zur Fehlersuche.").Value;
+            GamePatches.MicSelectHook = Config.Bind("Diagnose", "MikrofonauswahlHook", true, "Korrektur der Mikrofonauswahl des Spiels. Aus zur Fehlersuche.").Value;
+            GamePatches.Apply(new Harmony(Guid));
+
+            _crew = new WatsonCrew(this) { Reflexes = Reflexes.Value };
+            switch ((ListenModeSetting.Value ?? "").Trim().ToLowerInvariant())
+            {
+                case "ansprache": _crew.Listen = WatsonCrew.ListenMode.Address; break;
+                case "ptt": _crew.Listen = WatsonCrew.ListenMode.PushToTalk; break;
+                case "dauernd": _crew.Listen = WatsonCrew.ListenMode.Always; break;
+                default: _crew.Listen = WatsonCrew.ListenMode.Both; break;
+            }
+            _player = new WavePlayer
+            {
+                DeviceFilter = SpeakerDevice.Value,
+                Volume = SpeakerVolume.Value,
+                GameDeviceId = () => GameBridge.GameAudioOutId,
+                GameVolume = () => GameBridge.GameVoiceVolume
+            };
+            _crew.Player = _player;
+
+            string modelDir = ResolvePath(pluginDir, VoskModel.Value);
+            _vosk = new VoskEngine(Log, Path.Combine(pluginDir, "vosk"), modelDir);
+            _vosk.SetVocabulary(VoskEngine.CommandWords);
+            Func<short[], string> transcribe = pcm =>
+            {
+                var r = _vosk.Recognize(pcm);
+                return r.Key + " ‖ " + r.Value;
+            };
+
+            if (VoiceEnabled.Value && _vosk.Ready)
+            {
+                var vs = new VoiceSettings
+                {
+                    Device = MicDevice.Value, GameDeviceId = () => GameBridge.GameAudioInId, Language = MicLanguage.Value, MarginDb = MicMarginDb.Value,
+                    MinDb = MicMinDb.Value, EndSilenceMs = MicEndSilenceMs.Value, MinSpeechMs = MicMinSpeechMs.Value
+                };
+                _voice = new VoiceInput(Log, vs, "http://127.0.0.1:0", OnHeardWatson) { Transcriber = transcribe, SttReady = true };
+                if (OwnMicrophone.Value) _voice.Start();
+                if (Multiplayer.Value)
+                    _remoteTap = new RemoteVoiceTap(Log, "http://127.0.0.1:0", MicLanguage.Value, () => true, OnRemoteHeardWatson) { Transcriber = transcribe };
+            }
+            Log.LogInfo("STBC AI Crew im Watson-Modus geladen (Vosk " + (_vosk.Ready ? "bereit" : "FEHLT: " + _vosk.Error) +
+                        ", Zuhören: " + _crew.Listen + ", Push-to-talk: " + KeyPushToTalk.Value + ").");
+        }
+
+        void OnHeardWatson(string text)
+        {
+            if (!Net.IsHost) return;
+            Station? mine = Net.Online ? Net.StationOf(Net.LocalPlayerId) : null;
+            bool ptt = _voice != null && _voice.LastPtt;
+            _crew.Heard(mine ?? ParseStation(MyStation.Value), Net.Online ? (Net.NameOf(Net.LocalPlayerId) ?? "Ich") : "Captain", text, ptt);
+        }
+
+        void OnRemoteHeardWatson(int playerId, string text)
+        {
+            if (!Net.IsHost) return;
+            Station st = Net.StationOf(playerId) ?? Station.Captain;
+            _crew.Heard(st, Net.NameOf(playerId) ?? "Mitspieler " + playerId, text, false);
+        }
+
+        void UpdateWatson()
+        {
+            bool host = Net.IsHost;
+            if (host != _wasHost) { _wasHost = host; Log.LogInfo(host ? "Host: Sprachbefehle aktiv." : "Nicht Host: Sprachbefehle laufen beim Host."); }
+            bool inMission = GameBridge.InMission && host;
+            if (inMission != _wasInMission) _status = null;
+            _wasInMission = inMission;
+
+            if (inMission && Time.time >= _nextStatusPoll)
+            {
+                _nextStatusPoll = Time.time + 1f;
+                var now = ShipStatus.Read();
+                if (now != null) _status = now;
+                if (now != null && now.ContactList != null && _vosk != null)
+                {
+                    var names = new System.Collections.Generic.List<string>();
+                    foreach (var c in now.ContactList) names.Add(c.Name);
+                    string key = string.Join("|", names.ToArray());
+                    if (key != _vocabKey)
+                    {
+                        _vocabKey = key;
+                        var words = new System.Collections.Generic.List<string>(VoskEngine.CommandWords);
+                        words.AddRange(names);
+                        _vosk.SetVocabulary(words);
+                    }
+                }
+            }
+            if (host) _crew.Tick(inMission ? _status : null);
+
+            GameMicFix.Probe();
+            if (_remoteTap != null) _remoteTap.Tick();
+            if (_voice != null) _voice.PttDown = Input.GetKey(KeyPushToTalk.Value);
+
+            if (Input.GetKeyDown(KeyMute.Value) && _voice != null)
+            {
+                _voice.Muted = !_voice.Muted;
+                Toast(_voice.Muted ? "Mikrofon stumm." : "Mikrofon hört wieder zu.");
+            }
+            if (Input.GetKeyDown(KeyOverlay.Value)) _showOverlay = !_showOverlay;
+            if (Input.GetKeyDown(KeyStateDump.Value))
+            {
+                try { Toast("Zustand: " + StateProbe.Dump(Path.Combine(_dataDir, "dumps"))); }
+                catch (Exception e) { Toast("Dump fehlgeschlagen: " + e.Message); Log.LogError(e); }
+            }
+        }
+
+        void DrawWatson()
+        {
+            if (!_showOverlay) return;
+            GUILayout.BeginArea(new Rect(10f, 10f, 520f, Screen.height - 20f));
+            GUILayout.BeginVertical("box");
+            GUILayout.Label("<b>Brückencrew (Watson-Ersatz)</b>  –  Vosk: " + (_vosk != null && _vosk.Ready ? "bereit" : "Fehler: " + (_vosk != null ? _vosk.Error : "?")) +
+                            "  |  " + (GameBridge.InMission ? "im Einsatz" : "kein Einsatz"));
+            if (_voice != null)
+            {
+                string bar = new string('|', Mathf.Clamp(Mathf.RoundToInt((_voice.LevelDb + 70f) / 3f), 0, 20));
+                GUILayout.Label("Mikro (" + _voice.Device + "): " + _voice.State + "  " + bar + (_voice.Speaking ? " ●" : "") +
+                                (_voice.PttDown ? "  [Push-to-talk]" : ""));
+            }
+            GUILayout.Label("Gehört: " + _crew.LastHeard);
+            GUILayout.Label("Befehl: " + _crew.LastResult);
+            string orders = _crew.Orders.Describe();
+            if (!string.IsNullOrEmpty(orders) || _crew.Nav.StayOutOfSensors)
+                GUILayout.Label("Daueranweisung: " + (orders ?? "") + (_crew.Nav.StayOutOfSensors ? " · außerhalb der Ortung" : ""));
+            if (_crew.Nav.Current != Navigator.Mode.None) GUILayout.Label("Manöver: " + _crew.Nav.Status);
+            foreach (var l in _crew.Log) GUILayout.Label("<i>" + l + "</i>");
+            GUILayout.Label(KeyPushToTalk.Value + " halten = Befehl · " + KeyMute.Value + " Mikro stumm · " + KeyOverlay.Value + " Overlay");
+            if (_toast != null && Time.realtimeSinceStartup < _toastUntil) GUILayout.Label(_toast);
+            GUILayout.EndVertical();
+            GUILayout.EndArea();
+        }
+
         void BindConfig()
         {
             SkipLauncherInstance = Config.Bind("Diagnose", "StartinstanzUeberspringen", true, "In der von Steam gestarteten Startinstanz (die nur Ubisoft Connect startet) inaktiv bleiben und die DOORSTOP-Variablen entfernen. Aktiv wird der Mod im von Ubisoft Connect gestarteten Spiel.");
@@ -444,6 +598,11 @@ namespace StbcAiCrew
             KeyOverlay = Config.Bind("Tasten", "Overlay", KeyCode.F7, "Overlay ein/aus.");
             KeyTalk = Config.Bind("Tasten", "Sprechen", KeyCode.F8, "Texteingabe an die Crew öffnen.");
             KeyEndMission = Config.Bind("Tasten", "MissionBeenden", KeyCode.F9, "Mission für beendet erklären (Nachbesprechung).");
+            KeyPushToTalk = Config.Bind("Tasten", "PushToTalk", KeyCode.F4, "Watson-Modus: gedrückt halten = Befehl an die Crew, ohne sie anzusprechen.");
+            Mode = Config.Bind("Allgemein", "Modus", "watson", "watson = schnelle Sprachbefehle ohne Sprachmodell (Vosk, Original-Crew mit Spielstimmen), llm = KI-Crew mit Sprachmodell (Stand Tag LLM-Version).");
+            ListenModeSetting = Config.Bind("Sprache", "ZuhoerModus", "beides", "Watson-Modus: beides = Ansprache (Steuer/Rao, Taktik/Hoyle, Technik/T'nar, Crew), Push-to-talk oder kurzer Befehl; ansprache = nur mit Anrede; ptt = nur mit Taste; dauernd = alles Erkannte.");
+            WatsonBeeps = Config.Bind("Watson", "Bestaetigungstoene", true, "Kurzer Ton: verstanden (zwei hohe) / nicht verstanden (ein tiefer).");
+            VoskModel = Config.Bind("Watson", "VoskModell", "vosk/vosk-model-small-de-0.15", "Vosk-Modellordner (relativ zum Plugin-Ordner oder absolut). Die Vosk-DLLs liegen im Ordner vosk.");
             KeyStateDump = Config.Bind("Tasten", "Zustandsdump", KeyCode.F10, "Felder des Spielerschiffs in eine Datei schreiben (Reverse Engineering).");
         }
 
@@ -482,6 +641,7 @@ namespace StbcAiCrew
             if (!_active) return;
             MainThread.Drain(e => Log.LogError(e));
             EventLog.Update();
+            if (_watson) { UpdateWatson(); return; }
 
             // Mehrspieler: Die Crew gehört dem Host (Master Client); bei allen anderen bleibt sie aus
             bool host = Net.IsHost;
@@ -539,6 +699,7 @@ namespace StbcAiCrew
         void OnGUI()
         {
             if (!_active) return;
+            if (_watson) { DrawWatson(); return; }
             _panel.Draw(_brain.InMission);
             if (!_showOverlay) return;
 
@@ -618,6 +779,8 @@ namespace StbcAiCrew
             _shutDown = true;
             if (_brain != null && _brain.InMission) _brain.SaveForShutdown();
             if (_voice != null) _voice.Dispose();
+            if (_remoteTap != null) _remoteTap.Dispose();
+            if (_vosk != null) _vosk.Dispose();
             if (_player != null) _player.Dispose();
             if (_qwen != null) _qwen.Dispose();
             if (_tts != null) _tts.Dispose();
