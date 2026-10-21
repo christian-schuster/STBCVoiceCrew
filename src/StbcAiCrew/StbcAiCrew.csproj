@@ -11,7 +11,13 @@
     <Nullable>disable</Nullable>
     <AssemblyName>StbcAiCrew</AssemblyName>
     <RootNamespace>StbcAiCrew</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>1.0.0</Version>
+    <Company>Phuntasy Productions</Company>
+    <Authors>Phuntasy Productions</Authors>
+    <Product>STBC Voice Crew</Product>
+    <!-- Keine lokalen Pfade in der veröffentlichten DLL (kein PDB-Pfad, Quellpfade neutralisiert) -->
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=.</PathMap>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GameDir Condition="'$(GameDir)' == ''">G:\SteamLibrary\steamapps\common\Star Trek Bridge Crew</GameDir>
@@ -19,6 +25,11 @@
     <BepInExCoreDir>$(GameDir)\BepInEx\core</BepInExCoreDir>
     <!-- Nach dem Build direkt ins Spiel kopieren (abschalten mit -p:DeployToGame=false) -->
     <DeployToGame Condition="'$(DeployToGame)' == ''">true</DeployToGame>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
 
   <ItemGroup>

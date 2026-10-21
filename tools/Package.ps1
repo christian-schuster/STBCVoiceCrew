@@ -52,6 +52,19 @@ if (-not $NoBepInEx) {
 Copy-Item (Join-Path $repo "docs\release\README.txt") $stage
 Copy-Item (Join-Path $repo "docs\release\THIRD-PARTY-NOTICES.txt") $stage
 
+# Datenschutz: keine lokalen Pfade oder persönlichen Angaben in eigenen Dateien (DLL, Texte)
+$private = '[A-Za-z]:\\[^\x00\s]{2,}', '\\Users\\', 'schuster', 'Christian', 'CeeBeeEss', 'Plantronics', '\.pdb'
+$own = @(Get-Item (Join-Path $pluginDir "StbcAiCrew.dll")) + (Get-ChildItem $stage -File -Filter *.txt) + (Get-ChildItem $stage -File -Filter *.ini)
+foreach ($f in $own) {
+    $b = [IO.File]::ReadAllBytes($f.FullName)
+    foreach ($t in [Text.Encoding]::ASCII.GetString($b), [Text.Encoding]::Unicode.GetString($b)) {
+        foreach ($p in $private) {
+            $m = [regex]::Match($t, $p, 'IgnoreCase')
+            if ($m.Success) { throw "Private Angabe in $($f.Name): '$($m.Value)' – Paket nicht erstellt." }
+        }
+    }
+}
+
 $zip = Join-Path $repo "dist\$Name-$version.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $zip -CompressionLevel Optimal

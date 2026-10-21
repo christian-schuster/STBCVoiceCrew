@@ -610,7 +610,7 @@ namespace StbcAiCrew
             PiperVoiceDir = Config.Bind("Stimme", "StimmenOrdner", "piper/voices", "Ordner mit Piper-Stimmen (*.onnx + *.onnx.json).");
             SpeakerDevice = Config.Bind("Stimme", "Lautsprecher", "", "Leer lassen = dasselbe Ausgabegerät wie das Spiel (Oculus-Einstellung bzw. Windows-Standard). Nur für Sonderfälle: Teil eines Gerätenamens aus dem Log.");
             SpeakerVolume = Config.Bind("Stimme", "LautstaerkeFaktor", 1f, "Faktor auf die Lautstärke aus dem Optionsmenü des Spiels (Master × Sprachchat). 1 = genau wie Mitspieler.");
-            GameMicrophone = Config.Bind("Sprache", "SpielMikrofon", "", "Mikrofon für Sprachchat und Mikrofontest des Spiels (Teil des Gerätenamens, z. B. Plantronics). Leer = automatisch: ohne Rift nie das stumme Oculus-Mikrofon.");
+            GameMicrophone = Config.Bind("Sprache", "SpielMikrofon", "", "Mikrofon für Sprachchat und Mikrofontest des Spiels (Teil des Gerätenamens, z. B. Headset). Leer = automatisch: ohne Rift nie das stumme Oculus-Mikrofon.");
             Reflexes = Config.Bind("Crew", "Reflexe", true, "Routine im Code (Schilde hoch unter Beschuss, Energie auf Schilde bei Treffern, Reparaturen), immer gebunden an die Daueranweisungen des Captains.");
             QuickOrders = Config.Bind("Crew", "SofortBefehle", true, "Eindeutige Befehle des Captains (\"Schilde hoch\", \"volle Fahrt\", \"Warp\", \"Energie!\") ohne Sprachmodell sofort ausführen.");
             OwnMicrophone = Config.Bind("Sprache", "EigenesMikrofon", true, "Die Mod öffnet das Mikrofon selbst (winmm). Aus, falls das Spiel sonst kein Mikrofon bekommt (Mikrofontest im Mehrspieler).");
