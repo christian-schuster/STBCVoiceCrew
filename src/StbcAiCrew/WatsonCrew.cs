@@ -206,8 +206,8 @@ namespace StbcAiCrew
                     case Intent.ShieldsUp: Exec(Station.Tactical, "RaiseShields", force: true); break;
                     case Intent.ShieldsDown: Exec(Station.Tactical, "LowerShields", force: true); break;
                     case Intent.ModulateShields: Exec(Station.Tactical, "ModulateShields"); break;
-                    case Intent.FirePhasers: if (c.Resolved != null) Target(c); else EnsureEnemyTarget(); Exec(Station.Tactical, "FirePhasers", force: true); break;
-                    case Intent.FireTorpedoes: if (c.Resolved != null) Target(c); else EnsureEnemyTarget(); Exec(Station.Tactical, "ArmTorpedoes", force: true); Later(1.5f, "Torpedos", () => Exec(Station.Tactical, "FireTorpedoes", force: true)); break;
+                    case Intent.FirePhasers: if (c.Resolved != null) Target(c); else { EnsureEnemyTarget(); if (FriendlyTarget()) break; } Exec(Station.Tactical, "FirePhasers", force: true); break;
+                    case Intent.FireTorpedoes: if (c.Resolved != null) Target(c); else { EnsureEnemyTarget(); if (FriendlyTarget()) break; } Exec(Station.Tactical, "ArmTorpedoes", force: true); Later(1.5f, "Torpedos", () => Exec(Station.Tactical, "FireTorpedoes", force: true)); break;
                     case Intent.CeaseFire: Exec(Station.Tactical, "CeaseFire"); break;
                     case Intent.ArmTorpedoes: Exec(Station.Tactical, "ArmTorpedoes", force: true); break;
                     case Intent.DisarmTorpedoes: Exec(Station.Tactical, "DisarmTorpedoes"); break;
@@ -217,7 +217,7 @@ namespace StbcAiCrew
                     case Intent.CeaseTargeting: Exec(Station.Tactical, "CeaseTargeting"); break;
                     case Intent.Scan: if (c.Name != null && Target(c) == null && !IsCurrentTarget(c)) { Missing(c); break; } Exec(Station.Tactical, "ScanTarget"); break;
                     case Intent.Analyze: if (c.Name != null) Target(c); Exec(Station.Tactical, "AnalyseTarget", force: true); break;
-                    case Intent.Attack: if (c.Name != null && Target(c) == null) { Missing(c); break; } if (c.Name == null) EnsureEnemyTarget(); Exec(Station.Tactical, "EngageTarget", force: true); break;
+                    case Intent.Attack: if (c.Name != null && Target(c) == null) { Missing(c); break; } if (c.Name == null) { EnsureEnemyTarget(); if (FriendlyTarget()) break; } Exec(Station.Tactical, "EngageTarget", force: true); break;
                     case Intent.SelectTarget:   // ohne gefundenen Namen neben anderen Befehlen meist ein Hörfehler: still übergehen
                         if (Target(c) == null && r.Commands.Count == 1) Missing(c); break;
                     case Intent.RedAlert: Exec(Station.Tactical, "RaiseShields", force: true); break;
@@ -322,6 +322,20 @@ namespace StbcAiCrew
         /// Waffen und Subsysteme brauchen einen Gegner auf der Taktik-Konsole ("Brauche einen Zielpunkt"). Ist keiner
         /// gewählt, den nächsten Feind wählen, wie es ein Captain tun würde.
         /// </summary>
+        /// <summary>
+        /// Eigene oder verbündete Schiffe nur auf ausdrücklichen Befehl mit Namen beschießen ("Feuer auf die Nicholson"),
+        /// nie mit einem allgemeinen "Feuer frei", nur weil sie gerade als Ziel gewählt sind.
+        /// </summary>
+        bool FriendlyTarget()
+        {
+            string current = Contacts.TargetOf(Station.Tactical);
+            Contact cur = current != null ? _contacts.Find(x => x.Name == current) : null;
+            if (cur == null || (cur.Category != HHHDDNLEDBN.Friendly && cur.Category != HHHDDNLEDBN.Self)) return false;
+            Note("Nicht gefeuert: " + current + " ist verbündet (zum Beschuss ausdrücklich nennen)");
+            Beep(false);
+            return true;
+        }
+
         void EnsureEnemyTarget()
         {
             // Gewähltes Ziel bleibt (auch zivile Schiffe: Antrieb lahmlegen); fehlt es an der Taktik-Konsole,
