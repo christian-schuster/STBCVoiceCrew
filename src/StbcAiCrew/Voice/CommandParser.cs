@@ -306,7 +306,7 @@ namespace StbcAiCrew.Voice
         {
             string n = s.Trim();
             for (int i = 0; i < 3; i++) { string m = NameNoise.Replace(n, "").Trim(); if (m == n) break; n = m; }
-            if (Regex.IsMatch(n, @"^(es|sie|ihn|ihm|das|die|der|den|dem|uns|euch|da|dort|hin|leben)$", O)) return null;   // Fürwörter sind keine Namen
+            if (Regex.IsMatch(n, @"^(es|sie|ihn|ihm|das|die|der|den|dem|uns|euch|da|dort|hin|leben|anvisieren|erfassen|auswählen|wählen|markieren|aufschalten)$", O)) return null;   // Fürwörter und Verben sind keine Namen
             return n.Length > 0 ? n : null;
         }
 
