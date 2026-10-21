@@ -125,9 +125,9 @@ namespace StbcAiCrew.Voice
             R(Intent.FireTorpedoes, T, @"(torpedo\w*\s*(feuer\w*|los|ab\w*|raus)?|(feuer\w*|fire)\s+\w*\s*torpedo\w*)");
             R(Intent.FirePhasers, T, @"(phaser\w*|feuer\s+frei|^\s*feuer\s*$|^\s*feuer\s+(auf|aufs|mein\w*|das|die|den|dem)\b|feuern|schie(ß|ss)\w*|open\s+fire|fire)");
             R(Intent.DisarmTorpedoes, T, @"(torpedo\w*\s+entschärf\w*|entschärf\w*)");
-            R(Intent.TargetEngines, T, @"((ziel\w*|anvisier\w*|zielt?|stör\w*)\s+\w*\s*(auf\s+)?(den\s+|die\s+)?(antrieb|triebwerk)\w*|(antrieb|triebwerk)\w*\s+(des\s+ziels\s+)?(sub\s*system\w*\s+)?(anvisier\w*|auswähl\w*|wähl\w*|stör\w*)|target\s+(their\s+)?engines)");
-            R(Intent.TargetWeapons, T, @"((ziel\w*|anvisier\w*|zielt?|stör\w*)\s+\w*\s*(auf\s+)?(die\s+)?waffen\w*|waffen\w*\s+(des\s+ziels\s+)?(sub\s*system\w*\s+)?(anvisier\w*|auswähl\w*|wähl\w*|stör\w*)|target\s+(their\s+)?weapons)");
-            R(Intent.TargetShields, T, @"((ziel\w*|anvisier\w*|zielt?|stör\w*)\s+\w*\s*(auf\s+)?(die\s+)?schild\w*|schilde\s+des\s+ziels|schild\w*\s+(des\s+ziels\s+)?(sub\s*system\w*\s+)?(anvisier\w*|auswähl\w*|wähl\w*|stör\w*)|target\s+(their\s+)?shields)");
+            R(Intent.TargetEngines, T, @"((ziel\w*|anvisier\w*|zielt?)\s+\w*\s*(auf\s+)?(den\s+|die\s+)?(antrieb|triebwerk)\w*|(antrieb|triebwerk)\w*\s+(des\s+ziels\s+)?(sub\s*system\w*\s+)?(anvisier\w*|auswähl\w*|wähl\w*)|target\s+(their\s+)?engines)");
+            R(Intent.TargetWeapons, T, @"((ziel\w*|anvisier\w*|zielt?)\s+\w*\s*(auf\s+)?(die\s+)?waffen\w*|waffen\w*\s+(des\s+ziels\s+)?(sub\s*system\w*\s+)?(anvisier\w*|auswähl\w*|wähl\w*)|target\s+(their\s+)?weapons)");
+            R(Intent.TargetShields, T, @"((ziel\w*|anvisier\w*|zielt?)\s+\w*\s*(auf\s+)?(die\s+)?schild\w*|schilde\s+des\s+ziels|schild\w*\s+(des\s+ziels\s+)?(sub\s*system\w*\s+)?(anvisier\w*|auswähl\w*|wähl\w*)|target\s+(their\s+)?shields)");
             R(Intent.CeaseTargeting, T, @"(zielerfassung\s+(aufheben|beenden|aus)|cease\s+target)");
             R(Intent.Analyze, T, @"(analys\w*|analyze)");
             R(Intent.Scan, T, @"(scan\w*|sca\w*\s+(die|das|den)\s+|abtast\w*|(nach\s+)?leben\w*zeichen)(\s+" + ART + NAME + ")?");
@@ -145,7 +145,7 @@ namespace StbcAiCrew.Voice
             R(Intent.Repair, E, @"(reparier\w*|repair)(\s+" + ART + @"(?<sub>\p{L}+))?");
             R(Intent.Transport, E, @"(beam\w*|transport\w*|an\s+bord\s+(holen|nehmen)|anborg|energize)");
             R(Intent.ReduceSignature, E, @"(signatur\s+(verringern|reduzieren|senken)|reduce\s+signature)");
-            R(Intent.Hack, E, @"(hack\w*|eindring\w*|system\s+intrusion)");
+            R(Intent.Hack, T, @"((?<sub>antrieb|triebwerk|waffen|schild|kommunikation|komm)\w*\s+(des\s+ziels\s+)?(sub\s*system\w*\s+)?(übernehm\w*|übernimm|hack\w*|stör\w*|lahm\w*|eindring\w*)|(übernimm|übernehm\w*|hack\w*|stör\w*|leg\w*\s+lahm)\s+(den\s+|die\s+|seine\s+|ihre?n?\s+)?(?<sub>antrieb|triebwerk|waffen|schild|kommunikation|komm)\w*|^\s*(das\s+)?(ziel\s+)?stör\w*(\s+(das\s+)?ziel)?\s*$|hack\w*|eindring\w*|system\s+intrusion)");
 
             // ---------- Captain / Gespräch ----------
             R(Intent.AnswerHail, C, @"(ruf\s+(annehmen|beantworten)|kanal\s+öffnen|auf\s+den\s+schirm|answer\s+hail|on\s+screen)");

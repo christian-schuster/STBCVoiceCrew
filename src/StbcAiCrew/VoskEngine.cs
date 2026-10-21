@@ -154,6 +154,7 @@ namespace StbcAiCrew.Voice
         public static readonly string[] CommandWords =
         {
             "subsystem", "subsysteme", "system", "auswählen", "wähle", "wählen", "stören", "störe", "anvisieren", "visiere",
+            "übernehmen", "übernimm", "übernehme", "hacken", "hacke", "kommunikation", "eindringen",
             "abschalten", "ausschalten", "deaktivieren", "aktivieren", "einschalten", "lahmlegen", "lahm", "legen",
             "steuer", "steuermann", "taktik", "technik", "helm", "navigation", "rao", "hoyle", "crew", "brücke", "alle", "stationen", "computer", "fähnrich", "lieutenant",
             "bitte", "jetzt", "los", "sofort", "ja", "nein", "okay", "gut", "danke", "und", "dann", "danach", "aber", "nicht", "kein", "keine", "keiner", "nur", "noch", "mal", "doch", "wieder", "erst", "wenn", "ich", "es", "sage", "uns", "wir", "dich", "mich",

@@ -221,7 +221,14 @@ namespace StbcAiCrew
                     case Intent.RepairAll: Exec(Station.Engineering, "RepairBalanced"); break;
                     case Intent.Transport: Exec(Station.Engineering, "TransportFromTarget", force: true); break;
                     case Intent.ReduceSignature: Exec(Station.Engineering, "ReduceSignature", force: true); break;
-                    case Intent.Hack: Exec(Station.Tactical, "DisruptShields", force: true); break;
+                    case Intent.Hack:   // Systemübernahme der Taktik ("Antrieb übernehmen")
+                        {
+                            string s = c.Subsystem ?? "";
+                            EnsureEnemyTarget();
+                            Exec(Station.Tactical, s.StartsWith("waffe") ? "DisruptWeapons" : s.StartsWith("schild") ? "DisruptShields" :
+                                                   s.StartsWith("komm") ? "DisruptComms" : "DisruptEngines", force: true);
+                            break;
+                        }
                     case Intent.AnswerHail:
                     case Intent.LaunchProbe: Note(c.Intent + ": nur an der Captain-Konsole möglich"); break;
                     // Daueranweisungen
