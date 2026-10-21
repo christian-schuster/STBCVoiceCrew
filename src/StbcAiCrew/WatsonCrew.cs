@@ -306,9 +306,12 @@ namespace StbcAiCrew
         /// </summary>
         void EnsureEnemyTarget()
         {
+            // Gewähltes Ziel bleibt (auch zivile Schiffe: Antrieb lahmlegen); fehlt es an der Taktik-Konsole,
+            // das Ziel von Captain oder Steuer übernehmen
             string current = Contacts.TargetOf(Station.Tactical);
-            Contact cur = current != null ? _contacts.Find(x => x.Name == current) : null;
-            if (cur != null && cur.Category == HHHDDNLEDBN.Enemy) return;
+            if (current != null) { Note("Taktik-Ziel: " + current); return; }
+            string other = Contacts.TargetOf(Station.Captain) ?? Contacts.TargetOf(Station.Helm);
+            if (other != null && Select(other) != null) return;
             Contact best = null;
             foreach (var c in _contacts) if (c.Category == HHHDDNLEDBN.Enemy && (best == null || c.DistanceKm < best.DistanceKm)) best = c;
             if (best == null) { Note("Kein Gegner in Sicht" + (current != null ? " (Ziel: " + current + ")" : "")); return; }
