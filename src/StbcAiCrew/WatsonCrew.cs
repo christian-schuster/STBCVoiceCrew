@@ -218,7 +218,8 @@ namespace StbcAiCrew
                     case Intent.Scan: if (c.Name != null && Target(c) == null && !IsCurrentTarget(c)) { Missing(c); break; } Exec(Station.Tactical, "ScanTarget"); break;
                     case Intent.Analyze: if (c.Name != null) Target(c); Exec(Station.Tactical, "AnalyseTarget", force: true); break;
                     case Intent.Attack: if (c.Name != null && Target(c) == null) { Missing(c); break; } if (c.Name == null) EnsureEnemyTarget(); Exec(Station.Tactical, "EngageTarget", force: true); break;
-                    case Intent.SelectTarget: if (Target(c) == null) Missing(c); break;
+                    case Intent.SelectTarget:   // ohne gefundenen Namen neben anderen Befehlen meist ein Hörfehler: still übergehen
+                        if (Target(c) == null && r.Commands.Count == 1) Missing(c); break;
                     case Intent.RedAlert: Exec(Station.Tactical, "RaiseShields", force: true); break;
                     case Intent.CancelRedAlert: Note("Alarm aufheben: nur an der Captain-Konsole möglich"); break;
                     case Intent.CloakHunt: Exec(Station.Tactical, "CloakHunt", force: true); break;
