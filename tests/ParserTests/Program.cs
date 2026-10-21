@@ -54,6 +54,9 @@ var cases = new (string text, string intents, string name)[]
     ("So, Fendrich Rao, geh doch bitte mal auf Impuls.", "Impulse", null),
     // ---- Taktik ----
     ("Schilde senken.", "ShieldsDown", null),
+    ("Senke die Schilde", "ShieldsDown", null),
+    ("senken schilde", "ShieldsDown", null),
+    ("Hebe die Schilde", "ShieldsUp", null),
     ("Feuer einstellen.", "CeaseFire", null),
     ("Feuer!", "FirePhasers", null),
     ("Feuer auf mein Ziel", "FirePhasers", null),

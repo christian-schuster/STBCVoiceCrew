@@ -118,8 +118,8 @@ namespace StbcAiCrew.Voice
             R(Intent.MoveToTarget, H, @"((flieg\w*|fliegt|fahr\w*|bring\w*|steuer\w*|klick\w*)\s+(uns\s+)?(nach|zu[mr]?|an|in\s+richtung|richtung)\s+" + ART + NAME + @"|kurs\s+(nehm\w*\s+|setz\w*\s+)?(auf|zu[mr]?|nach)(\s+" + ART + NAME + @")?|(nimm|nehm\w*|setz\w*)\s+kurs\s+(auf|zu[mr]?|nach)(\s+" + ART + NAME + @")?|(nähere?\w*|annäher\w*|näher\s+an|näher\s+ran|ran\s+an)\s*(dich|uns)?\s*" + ART + NAME + @"?|(fang\w*|abfang\w*)\s+" + ART + NAME + @"?\s*(ab)?|ziel\s+anfliegen|anfliegen|richte\w*\s+(das\s+schiff|uns)\s+(aus\s+)?(zu[mr]?|auf)\s+" + ART + NAME + @"|(das\s+schiff|uns)\s+(aus)?richten\s+(zu[mr]?|auf|nach)\s+" + ART + NAME + @"|(move|fly|head)\s+to(ward)?s?\s+" + NAME + ")");
 
             // ---------- Taktik ----------
-            R(Intent.ShieldsUp, T, @"(schilde?r?\s+(hoch|rauf|aktivieren|an|heben)|roter\s+alarm|red\s+alert|raise\s+shields|shields\s+up)");
-            R(Intent.ShieldsDown, T, @"(schilde?r?\s+(runter|senken|deaktivieren|aus)|lower\s+shields|shields\s+down)");
+            R(Intent.ShieldsUp, T, @"(schilde?r?\s+(hoch|rauf|aktivieren|an|heben)|(heb\w*|aktivier\w*|fahr\w*)\s+(die\s+)?schilde?r?(\s+hoch)?\b|roter\s+alarm|red\s+alert|raise\s+shields|shields\s+up)");
+            R(Intent.ShieldsDown, T, @"(schilde?r?\s+(runter|senken|deaktivieren|aus)|(senk\w*|deaktivier\w*)\s+(die\s+)?schilde?r?\b|lower\s+shields|shields\s+down)");
             R(Intent.ModulateShields, T, @"(schild\w*\s*(frequenz\w*)?\s+modul\w*|modul\w*\s+(die\s+)?schild\w*|modulate)");
             R(Intent.CeaseFire, T, @"(feuer\s+einstellen|feuer\s+stopp|cease\s+fire)");
             R(Intent.ArmTorpedoes, T, @"(torpedo\w*\s+(aktivier\w*|scharf\w*|bereit\w*|lad\w*|klar\w*)|(aktivier\w*|lad\w*|mach\w*)\s+(die\s+)?torpedo\w*(\s+scharf|\s+bereit)?|arm\s+torpedo\w*)");

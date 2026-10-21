@@ -88,7 +88,7 @@ namespace StbcAiCrew
             {
                 // Gerede, das die Grammatik zu Befehlen verbiegt ("ganz genau so" → "dann scanne phaser"), klingt anders als
                 // die freie Fassung: gemessen an echten Spielsätzen liegt verbogenes Gerede bei 0,25–0,35, Befehle ab 0,45.
-                if (!rF.Understood && free.Length > 0 && Phonetics.Similarity(grammar, free) < 0.40f)
+                if (!rF.Understood && free.Length > 0 && WordCount(free) > 2 && Phonetics.Similarity(grammar, free) < 0.40f)
                 {
                     Note("Unsicher erkannt, nicht ausgeführt: „" + grammar + "“ / „" + free + "“");
                     return;
@@ -222,7 +222,7 @@ namespace StbcAiCrew
                     case Intent.PrepareWarp: Exec(Station.Engineering, "PrepareWarp"); break;
                     // Taktik
                     case Intent.ShieldsUp: Exec(Station.Tactical, "RaiseShields", force: true); break;
-                    case Intent.ShieldsDown: Exec(Station.Tactical, "LowerShields", force: true); break;
+                    case Intent.ShieldsDown: _shieldReflexPausedUntil = Time.time + 30f; Exec(Station.Tactical, "LowerShields", force: true); break;
                     case Intent.ModulateShields: Exec(Station.Tactical, "ModulateShields"); break;
                     case Intent.FirePhasers: if (c.Resolved != null) Target(c); else { EnsureEnemyTarget(); if (FriendlyTarget()) break; } Exec(Station.Tactical, "FirePhasers", force: true); break;
                     case Intent.FireTorpedoes: if (c.Resolved != null) Target(c); else { EnsureEnemyTarget(); if (FriendlyTarget()) break; } Exec(Station.Tactical, "ArmTorpedoes", force: true); Later(1.5f, "Torpedos", () => Exec(Station.Tactical, "FireTorpedoes", force: true)); break;
