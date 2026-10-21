@@ -122,6 +122,7 @@ namespace StbcAiCrew.Voice
             R(Intent.ShieldsDown, T, @"(schilde?r?\s+(runter|senken|deaktivieren|aus)|lower\s+shields|shields\s+down)");
             R(Intent.ModulateShields, T, @"(schild\w*\s*(frequenz\w*)?\s+modul\w*|modul\w*\s+(die\s+)?schild\w*|modulate)");
             R(Intent.CeaseFire, T, @"(feuer\s+einstellen|feuer\s+stopp|cease\s+fire)");
+            R(Intent.ArmTorpedoes, T, @"(torpedo\w*\s+(aktivier\w*|scharf\w*|bereit\w*|lad\w*|klar\w*)|(aktivier\w*|lad\w*|mach\w*)\s+(die\s+)?torpedo\w*(\s+scharf|\s+bereit)?|arm\s+torpedo\w*)");
             R(Intent.FireTorpedoes, T, @"(torpedo\w*\s*(feuer\w*|los|ab\w*|raus)?|(feuer\w*|fire)\s+\w*\s*torpedo\w*)");
             R(Intent.FirePhasers, T, @"(phaser\w*|feuer\s+frei|^\s*feuer\s*$|^\s*feuer\s+(auf|aufs|mein\w*|das|die|den|dem)\b|feuern|schie(ß|ss)\w*|open\s+fire|fire)");
             R(Intent.DisarmTorpedoes, T, @"(torpedo\w*\s+entschärf\w*|entschärf\w*)");
@@ -283,7 +284,7 @@ namespace StbcAiCrew.Voice
                 case Intent.SpeedFull: return seen.Contains(Intent.LimitSpeed) || seen.Contains(Intent.SpeedQuarter) || seen.Contains(Intent.SpeedHalf) || seen.Contains(Intent.SpeedStop);
                 case Intent.SpeedStop: return seen.Contains(Intent.CeaseFire);
                 case Intent.FirePhasers: return seen.Contains(Intent.HoldFire) || seen.Contains(Intent.FireOnOrder) || seen.Contains(Intent.CeaseFire) || seen.Contains(Intent.FireTorpedoes);
-                case Intent.FireTorpedoes: return seen.Contains(Intent.HoldFire) || seen.Contains(Intent.FireOnOrder) || seen.Contains(Intent.DisarmTorpedoes);
+                case Intent.FireTorpedoes: return seen.Contains(Intent.ArmTorpedoes) || seen.Contains(Intent.HoldFire) || seen.Contains(Intent.FireOnOrder) || seen.Contains(Intent.DisarmTorpedoes);
                 case Intent.Warp: return seen.Contains(Intent.WarpEngage) || seen.Contains(Intent.PrepareWarp);
                 case Intent.Impulse: return seen.Contains(Intent.ImpulseEngage) || seen.Contains(Intent.SpeedFull) || seen.Contains(Intent.SpeedHalf) || seen.Contains(Intent.SpeedQuarter);
                 case Intent.MoveToTarget: return seen.Contains(Intent.AvoidHazard) || seen.Contains(Intent.CircleTarget) || seen.Contains(Intent.Warp) || seen.Contains(Intent.Impulse);
