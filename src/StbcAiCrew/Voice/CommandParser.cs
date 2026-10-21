@@ -137,9 +137,9 @@ namespace StbcAiCrew.Voice
             R(Intent.CloakHunt, T, @"(getarnt\w*\s+(schiff\w*\s+)?(jagen|suchen)|tarn\w*\s+jagen|cloak\s*hunt)");
 
             // ---------- Technik ----------
-            R(Intent.PowerWeapons, E, @"(energie\s+(auf|an|in|zu)\s+(die\s+)?(waffen|phaser)|(waffen|phaser)\w*\s+(auf\s+)?(maximum|maximal\w*|volle?\w*\s+(leistung|energie|kraft)|hundert(\s+prozent)?)|(volle\s+)?offensiv\w*|power\s+to\s+weapons)");
-            R(Intent.PowerShields, E, @"(energie\s+(auf|an|in|zu)\s+(die\s+)?schild\w*|schild\w*\s+(auf\s+)?(maximum|maximal\w*|volle?\w*\s+(leistung|energie|kraft)|hundert(\s+prozent)?)|defensiv\w*|power\s+to\s+shields)");
-            R(Intent.PowerEngines, E, @"(energie\s+(auf|an|in|zu)\s+(den\s+)?(antrieb|triebwerk)\w*|(antrieb|triebwerk)\w*\s+(auf\s+)?(maximum|maximal\w*|volle?\w*\s+(leistung|energie|kraft)|hundert(\s+prozent)?)|alles\s+in\s+den\s+antrieb|power\s+to\s+engines)");
+            R(Intent.PowerWeapons, E, @"(energie\s+(auf|an|in|zu[mr]?|für)\s+(die\s+|den\s+|der\s+)?(waffen|phaser)|(waffen|phaser)\w*\s+(auf\s+)?(maximum|maximal\w*|volle?\w*\s+(leistung|energie|kraft)|hundert(\s+prozent)?)|(volle\s+)?offensiv\w*|power\s+to\s+weapons)");
+            R(Intent.PowerShields, E, @"(energie\s+(auf|an|in|zu[mr]?|für)\s+(die\s+|den\s+|der\s+)?schild\w*|schild\w*\s+(auf\s+)?(maximum|maximal\w*|volle?\w*\s+(leistung|energie|kraft)|hundert(\s+prozent)?)|defensiv\w*|power\s+to\s+shields)");
+            R(Intent.PowerEngines, E, @"(energie\s+(auf|an|in|zu[mr]?|für)\s+(die\s+|den\s+|der\s+|das\s+)?(antrieb|triebwerk)\w*|(antrieb|triebwerk)\w*\s+(auf\s+)?(maximum|maximal\w*|volle?\w*\s+(leistung|energie|kraft)|hundert(\s+prozent)?)|alles\s+in\s+den\s+antrieb|power\s+to\s+engines)");
             R(Intent.PowerBalanced, E, @"(energie\s+(gleichmäßig|ausgleich\w*|ausgeglichen|verteilen)|balance\s+power)");
             R(Intent.RepairAll, E, @"(alles\s+reparier\w*|alle\s+systeme\s+reparier\w*|repair\s+all)");
             R(Intent.Repair, E, @"(reparier\w*|repair)(\s+" + ART + @"(?<sub>\p{L}+))?");
