@@ -186,6 +186,14 @@ namespace StbcAiCrew
 
         void Execute(ParseResult r)
         {
+            // Wer befiehlt, zeigt auf sein Ziel: das an seiner Konsole markierte Objekt gilt für alle Stationen
+            // (sonst nähmen Taktik und Steuer ihr altes Ziel), außer der Befehl nennt selbst eines.
+            if (_speaker != Station.Tactical && _speaker != Station.Helm && !r.Commands.Exists(c => c.Resolved != null))
+            {
+                var mine = ConsoleTarget(_speaker);
+                if (mine != null && (ConsoleTarget(Station.Tactical) != mine || ConsoleTarget(Station.Helm) != mine))
+                    SetAll(mine, Contacts.TargetOf(_speaker));
+            }
             bool approach = r.Commands.Exists(c => c.Intent == Intent.MoveToTarget);
             foreach (var c in r.Commands)
             {
