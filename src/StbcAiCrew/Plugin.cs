@@ -13,7 +13,7 @@ namespace StbcAiCrew
     [BepInProcess("stbc.exe")]
     public sealed class Plugin : BaseUnityPlugin
     {
-        public const string Guid = "de.schuster.stbc.aicrew";
+        public const string Guid = "de.phuntasyproductions.stbc.voicecrew";
 
         public static Plugin Instance { get; private set; }
         public static ManualLogSource Log { get; private set; }

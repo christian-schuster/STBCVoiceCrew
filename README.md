@@ -179,7 +179,7 @@ Im Spiel, zum Beispiel im Hauptmenü, als Fenster auf dem Desktop:
    von huggingface.co/Serveurperso/Qwen3-TTS-GGUF) nach `qwentts\models\`.
 7. Piper für Windows nach `BepInEx\plugins\StbcAiCrew\piper\` entpacken (`piper\piper\piper.exe`) und die
    Stimmen (`*.onnx` + `*.onnx.json` von huggingface.co/rhasspy/piper-voices) nach `piper\voices\` legen.
-8. Spiel starten. Die Config liegt in `BepInEx\config\de.schuster.stbc.aicrew.cfg`.
+8. Spiel starten. Die Config liegt in `BepInEx\config\de.phuntasyproductions.stbc.voicecrew.cfg`.
 
 ## Tasten
 
