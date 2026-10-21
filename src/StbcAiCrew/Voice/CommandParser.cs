@@ -27,6 +27,9 @@ namespace StbcAiCrew.Voice
         Confirm, Deny,
     }
 
+    /// <summary>Befehlssprache.</summary>
+    public enum Lang { De, En }
+
     public sealed class ParsedCommand
     {
         public Intent Intent;
@@ -58,7 +61,7 @@ namespace StbcAiCrew.Voice
     /// Regelbasierter Befehlsparser ohne Sprachmodell: Satzteile, Synonyme (Deutsch/Englisch), Platzhalter
     /// (Name, Subsystem, Zahl), Verneinung, Ansprache. Namen werden per Klangabgleich gegen die Kontaktliste aufgelöst.
     /// </summary>
-    public static class CommandParser
+    public static partial class CommandParser
     {
         sealed class Rule
         {
@@ -69,10 +72,12 @@ namespace StbcAiCrew.Voice
         }
 
         static readonly List<Rule> Rules = new List<Rule>();
+        static readonly List<Rule> RulesEn = new List<Rule>();
+        static List<Rule> _adding = Rules;
         const RegexOptions O = RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant;
 
         static void R(Intent i, Station st, string pattern, bool negation = false) =>
-            Rules.Add(new Rule { Intent = i, Station = st, Pattern = new Regex(pattern, O), AllowsNegation = negation });
+            _adding.Add(new Rule { Intent = i, Station = st, Pattern = new Regex(pattern, O), AllowsNegation = negation });
 
         // Wortbausteine
         const string ART = @"(?:(?:de[mnrs]|die|das|zu[mr]|eine?[nmrs]?|unse?re?[mnrs]?)\s+)?";
@@ -153,6 +158,9 @@ namespace StbcAiCrew.Voice
             R(Intent.LaunchProbe, C, @"(sonde\s+(starten|abschießen|losschicken)|launch\s+probe)");
             R(Intent.Confirm, C, @"^\s*(ja|jawohl|bestätigt|richtig|genau|yes|affirmative)\s*$");
             R(Intent.Deny, C, @"^\s*(nein|abbrechen|stopp\s+das|negativ|no|cancel)\s*$");
+
+            _adding = RulesEn;
+            InitEnglish();
         }
 
         // ---------------- Ansprache ----------------
@@ -177,8 +185,9 @@ namespace StbcAiCrew.Voice
         static readonly Regex Filler = new Regex(@"^(bitte|so|okay|ok|gut|also|ja|äh|ähm|hm|und|doch|mal)\s+", O);
         static readonly Regex Purpose = new Regex(@"\s+(damit|so\s+dass|sodass|weil)\s+.*$", O);
 
-        public static ParseResult Parse(string text, IList<string> knownNames = null)
+        public static ParseResult Parse(string text, IList<string> knownNames = null, Lang lang = Lang.De)
         {
+            bool en = lang == Lang.En;
             var result = new ParseResult();
             if (string.IsNullOrEmpty(text)) return result;
             string t = " " + text.Trim() + " ";
@@ -186,11 +195,11 @@ namespace StbcAiCrew.Voice
             t = t.Trim();
 
             // Ansprache am Anfang ("Steuer, …", "Rao bitte …", "Crew: …")
-            var am = AddressRx.Match(t);
+            var am = (en ? AddressRxEn : AddressRx).Match(t);
             if (am.Success)
             {
                 bool all;
-                result.Addressed = StationOf(am.Groups["who"].Value, out all);
+                result.Addressed = en ? StationOfEn(am.Groups["who"].Value, out all) : StationOf(am.Groups["who"].Value, out all);
                 result.AddressedAll = all;
                 t = t.Substring(am.Length);
             }
@@ -200,9 +209,9 @@ namespace StbcAiCrew.Voice
             {
                 if (raw == null) continue;
                 string clause = raw.Trim();
-                while (true) { var f = Filler.Match(clause); if (!f.Success) break; clause = clause.Substring(f.Length).Trim(); }
+                while (true) { var f = (en ? FillerEn : Filler).Match(clause); if (!f.Success) break; clause = clause.Substring(f.Length).Trim(); }
                 if (clause.Length == 0) continue;
-                ParseClause(clause, result, knownNames);
+                ParseClause(clause, result, knownNames, lang);
             }
 
             // Doppelte (gleiche Absicht über mehrere Satzteile, z. B. "…Minimum, damit wir nicht entdeckt werden") entfernen
@@ -222,12 +231,13 @@ namespace StbcAiCrew.Voice
             return result;
         }
 
-        static void ParseClause(string clause, ParseResult result, IList<string> knownNames)
+        static void ParseClause(string clause, ParseResult result, IList<string> knownNames, Lang lang)
         {
-            bool negated = Negation.IsMatch(clause);
+            bool en = lang == Lang.En;
+            bool negated = (en ? NegationEn : Negation).IsMatch(clause);
             bool matched = false;
             var seen = new HashSet<Intent>();
-            foreach (var r in Rules)
+            foreach (var r in en ? RulesEn : Rules)
             {
                 var m = r.Pattern.Match(clause);
                 if (!m.Success) continue;
@@ -236,10 +246,10 @@ namespace StbcAiCrew.Voice
                 if (Shadowed(r.Intent, seen)) continue;
                 var cmd = new ParsedCommand { Intent = r.Intent, Station = r.Station, Clause = clause };
                 var name = m.Groups["name"];
-                if (name.Success && name.Value.Trim().Length > 0) cmd.Name = CleanName(name.Value);
+                if (name.Success && name.Value.Trim().Length > 0) cmd.Name = CleanName(name.Value, lang);
                 var sub = m.Groups["sub"];
                 if (sub.Success) cmd.Subsystem = sub.Value.ToLowerInvariant();
-                cmd.Number = Number(m.Groups["num"].Success ? m.Groups["num"].Value : m.Groups["num2"].Success ? m.Groups["num2"].Value : null);
+                cmd.Number = Number(m.Groups["num"].Success ? m.Groups["num"].Value : m.Groups["num2"].Success ? m.Groups["num2"].Value : null, lang);
                 if (cmd.Name != null && knownNames != null)
                 {
                     float score;
@@ -260,11 +270,11 @@ namespace StbcAiCrew.Voice
             var prev = result.Commands.Count > 0 ? result.Commands[result.Commands.Count - 1] : null;
             if (prev != null && prev.Name == null && TakesName(prev.Intent))
             {
-                prev.Name = CleanName(clause);
+                prev.Name = CleanName(clause, lang);
                 if (prev.Name != null && knownNames != null) { float sc; prev.Resolved = Phonetics.BestMatch(prev.Name, knownNames, out sc); }
                 if (prev.Name != null) return;
             }
-            if (LooksLikeOrder(clause)) result.NotUnderstood.Add(clause);
+            if ((en ? OrderWordsEn : OrderWords).IsMatch(clause)) result.NotUnderstood.Add(clause);
         }
 
         static bool TakesName(Intent i) =>
@@ -300,13 +310,14 @@ namespace StbcAiCrew.Voice
         }
 
         static readonly Regex OrderWords = new Regex(@"\b(flieg|kurs|ziel|schild|feuer|phaser|torpedo|warp|impuls|scan|beam|energie|reparier|fahrt|stopp|angriff|ausweich|minen|abstand)\w*", O);
-        static bool LooksLikeOrder(string clause) => OrderWords.IsMatch(clause);
 
         static readonly Regex NameNoise = new Regex(@"^(uns\s+)?(zu[mr]?|nach|an|auf|die|der|das|den|dem|ein\w*|schiff|station|bitte)\s+|\s+(und\s+.*|scanne?n?.*|auf\s+leben.*|an\s+bord.*|herum|aus|ab|bitte|jetzt)$", O);
-        static string CleanName(string s)
+        static string CleanName(string s, Lang lang = Lang.De)
         {
             string n = s.Trim();
-            for (int i = 0; i < 3; i++) { string m = NameNoise.Replace(n, "").Trim(); if (m == n) break; n = m; }
+            var noise = lang == Lang.En ? NameNoiseEn : NameNoise;
+            for (int i = 0; i < 3; i++) { string m = noise.Replace(n, "").Trim(); if (m == n) break; n = m; }
+            if (lang == Lang.En) return PronounEn.IsMatch(n) || n.Length == 0 ? null : n;
             if (Regex.IsMatch(n, @"^(es|sie|ihn|ihm|das|die|der|den|dem|uns|euch|da|dort|hin|leben|anvisieren|erfassen|auswählen|wählen|markieren|aufschalten)$", O)) return null;   // Fürwörter und Verben sind keine Namen
             return n.Length > 0 ? n : null;
         }
@@ -322,14 +333,14 @@ namespace StbcAiCrew.Voice
             { "halbe", 50 }, { "viertel", 25 }
         };
 
-        public static float Number(string s)
+        public static float Number(string s, Lang lang = Lang.De)
         {
             if (string.IsNullOrEmpty(s)) return -1f;
             string t = s.Trim().TrimEnd('%').Replace("prozent", "").Trim().Replace(',', '.');
             float f;
             if (float.TryParse(t, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out f)) return f;
             int v;
-            return Words.TryGetValue(t, out v) ? v : -1f;
+            return (lang == Lang.En ? WordsEn : Words).TryGetValue(t, out v) ? v : -1f;
         }
     }
 }

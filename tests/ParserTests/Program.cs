@@ -130,6 +130,66 @@ foreach (var (text, intents, name) in cases)
     }
 }
 
+// ---- Englisch ----
+var casesEn = new (string text, string intents, string name)[]
+{
+    ("Full speed ahead.", "SpeedFull", null),
+    ("Half impulse.", "SpeedHalf", null),
+    ("All stop!", "SpeedStop", null),
+    ("Full stop, scan the target.", "SpeedStop,Scan", null),
+    ("Shields up!", "ShieldsUp", null),
+    ("Red alert!", "ShieldsUp", null),
+    ("Lower the shields.", "ShieldsDown", null),
+    ("Scan the Ragusa.", "Scan", "Ragusa"),
+    ("Scan for life signs.", "Scan", null),
+    ("Helm, set a course for the Tallinn.", "MoveToTarget", "Tallinn"),
+    ("Take us to the Nicholson.", "MoveToTarget", "Nicholson"),
+    ("Fly to Plasma Coolant A", "MoveToTarget", null),
+    ("Approach the target.", "MoveToTarget", null),
+    ("Engage!", "WarpEngage", null),
+    ("Make it so.", "WarpEngage", null),
+    ("Warp to Gamma Hydra.", "Warp", "Gamma Hydra"),
+    ("Prepare for warp.", "PrepareWarp", null),
+    ("Go to impulse.", "Impulse", null),
+    ("Fire at will!", "FirePhasers", null),
+    ("Fire phasers.", "FirePhasers", null),
+    ("Fire torpedoes!", "FireTorpedoes", null),
+    ("Torpedoes.", "FireTorpedoes", null),
+    ("Arm the torpedoes.", "ArmTorpedoes", null),
+    ("Cease fire.", "CeaseFire", null),
+    ("Hold your fire, that's a freighter.", "HoldFire", null),
+    ("Target their engines.", "TargetEngines", null),
+    ("Disrupt their engines.", "Hack", null),
+    ("Attack the Bird of Prey.", "Attack", null),
+    ("Energize.", "Transport", null),
+    ("Beam the survivors aboard.", "Transport", null),
+    ("Power to shields.", "PowerShields", null),
+    ("All power to the engines!", "PowerEngines", null),
+    ("Weapons to maximum.", "PowerWeapons", null),
+    ("Repair the shields.", "Repair", null),
+    ("Fly around the minefield.", "AvoidHazard", null),
+    ("Avoid the mines.", "AvoidHazard", null),
+    ("Power down all systems so they can't detect us.", "StealthOn", null),
+    ("Stay out of their sensor range and approach the marked target.", "StayOutOfSensors,MoveToTarget", null),
+    ("Keep ten kilometers distance from the enemy.", "KeepDistance", null),
+    ("Circle the station.", "CircleTarget", null),
+    ("Get us out of here!", "Flee", null),
+    ("Only fire on my order.", "FireOnOrder", null),
+    ("As you were.", "ReleaseOrders", null),
+    ("Yes.", "Confirm", null),
+    ("I think we should have pizza tonight.", "", null),
+    ("Did you see that game yesterday?", "", null),
+};
+foreach (var (text, intents, name) in casesEn)
+{
+    var r = CommandParser.Parse(text, names, Lang.En);
+    var got = r.Commands.Select(c => c.Intent.ToString()).OrderBy(x => x).ToArray();
+    var want = intents.Split(',', StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x).ToArray();
+    bool nameOk = name == null || r.Commands.Any(c => c.Resolved == name);
+    if (got.SequenceEqual(want) && nameOk) ok++;
+    else { fail++; Console.WriteLine($"FEHLER  EN \"{text}\"\n        erwartet: {intents}{(name != null ? " (" + name + ")" : "")}\n        bekommen: {r}"); }
+}
+
 // Dieselben Sätze so, wie Vosk sie liefert: klein, ohne Satzzeichen (nur Bericht, zählt nicht als Fehler)
 int vOk = 0;
 foreach (var (text, intents, name) in cases)

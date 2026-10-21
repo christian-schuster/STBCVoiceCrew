@@ -65,9 +65,13 @@ namespace StbcAiCrew.Voice
         public bool Ready => _model != IntPtr.Zero;
         public string Error { get; private set; }
 
-        public VoskEngine(ManualLogSource log, string libDir, string modelDir)
+        /// <summary>Sprachkürzel ("de", "en") für Log und Auswahl.</summary>
+        public readonly string Tag;
+
+        public VoskEngine(ManualLogSource log, string libDir, string modelDir, string tag = "de")
         {
             _log = log;
+            Tag = tag;
             try
             {
                 if (!File.Exists(Path.Combine(libDir, "libvosk.dll"))) throw new FileNotFoundException("libvosk.dll fehlt in " + libDir);
@@ -83,7 +87,7 @@ namespace StbcAiCrew.Voice
                 var sw = System.Diagnostics.Stopwatch.StartNew();
                 _model = vosk_model_new(U(modelDir));
                 if (_model == IntPtr.Zero) throw new Exception("Modell nicht ladbar: " + modelDir);
-                _log.LogInfo("Vosk bereit (" + sw.ElapsedMilliseconds + " ms): " + modelDir);
+                _log.LogInfo("Vosk " + tag + " bereit (" + sw.ElapsedMilliseconds + " ms): " + modelDir);
             }
             catch (Exception e) { Error = e.Message; _log.LogError("Vosk nicht verfügbar: " + e.Message); }
         }
@@ -101,24 +105,32 @@ namespace StbcAiCrew.Voice
             _grammar = sb.ToString();
         }
 
-        /// <summary>16-kHz-Mono-PCM → (mit Grammatik, frei). Leere Texte, wenn nichts erkannt.</summary>
-        public KeyValuePair<string, string> Recognize(short[] pcm, int rate = 16000)
+        public struct Result
         {
-            if (!Ready || pcm == null || pcm.Length == 0) return new KeyValuePair<string, string>("", "");
+            public string Grammar, Free;
+            /// <summary>Mittlere Wortsicherheit der Grammatik-Erkennung (0–1), 0 ohne Wörter.</summary>
+            public float Confidence;
+        }
+
+        /// <summary>16-kHz-Mono-PCM → mit Grammatik, frei, Sicherheit. Leere Texte, wenn nichts erkannt.</summary>
+        public Result Recognize(short[] pcm, int rate = 16000)
+        {
+            if (!Ready || pcm == null || pcm.Length == 0) return new Result { Grammar = "", Free = "" };
             var bytes = new byte[pcm.Length * 2];
             Buffer.BlockCopy(pcm, 0, bytes, 0, bytes.Length);
             string g = _grammar;
             string withGrammar = "";
+            float conf = 0f;
             if (g != null)
             {
                 IntPtr rg = vosk_recognizer_new_grm(_model, rate, U(g));
                 if (rg != IntPtr.Zero) vosk_recognizer_set_words(rg, 1);
                 string json = RunJson(rg, bytes);
                 withGrammar = TextOf(json);
-                if (withGrammar.Length > 0) _log.LogInfo("Vosk-Sicherheit: " + Confidences(json));
+                if (withGrammar.Length > 0) _log.LogInfo("Vosk-Sicherheit " + Tag + ": " + Confidences(json, out conf));
             }
             string free = Run(vosk_recognizer_new(_model, rate), bytes);
-            return new KeyValuePair<string, string>(withGrammar, free);
+            return new Result { Grammar = withGrammar, Free = free, Confidence = conf };
         }
 
         static string Run(IntPtr r, byte[] data) => TextOf(RunJson(r, data));
@@ -135,9 +147,10 @@ namespace StbcAiCrew.Voice
         }
 
         /// <summary>Wortweise Sicherheit aus dem Ergebnis ("wort 0.93 …"), zum Einstellen der Gerede-Sperre.</summary>
-        static string Confidences(string json)
+        static string Confidences(string json, out float mean)
         {
             var sb = new StringBuilder();
+            double sum = 0; int n = 0;
             int i = 0;
             while ((i = json.IndexOf("\"conf\"", i, StringComparison.Ordinal)) >= 0)
             {
@@ -148,10 +161,13 @@ namespace StbcAiCrew.Voice
                 string word = "?";
                 if (w >= 0) { int a = json.IndexOf('"', json.IndexOf(':', w) + 1); int b = json.IndexOf('"', a + 1); word = json.Substring(a + 1, b - a - 1); }
                 double v;
-                sb.Append(word).Append(' ').Append(double.TryParse(conf, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v) ? v.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) : conf).Append("  ");
+                bool okv = double.TryParse(conf, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v);
+                if (okv) { sum += v; n++; }
+                sb.Append(word).Append(' ').Append(okv ? v.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) : conf).Append("  ");
                 i = ce;
             }
-            return sb.ToString().Trim();
+            mean = n > 0 ? (float)(sum / n) : 0f;
+            return sb.ToString().Trim() + "  (Mittel " + mean.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + ")";
         }
 
         /// <summary>{"text" : "…"} → Text, ohne JSON-Bibliothek; "[unk]" (unbekannt) entfällt.</summary>
@@ -208,6 +224,26 @@ namespace StbcAiCrew.Voice
             "prozent", "null", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "zwanzig", "dreißig", "vierzig", "fünfzig", "hundert",
             "nach", "bedarf", "normale", "normal", "anweisung", "ruf", "kanal", "öffnen", "schirm", "sonde", "starten",
             "full", "speed", "half", "quarter", "stop", "reverse", "shields", "up", "down", "fire", "phasers", "torpedoes", "scan", "target", "engage", "red", "alert", "power", "to", "weapons", "engines"
+        };
+
+        /// <summary>Englischer Befehlswortschatz (Regeln aus CommandParserEn und Star-Trek-Wendungen).</summary>
+        public static readonly string[] CommandWordsEn =
+        {
+            "helm", "conn", "navigation", "navigator", "ensign", "mister", "rao", "tactical", "weapons", "officer", "lieutenant", "hoyle", "engineering", "engineer", "chief", "tnar", "crew", "bridge", "everyone", "all", "stations", "computer",
+            "please", "now", "ok", "okay", "alright", "right", "so", "just", "and", "then", "yes", "yeah", "no", "aye", "affirmative", "negative", "cancel", "belay", "that", "not", "don't", "do", "never", "only", "when", "i", "say", "my", "your", "our", "their", "us", "it", "them", "we", "they", "can't", "won't",
+            "full", "half", "quarter", "one", "speed", "impulse", "ahead", "throttle", "maximum", "max", "top", "faster", "slower", "slow", "speed", "up", "down", "floor", "stop", "all", "halt", "come", "reverse", "back", "astern",
+            "engage", "make", "so", "punch", "warp", "factor", "prepare", "for", "charge", "spin", "core", "coils", "drive", "online", "ready", "jump", "go", "take",
+            "fly", "head", "move", "steer", "proceed", "get", "to", "toward", "towards", "over", "set", "lay", "in", "plot", "a", "an", "the", "this", "course", "approach", "close", "distance", "closer", "intercept", "away", "from", "evasive", "maneuvers", "break", "off", "veer",
+            "shields", "shield", "raise", "lower", "drop", "on", "activate", "deactivate", "red", "alert", "modulate", "modulation", "remodulate", "keep", "leave", "stay",
+            "fire", "firing", "cease", "shooting", "shoot", "hold", "at", "will", "open", "phaser", "phasers", "photon", "torpedo", "torpedoes", "arm", "load", "loaded", "armed", "disarm", "unload", "launch",
+            "target", "targeting", "aim", "their", "engines", "propulsion", "weapon", "systems", "clear", "lock", "onto", "select", "mark", "marked", "new", "is",
+            "scan", "scanning", "run", "life", "signs", "analyze", "analyse", "attack", "enemy", "hostile", "hostiles", "destroy", "out",
+            "power", "more", "balance", "even", "distribute", "evenly", "repair", "fix", "everything", "beam", "energize", "transport", "survivors", "aboard", "board", "bring",
+            "reduce", "minimize", "signature", "disrupt", "hack", "jam", "scramble", "control", "of", "override", "comms", "communications", "intrusion",
+            "avoid", "around", "minefield", "mines", "mine", "anomaly", "nebula", "asteroid", "field", "route", "evade", "kilometers", "km", "clicks", "safe", "circle", "orbit", "position", "here", "retreat", "fall", "flee", "bug",
+            "stealth", "mode", "silent", "running", "dark", "detected", "detect", "seen", "see", "noticed", "notice", "spotted", "undetected", "sneak", "end", "sensor", "sensors", "range", "detection", "outside",
+            "percent", "zero", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "twenty", "thirty", "forty", "fifty", "hundred",
+            "as", "were", "normal", "operations", "orders", "standing", "resume", "answer", "hail", "screen", "channel", "probe"
         };
     }
 }

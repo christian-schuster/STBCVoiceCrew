@@ -126,9 +126,13 @@ namespace StbcAiCrew
         public ConfigEntry<string> ListenModeSetting;
         public ConfigEntry<bool> WatsonBeeps;
         public ConfigEntry<string> VoskModel;
+        public ConfigEntry<string> VoskModelEn;
+        public ConfigEntry<string> CommandLanguage;
         bool _watson;
         WatsonCrew _crew;
-        VoskEngine _vosk;
+        readonly System.Collections.Generic.List<VoskEngine> _vosk = new System.Collections.Generic.List<VoskEngine>();
+        bool VoskReady => _vosk.Exists(v => v.Ready);
+        string VoskState => _vosk.Count == 0 ? "kein Modell" : string.Join(", ", _vosk.ConvertAll(v => v.Tag + (v.Ready ? " bereit" : " FEHLT: " + v.Error)).ToArray());
         string _vocabKey;
         /// <summary>Watson-Modus: Befehle ohne Sprachmodell, Original-Crew mit Spielstimmen.</summary>
         public bool WatsonMode => _watson;
@@ -390,16 +394,39 @@ namespace StbcAiCrew
             };
             _crew.Player = _player;
 
-            string modelDir = ResolvePath(pluginDir, VoskModel.Value);
-            _vosk = new VoskEngine(Log, Path.Combine(pluginDir, "vosk"), modelDir);
-            _vosk.SetVocabulary(VoskEngine.CommandWords);
+            // Befehlssprache: spiel = Sprache des Spiels, de, en, auto = beide gleichzeitig (Sprache je Sprecher gelernt)
+            string lang = (CommandLanguage.Value ?? "spiel").Trim().ToLowerInvariant();
+            if (lang == "spiel" || lang == "game")
+            {
+                string gl = GameBridge.VoiceLanguage() ?? "German";
+                lang = gl.StartsWith("German", StringComparison.OrdinalIgnoreCase) ? "de" : "en";
+            }
+            string libDir = Path.Combine(pluginDir, "vosk");
+            if (lang == "de" || lang == "auto") _vosk.Add(new VoskEngine(Log, libDir, ResolvePath(pluginDir, VoskModel.Value), "de"));
+            if (lang == "en" || lang == "auto") _vosk.Add(new VoskEngine(Log, libDir, ResolvePath(pluginDir, VoskModelEn.Value), "en"));
+            if (_vosk.Exists(v => v.Ready)) _vosk.RemoveAll(v => !v.Ready);
+            foreach (var v in _vosk) v.SetVocabulary(v.Tag == "en" ? VoskEngine.CommandWordsEn : VoskEngine.CommandWords);
+            // Je Äußerung alle Sprachen parallel; Ergebnis "de‖grammatik‖frei‖sicherheit¦en‖…", die Auswahl trifft WatsonCrew
             Func<short[], string> transcribe = pcm =>
             {
-                var r = _vosk.Recognize(pcm);
-                return r.Key + " ‖ " + r.Value;
+                var res = new VoskEngine.Result[_vosk.Count];
+                var threads = new System.Collections.Generic.List<System.Threading.Thread>();
+                for (int i = 1; i < _vosk.Count; i++)
+                {
+                    int k = i;
+                    var th = new System.Threading.Thread(() => res[k] = _vosk[k].Recognize(pcm)) { IsBackground = true };
+                    th.Start();
+                    threads.Add(th);
+                }
+                if (_vosk.Count > 0) res[0] = _vosk[0].Recognize(pcm);
+                foreach (var th in threads) th.Join();
+                var parts = new string[_vosk.Count];
+                for (int i = 0; i < _vosk.Count; i++)
+                    parts[i] = _vosk[i].Tag + "‖" + (res[i].Grammar ?? "") + "‖" + (res[i].Free ?? "") + "‖" + res[i].Confidence.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+                return string.Join("¦", parts);
             };
 
-            if (VoiceEnabled.Value && _vosk.Ready)
+            if (VoiceEnabled.Value && VoskReady)
             {
                 var vs = new VoiceSettings
                 {
@@ -411,7 +438,7 @@ namespace StbcAiCrew
                 if (Multiplayer.Value)
                     _remoteTap = new RemoteVoiceTap(Log, "http://127.0.0.1:0", MicLanguage.Value, () => true, OnRemoteHeardWatson) { Transcriber = transcribe };
             }
-            Log.LogInfo("STBC AI Crew im Watson-Modus geladen (Vosk " + (_vosk.Ready ? "bereit" : "FEHLT: " + _vosk.Error) +
+            Log.LogInfo("STBC AI Crew im Watson-Modus geladen (Vosk " + VoskState +
                         ", Zuhören: " + _crew.Listen + ", Push-to-talk: " + KeyPushToTalk.Value + ").");
         }
 
@@ -443,7 +470,7 @@ namespace StbcAiCrew
                 _nextStatusPoll = Time.time + 1f;
                 var now = ShipStatus.Read();
                 if (now != null) _status = now;
-                if (now != null && now.ContactList != null && _vosk != null)
+                if (now != null && now.ContactList != null && _vosk.Count > 0)
                 {
                     var names = new System.Collections.Generic.List<string>();
                     foreach (var c in now.ContactList) names.Add(c.Name);
@@ -451,9 +478,12 @@ namespace StbcAiCrew
                     if (key != _vocabKey)
                     {
                         _vocabKey = key;
-                        var words = new System.Collections.Generic.List<string>(VoskEngine.CommandWords);
-                        words.AddRange(names);
-                        _vosk.SetVocabulary(words);
+                        foreach (var v in _vosk)
+                        {
+                            var words = new System.Collections.Generic.List<string>(v.Tag == "en" ? VoskEngine.CommandWordsEn : VoskEngine.CommandWords);
+                            words.AddRange(names);
+                            v.SetVocabulary(words);
+                        }
                     }
                 }
             }
@@ -481,7 +511,7 @@ namespace StbcAiCrew
             if (!_showOverlay) return;
             GUILayout.BeginArea(new Rect(10f, 10f, 520f, Screen.height - 20f));
             GUILayout.BeginVertical("box");
-            GUILayout.Label("<b>Brückencrew (Watson-Ersatz)</b>  –  Vosk: " + (_vosk != null && _vosk.Ready ? "bereit" : "Fehler: " + (_vosk != null ? _vosk.Error : "?")) +
+            GUILayout.Label("<b>Brückencrew (Watson-Ersatz)</b>  –  Vosk: " + VoskState +
                             "  |  " + (GameBridge.InMission ? "im Einsatz" : "kein Einsatz"));
             if (_voice != null)
             {
@@ -602,7 +632,9 @@ namespace StbcAiCrew
             Mode = Config.Bind("Allgemein", "Modus", "watson", "watson = schnelle Sprachbefehle ohne Sprachmodell (Vosk, Original-Crew mit Spielstimmen), llm = KI-Crew mit Sprachmodell (Stand Tag LLM-Version).");
             ListenModeSetting = Config.Bind("Sprache", "ZuhoerModus", "beides", "Watson-Modus: beides = Ansprache (Steuer/Rao, Taktik/Hoyle, Technik/T'nar, Crew), Push-to-talk oder kurzer Befehl; ansprache = nur mit Anrede; ptt = nur mit Taste; dauernd = alles Erkannte.");
             WatsonBeeps = Config.Bind("Watson", "Bestaetigungstoene", true, "Kurzer Ton: verstanden (zwei hohe) / nicht verstanden (ein tiefer).");
-            VoskModel = Config.Bind("Watson", "VoskModell", "vosk/vosk-model-small-de-0.15", "Vosk-Modellordner (relativ zum Plugin-Ordner oder absolut). Die Vosk-DLLs liegen im Ordner vosk.");
+            VoskModel = Config.Bind("Watson", "VoskModell", "vosk/vosk-model-small-de-0.15", "Deutsches Vosk-Modell (relativ zum Plugin-Ordner oder absolut). Die Vosk-DLLs liegen im Ordner vosk.");
+            VoskModelEn = Config.Bind("Watson", "VoskModellEnglisch", "vosk/vosk-model-small-en-us-0.15", "Englisches Vosk-Modell (relativ zum Plugin-Ordner oder absolut).");
+            CommandLanguage = Config.Bind("Sprache", "BefehlsSprache", "spiel", "Sprache der Sprachbefehle: spiel = wie das Spiel eingestellt ist, de, en, auto = Deutsch und Englisch gleichzeitig (doppelte CPU-Last, Sprache wird je Sprecher gelernt).");
             KeyStateDump = Config.Bind("Tasten", "Zustandsdump", KeyCode.F10, "Felder des Spielerschiffs in eine Datei schreiben (Reverse Engineering).");
         }
 
@@ -780,7 +812,7 @@ namespace StbcAiCrew
             if (_brain != null && _brain.InMission) _brain.SaveForShutdown();
             if (_voice != null) _voice.Dispose();
             if (_remoteTap != null) _remoteTap.Dispose();
-            if (_vosk != null) _vosk.Dispose();
+            foreach (var v in _vosk) v.Dispose();
             if (_player != null) _player.Dispose();
             if (_qwen != null) _qwen.Dispose();
             if (_tts != null) _tts.Dispose();

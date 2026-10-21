@@ -54,14 +54,16 @@ namespace StbcAiCrew
         public void Heard(Station speaker, string speakerName, string recognized, bool ptt)
         {
             _speaker = speaker;
-            if (!GameBridge.InMission) { string g0, f0; Split(recognized, out g0, out f0); LastHeard = f0.Length > 0 ? f0 : g0; LastResult = "kein Einsatz"; return; }
-            string grammar, free;
-            Split(recognized, out grammar, out free);
-            LastHeard = grammar.Length > 0 ? grammar : free;
-
             var names = Names();
-            var rG = CommandParser.Parse(grammar, names);
-            var rF = CommandParser.Parse(free, names);
+            Lang lang;
+            string grammar, free;
+            Choose(recognized, speakerName, names, out lang, out grammar, out free);
+            if (!GameBridge.InMission) { LastHeard = free.Length > 0 ? free : grammar; LastResult = "kein Einsatz"; return; }
+            bool en = lang == Lang.En;
+            string onMarker = en ? " at " : " auf ";
+
+            var rG = CommandParser.Parse(grammar, names, lang);
+            var rF = CommandParser.Parse(free, names, lang);
             var r = rG.Understood ? rG : rF;
             // Anzeige: ergab die Befehlsgrammatik einen Befehl, ihre Fassung (bei Befehlen meist die genauere), sonst der frei erkannte Satz
             string matched = r == rG ? grammar : free;
@@ -71,14 +73,14 @@ namespace StbcAiCrew
             {
                 bool fire = c.Intent == Intent.FirePhasers || c.Intent == Intent.FireTorpedoes || c.Intent == Intent.Analyze;
                 // Feuerbefehle nur mit ausdrücklichem Ziel ("Feuer auf …"), sonst bleibt das gewählte Ziel
-                string tail = fire ? After(free, " auf ") : free;
-                string said = After(matched, " auf ") ?? "";
-                if (fire && System.Text.RegularExpressions.Regex.IsMatch(said, @"^(das\s+|dem\s+|den\s+)?(markierte\w*\s+|aktuelle\w*\s+)?ziel\w*$")) continue;
+                string tail = fire ? After(free, onMarker) : free;
+                string said = After(matched, onMarker) ?? "";
+                if (fire && System.Text.RegularExpressions.Regex.IsMatch(said, @"^(das\s+|dem\s+|den\s+|the\s+|my\s+)?(markierte\w*\s+|aktuelle\w*\s+|marked\s+|current\s+|selected\s+)?(ziel\w*|target)$")) continue;
                 if (c.Resolved != null || (!NeedsName(c.Intent) && !(fire && (c.Name != null || tail != null)))) continue;
                 float s;
                 c.Resolved = (tail != null ? Phonetics.BestMatch(tail, names, out s) : null) ??
                              (c.Name != null ? Phonetics.BestMatch(c.Name, names, out s) : null) ??
-                             Partial(c.Name ?? After(grammar, " auf ")) ?? (tail != null ? Partial(tail) : null);
+                             Partial(c.Name ?? After(grammar, onMarker)) ?? (tail != null ? Partial(tail) : null);
             }
 
             bool addressed = r.Addressed.HasValue || r.AddressedAll;
@@ -129,14 +131,34 @@ namespace StbcAiCrew
             Execute(r);
         }
 
-        static void Split(string s, out string grammar, out string free)
-        {
-            int k = (s ?? "").IndexOf('‖');
-            grammar = k >= 0 ? s.Substring(0, k).Trim() : (s ?? "").Trim();
-            free = k >= 0 ? s.Substring(k + 1).Trim() : grammar;
-        }
+        /// <summary>Gelernte Befehlssprache je Sprecher (Zähler: + Deutsch, − Englisch).</summary>
+        readonly Dictionary<string, int> _langVotes = new Dictionary<string, int>();
 
-        static string Plain(string s) { string g, f; Split(s, out g, out f); return g.Length > 0 ? g : f; }
+        /// <summary>
+        /// Vosk liefert je Sprache "tag‖grammatik‖frei‖sicherheit", mehrere durch "¦" getrennt. Gewählt wird die Sprache, deren
+        /// Erkennung einen Befehl ergibt, dann die sicherere; bei Gleichstand die bisher für diesen Sprecher gelernte.
+        /// </summary>
+        void Choose(string recognized, string speaker, List<string> names, out Lang lang, out string grammar, out string free)
+        {
+            lang = Lang.De; grammar = ""; free = "";
+            float best = float.MinValue;
+            int votes; _langVotes.TryGetValue(speaker ?? "", out votes);
+            var understood = new List<Lang>();
+            foreach (var entry in (recognized ?? "").Split('¦'))
+            {
+                var p = entry.Split('‖');
+                Lang l = Lang.De; string g, f; float conf = 0f;
+                if (p.Length >= 4) { l = p[0].Trim() == "en" ? Lang.En : Lang.De; g = p[1].Trim(); f = p[2].Trim(); float.TryParse(p[3], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out conf); }
+                else { g = p[0].Trim(); f = p.Length > 1 ? p[1].Trim() : g; }
+                bool ok = CommandParser.Parse(g, names, l).Understood || CommandParser.Parse(f, names, l).Understood;
+                if (ok) understood.Add(l);
+                float score = (ok ? 2f : 0f) + conf + (l == Lang.De ? votes : -votes) * 0.1f;
+                if (score > best) { best = score; lang = l; grammar = g; free = f; }
+            }
+            // Eindeutig nur eine Sprache verstanden: für diesen Sprecher merken (begrenzt, damit ein Wechsel möglich bleibt)
+            if (understood.Count == 1 && speaker != null)
+                _langVotes[speaker] = Math.Max(-5, Math.Min(5, votes + (understood[0] == Lang.De ? 1 : -1)));
+        }
         static int WordCount(string s) => (s ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
 
         /// <summary>Manöver und Daueranweisungen: wirken lange nach, daher nur bei sicherer Erkennung.</summary>
@@ -168,7 +190,7 @@ namespace StbcAiCrew
             foreach (var word in heard.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 string w = Phonetics.Normalize(word);
-                if (w.Length < 4 || w == "schiff" || w == "ziel") continue;
+                if (w.Length < 4 || w == "schiff" || w == "ziel" || w == "ship" || w == "target" || w == "station") continue;
                 foreach (var c in _contacts)
                     if (Phonetics.Normalize(c.Name).Contains(w) && (best == null || c.DistanceKm < best.DistanceKm)) best = c;
             }
@@ -263,8 +285,8 @@ namespace StbcAiCrew
                         {
                             string s = c.Subsystem ?? "";
                             EnsureEnemyTarget();
-                            Exec(Station.Tactical, s.StartsWith("waffe") ? "DisruptWeapons" : s.StartsWith("schild") ? "DisruptShields" :
-                                                   s.StartsWith("komm") ? "DisruptComms" : "DisruptEngines", force: true);
+                            Exec(Station.Tactical, s.StartsWith("waffe") || s.StartsWith("weapon") ? "DisruptWeapons" : s.StartsWith("schild") || s.StartsWith("shield") ? "DisruptShields" :
+                                                   s.StartsWith("komm") || s.StartsWith("comm") ? "DisruptComms" : "DisruptEngines", force: true);
                             break;
                         }
                     case Intent.AnswerHail:
@@ -272,7 +294,7 @@ namespace StbcAiCrew
                     // Daueranweisungen
                     case Intent.HoldShieldsDown: SetOrder("shields", "unten halten"); break;
                     case Intent.HoldShieldsUp: SetOrder("shields", "oben halten"); break;
-                    case Intent.LimitSpeed: SetOrder("speed", c.Number >= 0 && c.Number <= 35 ? "viertel" : c.Number >= 0 && c.Number <= 60 ? "halb" : c.Clause.Contains("viertel") ? "viertel" : "halb"); break;
+                    case Intent.LimitSpeed: SetOrder("speed", c.Number >= 0 && c.Number <= 35 ? "viertel" : c.Number >= 0 && c.Number <= 60 ? "halb" : (c.Clause.Contains("viertel") || c.Clause.Contains("quarter")) ? "viertel" : "halb"); break;
                     case Intent.HoldFire: SetOrder("fire", "halten"); break;
                     case Intent.FireOnOrder: SetOrder("fire", "nur auf befehl"); break;
                     case Intent.StealthOn:
@@ -298,12 +320,12 @@ namespace StbcAiCrew
         static string RepairCommand(string sub)
         {
             string s = sub ?? "";
-            if (s.StartsWith("schild")) return "RepairShields";
-            if (s.StartsWith("antrieb") || s.StartsWith("triebwerk")) return "RepairEngines";
-            if (s.StartsWith("phaser") || s.StartsWith("waffe")) return "RepairPhasers";
+            if (s.StartsWith("schild") || s.StartsWith("shield")) return "RepairShields";
+            if (s.StartsWith("antrieb") || s.StartsWith("triebwerk") || s.StartsWith("engine") || s.StartsWith("propulsion")) return "RepairEngines";
+            if (s.StartsWith("phaser") || s.StartsWith("waffe") || s.StartsWith("weapon")) return "RepairPhasers";
             if (s.StartsWith("torpedo")) return "RepairTorpedoes";
             if (s.StartsWith("warp")) return "RepairWarpcore";
-            if (s.StartsWith("sensor")) return "RepairSensors";
+            if (s.StartsWith("sensor") || s.StartsWith("scanner")) return "RepairSensors";
             if (s.StartsWith("transport")) return "RepairTransporter";
             return "RepairBalanced";
         }
@@ -314,8 +336,8 @@ namespace StbcAiCrew
             if (s.Contains("mine")) return "mine";
             if (s.Contains("anomal")) return "anomal";
             if (s.Contains("asteroid")) return "asteroid";
-            if (s.Contains("nebel")) return "nebel";
-            if (s.Contains("feind") || s.Contains("gegner") || s.Contains("klingon") || s.Contains("borg") || s.Contains("bird")) return "feind";
+            if (s.Contains("nebel") || s.Contains("nebula")) return "nebel";
+            if (s.Contains("feind") || s.Contains("gegner") || s.Contains("enem") || s.Contains("hostile") || s.Contains("klingon") || s.Contains("borg") || s.Contains("bird")) return "feind";
             return c.Name ?? "mine";
         }
 
@@ -329,7 +351,7 @@ namespace StbcAiCrew
         static bool IsCurrentTarget(ParsedCommand c)
         {
             string n = (c.Name ?? "").ToLowerInvariant();
-            return n.Length == 0 || n.Contains("ziel") || n == "es" || n == "das" || n == "dem markierten ziel" || n.Contains("markiert");
+            return n.Length == 0 || n.Contains("ziel") || n == "es" || n == "das" || n.Contains("markiert") || n.Contains("target") || n == "it" || n == "that" || n.Contains("marked");
         }
 
         void Missing(ParsedCommand c)
