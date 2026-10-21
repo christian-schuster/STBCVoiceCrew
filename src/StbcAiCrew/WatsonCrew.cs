@@ -248,7 +248,16 @@ namespace StbcAiCrew
                     case Intent.PowerBalanced: Exec(Station.Engineering, "PowerBalanced", force: true); break;
                     case Intent.Repair: Exec(Station.Engineering, RepairCommand(c.Subsystem)); break;
                     case Intent.RepairAll: Exec(Station.Engineering, "RepairBalanced"); break;
-                    case Intent.Transport: Exec(Station.Engineering, "TransportFromTarget", force: true); break;
+                    case Intent.Transport:
+                        // Mit erhobenen Schilden kann nicht gebeamt werden: senken, beamen, Schilde-Reflex kurz pausieren
+                        if (_status != null && _status.ShieldState != "PoweredOff")
+                        {
+                            _shieldReflexPausedUntil = Time.time + 12f;
+                            Exec(Station.Tactical, "LowerShields", force: true);
+                            Later(1.2f, "Transport", () => Exec(Station.Engineering, "TransportFromTarget", force: true));
+                        }
+                        else Exec(Station.Engineering, "TransportFromTarget", force: true);
+                        break;
                     case Intent.ReduceSignature: Exec(Station.Engineering, "ReduceSignature", force: true); break;
                     case Intent.Hack:   // Systemübernahme der Taktik ("Antrieb übernehmen")
                         {
@@ -542,6 +551,7 @@ namespace StbcAiCrew
         }
 
         float _nextReflex;
+        float _shieldReflexPausedUntil;
         readonly Dictionary<string, float> _reflexAt = new Dictionary<string, float>();
 
         void RunReflexes(ShipStatus st)
@@ -550,7 +560,7 @@ namespace StbcAiCrew
             _nextReflex = Time.time + 2f;
             bool threat = EventLog.UnderThreat(20f);
             bool recentHit = Time.time - EventLog.LastHitTime < 10f;
-            if (threat && st.ShieldState == "PoweredOff") Reflex(Station.Tactical, "RaiseShields", 15f);
+            if (threat && st.ShieldState == "PoweredOff" && Time.time >= _shieldReflexPausedUntil) Reflex(Station.Tactical, "RaiseShields", 15f);
             if (recentHit && st.Shields >= 0f && st.Shields < 50f) Reflex(Station.Engineering, "PowerToShields", 30f);
             string worst = null; float min = 75f;
             if (st.Engines >= 0 && st.Engines < min) { min = st.Engines; worst = "RepairEngines"; }
