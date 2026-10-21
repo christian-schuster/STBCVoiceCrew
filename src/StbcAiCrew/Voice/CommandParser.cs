@@ -123,11 +123,11 @@ namespace StbcAiCrew.Voice
             R(Intent.ModulateShields, T, @"(schild\w*\s*(frequenz\w*)?\s+modul\w*|modul\w*\s+(die\s+)?schild\w*|modulate)");
             R(Intent.CeaseFire, T, @"(feuer\s+einstellen|feuer\s+stopp|cease\s+fire)");
             R(Intent.FireTorpedoes, T, @"(torpedo\w*\s*(feuer\w*|los|ab\w*|raus)?|(feuer\w*|fire)\s+\w*\s*torpedo\w*)");
-            R(Intent.FirePhasers, T, @"(phaser\w*|feuer\s+frei|^\s*feuer\s*$|feuern|schie(ß|ss)\w*|open\s+fire|fire)");
+            R(Intent.FirePhasers, T, @"(phaser\w*|feuer\s+frei|^\s*feuer\s*$|^\s*feuer\s+(auf|aufs|mein\w*|das|die|den|dem)\b|feuern|schie(ß|ss)\w*|open\s+fire|fire)");
             R(Intent.DisarmTorpedoes, T, @"(torpedo\w*\s+entschärf\w*|entschärf\w*)");
-            R(Intent.TargetEngines, T, @"((ziel\w*|anvisier\w*|zielt?)\s+\w*\s*(auf\s+)?(den\s+|die\s+)?(antrieb|triebwerk)\w*|(antrieb|triebwerk)\w*\s+(des\s+ziels\s+)?anvisier\w*|target\s+(their\s+)?engines)");
-            R(Intent.TargetWeapons, T, @"((ziel\w*|anvisier\w*|zielt?)\s+\w*\s*(auf\s+)?(die\s+)?waffen\w*|waffen\s+(des\s+ziels\s+)?anvisier\w*|target\s+(their\s+)?weapons)");
-            R(Intent.TargetShields, T, @"((ziel\w*|anvisier\w*|zielt?)\s+\w*\s*(auf\s+)?(die\s+)?schild\w*|schilde\s+des\s+ziels|target\s+(their\s+)?shields)");
+            R(Intent.TargetEngines, T, @"((ziel\w*|anvisier\w*|zielt?|stör\w*)\s+\w*\s*(auf\s+)?(den\s+|die\s+)?(antrieb|triebwerk)\w*|(antrieb|triebwerk)\w*\s+(des\s+ziels\s+)?(sub\s*system\w*\s+)?(anvisier\w*|auswähl\w*|wähl\w*|stör\w*)|target\s+(their\s+)?engines)");
+            R(Intent.TargetWeapons, T, @"((ziel\w*|anvisier\w*|zielt?|stör\w*)\s+\w*\s*(auf\s+)?(die\s+)?waffen\w*|waffen\w*\s+(des\s+ziels\s+)?(sub\s*system\w*\s+)?(anvisier\w*|auswähl\w*|wähl\w*|stör\w*)|target\s+(their\s+)?weapons)");
+            R(Intent.TargetShields, T, @"((ziel\w*|anvisier\w*|zielt?|stör\w*)\s+\w*\s*(auf\s+)?(die\s+)?schild\w*|schilde\s+des\s+ziels|schild\w*\s+(des\s+ziels\s+)?(sub\s*system\w*\s+)?(anvisier\w*|auswähl\w*|wähl\w*|stör\w*)|target\s+(their\s+)?shields)");
             R(Intent.CeaseTargeting, T, @"(zielerfassung\s+(aufheben|beenden|aus)|cease\s+target)");
             R(Intent.Analyze, T, @"(analys\w*|analyze)");
             R(Intent.Scan, T, @"(scan\w*|sca\w*\s+(die|das|den)\s+|abtast\w*|(nach\s+)?leben\w*zeichen)(\s+" + ART + NAME + ")?");
@@ -248,6 +248,9 @@ namespace StbcAiCrew.Voice
                 seen.Add(r.Intent);
                 matched = true;
             }
+            // "Schilde anvisieren" meint die gegnerischen (die Schilde-hoch-Regel steht davor)
+            if (seen.Contains(Intent.TargetShields))
+                result.Commands.RemoveAll(c => c.Clause == clause && c.Intent == Intent.ShieldsUp);
             if (matched) return;
             // Nur ein Name, der zum vorigen Befehl gehört ("Nimm Kurs auf, Frachter Alpha 2")
             var prev = result.Commands.Count > 0 ? result.Commands[result.Commands.Count - 1] : null;
@@ -270,7 +273,7 @@ namespace StbcAiCrew.Voice
             if (seen.Count == 0) return false;
             switch (i)
             {
-                case Intent.ShieldsUp: return seen.Contains(Intent.HoldShieldsUp);
+                case Intent.ShieldsUp: return seen.Contains(Intent.HoldShieldsUp) || seen.Contains(Intent.TargetShields);
                 case Intent.ShieldsDown: return seen.Contains(Intent.HoldShieldsDown) || seen.Contains(Intent.StealthOn);
                 case Intent.SpeedQuarter:
                 case Intent.SpeedHalf:

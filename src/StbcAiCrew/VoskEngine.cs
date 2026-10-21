@@ -15,14 +15,44 @@ namespace StbcAiCrew.Voice
     public sealed class VoskEngine : IDisposable
     {
         [DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)] static extern bool SetDllDirectory(string p);
-        [DllImport("libvosk")] static extern void vosk_set_log_level(int l);
-        [DllImport("libvosk")] static extern IntPtr vosk_model_new(byte[] path);
-        [DllImport("libvosk")] static extern void vosk_model_free(IntPtr m);
-        [DllImport("libvosk")] static extern IntPtr vosk_recognizer_new(IntPtr m, float rate);
-        [DllImport("libvosk")] static extern IntPtr vosk_recognizer_new_grm(IntPtr m, float rate, byte[] grammar);
-        [DllImport("libvosk")] static extern int vosk_recognizer_accept_waveform(IntPtr r, byte[] data, int len);
-        [DllImport("libvosk")] static extern IntPtr vosk_recognizer_final_result(IntPtr r);
-        [DllImport("libvosk")] static extern void vosk_recognizer_free(IntPtr r);
+        [DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)] static extern IntPtr LoadLibrary(string p);
+        [DllImport("kernel32", CharSet = CharSet.Ansi, SetLastError = true)] static extern IntPtr GetProcAddress(IntPtr module, string name);
+
+        // Unitys Mono findet libvosk per DllImport nicht (auch nicht vorgeladen): Funktionen über ihre Adressen aufrufen.
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate void SetLogLevel(int l);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate IntPtr ModelNew(byte[] path);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate void Free(IntPtr p);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate IntPtr RecognizerNew(IntPtr m, float rate);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate IntPtr RecognizerNewGrm(IntPtr m, float rate, byte[] grammar);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int AcceptWaveform(IntPtr r, byte[] data, int len);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate IntPtr FinalResult(IntPtr r);
+
+        static SetLogLevel vosk_set_log_level;
+        static ModelNew vosk_model_new;
+        static Free vosk_model_free, vosk_recognizer_free;
+        static RecognizerNew vosk_recognizer_new;
+        static RecognizerNewGrm vosk_recognizer_new_grm;
+        static AcceptWaveform vosk_recognizer_accept_waveform;
+        static FinalResult vosk_recognizer_final_result;
+
+        static T Fn<T>(IntPtr lib, string name) where T : class
+        {
+            IntPtr p = GetProcAddress(lib, name);
+            if (p == IntPtr.Zero) throw new Exception("Funktion " + name + " fehlt in libvosk.dll");
+            return Marshal.GetDelegateForFunctionPointer(p, typeof(T)) as T;
+        }
+
+        static void Bind(IntPtr lib)
+        {
+            vosk_set_log_level = Fn<SetLogLevel>(lib, "vosk_set_log_level");
+            vosk_model_new = Fn<ModelNew>(lib, "vosk_model_new");
+            vosk_model_free = Fn<Free>(lib, "vosk_model_free");
+            vosk_recognizer_new = Fn<RecognizerNew>(lib, "vosk_recognizer_new");
+            vosk_recognizer_new_grm = Fn<RecognizerNewGrm>(lib, "vosk_recognizer_new_grm");
+            vosk_recognizer_accept_waveform = Fn<AcceptWaveform>(lib, "vosk_recognizer_accept_waveform");
+            vosk_recognizer_final_result = Fn<FinalResult>(lib, "vosk_recognizer_final_result");
+            vosk_recognizer_free = Fn<Free>(lib, "vosk_recognizer_free");
+        }
 
         readonly ManualLogSource _log;
         IntPtr _model;
@@ -40,6 +70,12 @@ namespace StbcAiCrew.Voice
                 if (!File.Exists(Path.Combine(libDir, "libvosk.dll"))) throw new FileNotFoundException("libvosk.dll fehlt in " + libDir);
                 if (!Directory.Exists(modelDir)) throw new DirectoryNotFoundException("Vosk-Modell fehlt: " + modelDir);
                 SetDllDirectory(libDir);
+                // Mit vollem Pfad laden (erst die Abhängigkeiten), dann die Funktionen binden
+                IntPtr lib = IntPtr.Zero;
+                foreach (var dll in new[] { "libwinpthread-1.dll", "libgcc_s_seh-1.dll", "libstdc++-6.dll", "libvosk.dll" })
+                    if ((lib = LoadLibrary(Path.Combine(libDir, dll))) == IntPtr.Zero)
+                        throw new Exception(dll + " nicht ladbar (Fehler " + Marshal.GetLastWin32Error() + ")");
+                Bind(lib);
                 vosk_set_log_level(-1);
                 var sw = System.Diagnostics.Stopwatch.StartNew();
                 _model = vosk_model_new(U(modelDir));
@@ -117,7 +153,9 @@ namespace StbcAiCrew.Voice
         /// <summary>Befehlswortschatz für die Grammatik (aus den Regeln des Parsers und den Sprechweisen der Tests).</summary>
         public static readonly string[] CommandWords =
         {
-            "steuer", "taktik", "technik", "helm", "navigation", "rao", "hoyle", "crew", "brücke", "alle", "stationen", "computer", "fähnrich", "lieutenant",
+            "subsystem", "subsysteme", "system", "auswählen", "wähle", "wählen", "stören", "störe", "anvisieren", "visiere",
+            "abschalten", "ausschalten", "deaktivieren", "aktivieren", "einschalten", "lahmlegen", "lahm", "legen",
+            "steuer", "steuermann", "taktik", "technik", "helm", "navigation", "rao", "hoyle", "crew", "brücke", "alle", "stationen", "computer", "fähnrich", "lieutenant",
             "bitte", "jetzt", "los", "sofort", "ja", "nein", "okay", "gut", "danke", "und", "dann", "danach", "aber", "nicht", "kein", "keine", "keiner", "nur", "noch", "mal", "doch", "wieder", "erst", "wenn", "ich", "es", "sage", "uns", "wir", "dich", "mich",
             "volle", "voller", "volles", "halbe", "halber", "viertel", "fahrt", "kraft", "geschwindigkeit", "schub", "impuls", "impulse", "impulssprung", "vollgas", "schneller", "langsamer", "langsam", "stopp", "stop", "anhalten", "maschinen", "rückwärts", "voraus",
             "warp", "energie", "warpkern", "spulen", "laden", "lade", "vorbereiten", "aktivieren", "springen", "spring", "sprung", "ausführen", "starten",

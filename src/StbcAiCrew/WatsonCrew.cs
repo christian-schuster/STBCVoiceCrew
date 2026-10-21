@@ -62,14 +62,28 @@ namespace StbcAiCrew
             var r = rG.Understood ? rG : rF;
             // Namen fehlen in der Grammatik: aus dem freien Text auflösen
             foreach (var c in r.Commands)
-                if (c.Resolved == null && NeedsName(c.Intent))
-                {
-                    float s;
-                    c.Resolved = Phonetics.BestMatch(free, names, out s) ?? (c.Name != null ? Phonetics.BestMatch(c.Name, names, out s) : null);
-                }
+            {
+                bool fire = c.Intent == Intent.FirePhasers || c.Intent == Intent.FireTorpedoes || c.Intent == Intent.Analyze;
+                // Feuerbefehle nur mit ausdrücklichem Ziel ("Feuer auf …"), sonst bleibt das gewählte Ziel
+                string tail = fire ? After(free, " auf ") : free;
+                if (c.Resolved != null || (!NeedsName(c.Intent) && !(fire && (c.Name != null || tail != null)))) continue;
+                float s;
+                c.Resolved = (tail != null ? Phonetics.BestMatch(tail, names, out s) : null) ??
+                             (c.Name != null ? Phonetics.BestMatch(c.Name, names, out s) : null) ??
+                             Partial(c.Name ?? After(grammar, " auf ")) ?? (tail != null ? Partial(tail) : null);
+            }
 
             bool addressed = r.Addressed.HasValue || r.AddressedAll;
-            bool shortOrder = r.Understood && WordCount(LastHeard) <= 4;
+            // Die Befehlsgrammatik presst Ungehörtes in bekannte Wörter ("abschalten" → "abstand halten"). Folgenreiche
+            // Befehle ohne Anrede/Taste nur, wenn auch die freie Erkennung sie verstanden hat.
+            if (!addressed && !ptt && r == rG)
+            {
+                int removed = r.Commands.RemoveAll(c => Risky(c.Intent) && !rF.Commands.Exists(f => f.Intent == c.Intent));
+                if (removed > 0) Note("Unsicher erkannt, nicht ausgeführt: " + grammar + " / " + free);
+                if (r.Commands.Count == 0) return;
+            }
+            // Ohne Anrede: ein Satz, der vollständig als Befehl verstanden wurde (Gespräche ergeben keine oder nur Teilbefehle)
+            bool shortOrder = r.Understood && r.NotUnderstood.Count == 0 && WordCount(LastHeard) <= 8;
             bool accept = ptt || Listen == ListenMode.Always ||
                           (Listen == ListenMode.Both && (addressed || shortOrder)) ||
                           (Listen == ListenMode.Address && addressed);
@@ -105,9 +119,41 @@ namespace StbcAiCrew
         static string Plain(string s) { string g, f; Split(s, out g, out f); return g.Length > 0 ? g : f; }
         static int WordCount(string s) => (s ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
 
+        /// <summary>Manöver und Daueranweisungen: wirken lange nach, daher nur bei sicherer Erkennung.</summary>
+        static bool Risky(Intent i) =>
+            i == Intent.AvoidHazard || i == Intent.KeepDistance || i == Intent.CircleTarget || i == Intent.Flee ||
+            i == Intent.StealthOn || i == Intent.StayOutOfSensors || i == Intent.HoldShieldsDown || i == Intent.HoldFire ||
+            i == Intent.LimitSpeed || i == Intent.ShieldsDown || i == Intent.ReleaseOrders;
+
         static bool NeedsName(Intent i) =>
             i == Intent.MoveToTarget || i == Intent.SelectTarget || i == Intent.Scan || i == Intent.Attack || i == Intent.Impulse ||
             i == Intent.CircleTarget || i == Intent.KeepDistance;
+
+        static string After(string s, string marker)
+        {
+            int k = (" " + s + " ").LastIndexOf(marker, StringComparison.Ordinal);
+            if (k < 0) return null;
+            string rest = (" " + s + " ").Substring(k + marker.Length).Trim();
+            return rest.Length > 0 ? rest : null;
+        }
+
+        /// <summary>
+        /// Teil eines Kontaktnamens ("Mine" → "Gravitationsmine", "Frachter" → "Frachter Alpha 2"): nächster passender Kontakt.
+        /// Zusammengesetzte Namen kennt Vosk oft nicht, ein Wortteil kommt aber an.
+        /// </summary>
+        string Partial(string heard)
+        {
+            if (string.IsNullOrEmpty(heard)) return null;
+            Contact best = null;
+            foreach (var word in heard.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                string w = Phonetics.Normalize(word);
+                if (w.Length < 4 || w == "schiff" || w == "ziel") continue;
+                foreach (var c in _contacts)
+                    if (Phonetics.Normalize(c.Name).Contains(w) && (best == null || c.DistanceKm < best.DistanceKm)) best = c;
+            }
+            return best != null ? best.Name : null;
+        }
 
         List<string> Names()
         {
@@ -150,18 +196,18 @@ namespace StbcAiCrew
                     case Intent.ShieldsUp: Exec(Station.Tactical, "RaiseShields", force: true); break;
                     case Intent.ShieldsDown: Exec(Station.Tactical, "LowerShields", force: true); break;
                     case Intent.ModulateShields: Exec(Station.Tactical, "ModulateShields"); break;
-                    case Intent.FirePhasers: if (c.Name != null) Target(c); Exec(Station.Tactical, "FirePhasers", force: true); break;
-                    case Intent.FireTorpedoes: if (c.Name != null) Target(c); Exec(Station.Tactical, "ArmTorpedoes", force: true); Later(1.5f, "Torpedos", () => Exec(Station.Tactical, "FireTorpedoes", force: true)); break;
+                    case Intent.FirePhasers: if (c.Resolved != null) Target(c); else EnsureEnemyTarget(); Exec(Station.Tactical, "FirePhasers", force: true); break;
+                    case Intent.FireTorpedoes: if (c.Resolved != null) Target(c); else EnsureEnemyTarget(); Exec(Station.Tactical, "ArmTorpedoes", force: true); Later(1.5f, "Torpedos", () => Exec(Station.Tactical, "FireTorpedoes", force: true)); break;
                     case Intent.CeaseFire: Exec(Station.Tactical, "CeaseFire"); break;
                     case Intent.ArmTorpedoes: Exec(Station.Tactical, "ArmTorpedoes", force: true); break;
                     case Intent.DisarmTorpedoes: Exec(Station.Tactical, "DisarmTorpedoes"); break;
-                    case Intent.TargetEngines: Exec(Station.Tactical, "TargetEngines", force: true); break;
-                    case Intent.TargetShields: Exec(Station.Tactical, "TargetShields", force: true); break;
-                    case Intent.TargetWeapons: Exec(Station.Tactical, "TargetWeapons", force: true); break;
+                    case Intent.TargetEngines: EnsureEnemyTarget(); Exec(Station.Tactical, "TargetEngines", force: true); break;
+                    case Intent.TargetShields: EnsureEnemyTarget(); Exec(Station.Tactical, "TargetShields", force: true); break;
+                    case Intent.TargetWeapons: EnsureEnemyTarget(); Exec(Station.Tactical, "TargetWeapons", force: true); break;
                     case Intent.CeaseTargeting: Exec(Station.Tactical, "CeaseTargeting"); break;
                     case Intent.Scan: if (c.Name != null && Target(c) == null && !IsCurrentTarget(c)) { Missing(c); break; } Exec(Station.Tactical, "ScanTarget"); break;
                     case Intent.Analyze: if (c.Name != null) Target(c); Exec(Station.Tactical, "AnalyseTarget", force: true); break;
-                    case Intent.Attack: if (c.Name != null && Target(c) == null) { Missing(c); break; } Exec(Station.Tactical, "EngageTarget", force: true); break;
+                    case Intent.Attack: if (c.Name != null && Target(c) == null) { Missing(c); break; } if (c.Name == null) EnsureEnemyTarget(); Exec(Station.Tactical, "EngageTarget", force: true); break;
                     case Intent.SelectTarget: if (Target(c) == null) Missing(c); break;
                     case Intent.RedAlert: Exec(Station.Tactical, "RaiseShields", force: true); break;
                     case Intent.CancelRedAlert: Note("Alarm aufheben: nur an der Captain-Konsole möglich"); break;
@@ -251,7 +297,26 @@ namespace StbcAiCrew
         string Target(ParsedCommand c)
         {
             if (IsCurrentTarget(c) && c.Resolved == null) return Contacts.TargetOf(Station.Helm) ?? Contacts.TargetOf(Station.Tactical);
-            string name = c.Resolved;
+            return Select(c.Resolved);
+        }
+
+        /// <summary>
+        /// Waffen und Subsysteme brauchen einen Gegner auf der Taktik-Konsole ("Brauche einen Zielpunkt"). Ist keiner
+        /// gewählt, den nächsten Feind wählen, wie es ein Captain tun würde.
+        /// </summary>
+        void EnsureEnemyTarget()
+        {
+            string current = Contacts.TargetOf(Station.Tactical);
+            Contact cur = current != null ? _contacts.Find(x => x.Name == current) : null;
+            if (cur != null && cur.Category == HHHDDNLEDBN.Enemy) return;
+            Contact best = null;
+            foreach (var c in _contacts) if (c.Category == HHHDDNLEDBN.Enemy && (best == null || c.DistanceKm < best.DistanceKm)) best = c;
+            if (best == null) { Note("Kein Gegner in Sicht" + (current != null ? " (Ziel: " + current + ")" : "")); return; }
+            Select(best.Name);
+        }
+
+        string Select(string name)
+        {
             if (name == null) return null;
             Contact contact = _contacts.Find(x => x.Name == name);
             var t = contact != null ? contact.Detectable as DIENHALJFIO : null;
