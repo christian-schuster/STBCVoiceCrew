@@ -26,6 +26,7 @@ namespace StbcAiCrew.Voice
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate IntPtr RecognizerNewGrm(IntPtr m, float rate, byte[] grammar);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int AcceptWaveform(IntPtr r, byte[] data, int len);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate IntPtr FinalResult(IntPtr r);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate void SetWords(IntPtr r, int on);
 
         static SetLogLevel vosk_set_log_level;
         static ModelNew vosk_model_new;
@@ -34,6 +35,7 @@ namespace StbcAiCrew.Voice
         static RecognizerNewGrm vosk_recognizer_new_grm;
         static AcceptWaveform vosk_recognizer_accept_waveform;
         static FinalResult vosk_recognizer_final_result;
+        static SetWords vosk_recognizer_set_words;
 
         static T Fn<T>(IntPtr lib, string name) where T : class
         {
@@ -52,6 +54,7 @@ namespace StbcAiCrew.Voice
             vosk_recognizer_accept_waveform = Fn<AcceptWaveform>(lib, "vosk_recognizer_accept_waveform");
             vosk_recognizer_final_result = Fn<FinalResult>(lib, "vosk_recognizer_final_result");
             vosk_recognizer_free = Fn<Free>(lib, "vosk_recognizer_free");
+            vosk_recognizer_set_words = Fn<SetWords>(lib, "vosk_recognizer_set_words");
         }
 
         readonly ManualLogSource _log;
@@ -105,20 +108,50 @@ namespace StbcAiCrew.Voice
             var bytes = new byte[pcm.Length * 2];
             Buffer.BlockCopy(pcm, 0, bytes, 0, bytes.Length);
             string g = _grammar;
-            string withGrammar = g != null ? Run(vosk_recognizer_new_grm(_model, rate, U(g)), bytes) : "";
+            string withGrammar = "";
+            if (g != null)
+            {
+                IntPtr rg = vosk_recognizer_new_grm(_model, rate, U(g));
+                if (rg != IntPtr.Zero) vosk_recognizer_set_words(rg, 1);
+                string json = RunJson(rg, bytes);
+                withGrammar = TextOf(json);
+                if (withGrammar.Length > 0) _log.LogInfo("Vosk-Sicherheit: " + Confidences(json));
+            }
             string free = Run(vosk_recognizer_new(_model, rate), bytes);
             return new KeyValuePair<string, string>(withGrammar, free);
         }
 
-        static string Run(IntPtr r, byte[] data)
+        static string Run(IntPtr r, byte[] data) => TextOf(RunJson(r, data));
+
+        static string RunJson(IntPtr r, byte[] data)
         {
             if (r == IntPtr.Zero) return "";
             try
             {
                 vosk_recognizer_accept_waveform(r, data, data.Length);
-                return TextOf(S(vosk_recognizer_final_result(r)));
+                return S(vosk_recognizer_final_result(r));
             }
             finally { vosk_recognizer_free(r); }
+        }
+
+        /// <summary>Wortweise Sicherheit aus dem Ergebnis ("wort 0.93 …"), zum Einstellen der Gerede-Sperre.</summary>
+        static string Confidences(string json)
+        {
+            var sb = new StringBuilder();
+            int i = 0;
+            while ((i = json.IndexOf("\"conf\"", i, StringComparison.Ordinal)) >= 0)
+            {
+                int c = json.IndexOf(':', i) + 1;
+                int ce = json.IndexOfAny(new[] { ',', '}', '\n' }, c);
+                string conf = json.Substring(c, ce - c).Trim();
+                int w = json.IndexOf("\"word\"", i, StringComparison.Ordinal);
+                string word = "?";
+                if (w >= 0) { int a = json.IndexOf('"', json.IndexOf(':', w) + 1); int b = json.IndexOf('"', a + 1); word = json.Substring(a + 1, b - a - 1); }
+                double v;
+                sb.Append(word).Append(' ').Append(double.TryParse(conf, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v) ? v.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) : conf).Append("  ");
+                i = ce;
+            }
+            return sb.ToString().Trim();
         }
 
         /// <summary>{"text" : "…"} → Text, ohne JSON-Bibliothek; "[unk]" (unbekannt) entfällt.</summary>
