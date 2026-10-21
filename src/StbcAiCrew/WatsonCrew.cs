@@ -221,8 +221,8 @@ namespace StbcAiCrew
                     case Intent.WarpEngage: Exec(Station.Helm, "SetSpeedFull"); Exec(Station.Helm, "EngageWarp", force: true); break;
                     case Intent.PrepareWarp: Exec(Station.Engineering, "PrepareWarp"); break;
                     // Taktik
-                    case Intent.ShieldsUp: Exec(Station.Tactical, "RaiseShields", force: true); break;
-                    case Intent.ShieldsDown: _shieldReflexPausedUntil = Time.time + 30f; Exec(Station.Tactical, "LowerShields", force: true); break;
+                    case Intent.ShieldsUp: _shieldsHeldDown = false; Exec(Station.Tactical, "RaiseShields", force: true); break;
+                    case Intent.ShieldsDown: _shieldsHeldDown = true; Note("Schilde bleiben unten, bis „Schilde hoch“"); Exec(Station.Tactical, "LowerShields", force: true); break;
                     case Intent.ModulateShields: Exec(Station.Tactical, "ModulateShields"); break;
                     case Intent.FirePhasers: if (c.Resolved != null) Target(c); else { EnsureEnemyTarget(); if (FriendlyTarget()) break; } Exec(Station.Tactical, "FirePhasers", force: true); break;
                     case Intent.FireTorpedoes: if (c.Resolved != null) Target(c); else { EnsureEnemyTarget(); if (FriendlyTarget()) break; } Exec(Station.Tactical, "ArmTorpedoes", force: true); Later(1.5f, "Torpedos", () => Exec(Station.Tactical, "FireTorpedoes", force: true)); break;
@@ -238,7 +238,7 @@ namespace StbcAiCrew
                     case Intent.Attack: if (c.Name != null && Target(c) == null) { Missing(c); break; } if (c.Name == null) { EnsureEnemyTarget(); if (FriendlyTarget()) break; } Exec(Station.Tactical, "EngageTarget", force: true); break;
                     case Intent.SelectTarget:   // ohne gefundenen Namen neben anderen Befehlen meist ein Hörfehler: still übergehen
                         if (Target(c) == null && r.Commands.Count == 1) Missing(c); break;
-                    case Intent.RedAlert: Exec(Station.Tactical, "RaiseShields", force: true); break;
+                    case Intent.RedAlert: _shieldsHeldDown = false; Exec(Station.Tactical, "RaiseShields", force: true); break;
                     case Intent.CancelRedAlert: Note("Alarm aufheben: nur an der Captain-Konsole möglich"); break;
                     case Intent.CloakHunt: Exec(Station.Tactical, "CloakHunt", force: true); break;
                     // Technik
@@ -282,7 +282,7 @@ namespace StbcAiCrew
                         break;
                     case Intent.StealthOff: Orders.Reset(); Note("Schleichfahrt aufgehoben"); break;
                     case Intent.StayOutOfSensors: Nav.StayOutOfSensors = true; Note("Daueranweisung: außerhalb gegnerischer Ortung bleiben"); if (!approach) Nav.Avoid(null, Contacts.TargetOf(Station.Helm)); break;
-                    case Intent.ReleaseOrders: Orders.Reset(); Nav.StayOutOfSensors = false; Nav.AvoidKinds.Clear(); Note("Daueranweisungen aufgehoben"); break;
+                    case Intent.ReleaseOrders: _shieldsHeldDown = false; Orders.Reset(); Nav.StayOutOfSensors = false; Nav.AvoidKinds.Clear(); Note("Daueranweisungen aufgehoben"); break;
                     // Manöver
                     case Intent.AvoidHazard: Nav.Avoid(HazardKind(c), Contacts.TargetOf(Station.Helm)); Exec(Station.Helm, "SetSpeedHalf"); break;
                     case Intent.KeepDistance: { string t = c.Name != null ? Target(c) : null; Nav.KeepDistance(t ?? NearestEnemyOrTarget(), c.Number); break; }
@@ -532,7 +532,7 @@ namespace StbcAiCrew
 
         public void Tick(ShipStatus status)
         {
-            if (!GameBridge.InMission) { if (Nav.Current != Navigator.Mode.None) Nav.Stop("Mission vorbei"); _steps.Clear(); return; }
+            if (!GameBridge.InMission) { if (Nav.Current != Navigator.Mode.None) Nav.Stop("Mission vorbei"); _steps.Clear(); _shieldsHeldDown = false; return; }
             _status = status;
             if (status != null && status.ContactList != null) _contacts = status.ContactList;
 
@@ -552,6 +552,8 @@ namespace StbcAiCrew
 
         float _nextReflex;
         float _shieldReflexPausedUntil;
+        /// <summary>Ausdrücklich befohlen: Schilde unten lassen (auch unter Beschuss), bis jemand sie wieder hochbefiehlt.</summary>
+        bool _shieldsHeldDown;
         readonly Dictionary<string, float> _reflexAt = new Dictionary<string, float>();
 
         void RunReflexes(ShipStatus st)
@@ -560,7 +562,7 @@ namespace StbcAiCrew
             _nextReflex = Time.time + 2f;
             bool threat = EventLog.UnderThreat(20f);
             bool recentHit = Time.time - EventLog.LastHitTime < 10f;
-            if (threat && st.ShieldState == "PoweredOff" && Time.time >= _shieldReflexPausedUntil) Reflex(Station.Tactical, "RaiseShields", 15f);
+            if (threat && st.ShieldState == "PoweredOff" && !_shieldsHeldDown && Time.time >= _shieldReflexPausedUntil) Reflex(Station.Tactical, "RaiseShields", 15f);
             if (recentHit && st.Shields >= 0f && st.Shields < 50f) Reflex(Station.Engineering, "PowerToShields", 30f);
             string worst = null; float min = 75f;
             if (st.Engines >= 0 && st.Engines < min) { min = st.Engines; worst = "RepairEngines"; }
