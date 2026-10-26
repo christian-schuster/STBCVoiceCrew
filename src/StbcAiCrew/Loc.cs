@@ -21,7 +21,7 @@ namespace StbcAiCrew
             _next = DateTime.UtcNow.AddSeconds(5);
             try
             {
-                string game = GameBridge.VoiceLanguage();
+                string game = GameBridge.GameLanguage() ?? GameBridge.VoiceLanguage();
                 if (!string.IsNullOrEmpty(game)) _german = game.StartsWith("German", StringComparison.OrdinalIgnoreCase);
             }
             catch { }

@@ -101,6 +101,12 @@ namespace StbcAiCrew
         }
 
         /// <summary>Sprache der Sprachausgabe (Wwise), z. B. "German"; null, wenn nicht ermittelbar.</summary>
+        /// <summary>Im Spiel eingestellte Sprache (SVR.Localization: "German", "EnglishUS", "French", …), null wenn unbekannt.</summary>
+        public static string GameLanguage()
+        {
+            try { return SVR.Localization.GFGKABKANBC; } catch { return null; }
+        }
+
         public static string VoiceLanguage()
         {
             try

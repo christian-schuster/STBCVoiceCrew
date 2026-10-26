@@ -399,7 +399,7 @@ namespace StbcAiCrew
             string lang = (CommandLanguage.Value ?? "spiel").Trim().ToLowerInvariant();
             if (lang == "spiel" || lang == "game")
             {
-                string gl = GameBridge.VoiceLanguage() ?? "German";
+                string gl = GameBridge.GameLanguage() ?? GameBridge.VoiceLanguage() ?? "German";
                 lang = gl.StartsWith("German", StringComparison.OrdinalIgnoreCase) ? "de" : "en";
             }
             string libDir = Path.Combine(pluginDir, "vosk");
