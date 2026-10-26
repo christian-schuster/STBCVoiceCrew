@@ -58,7 +58,7 @@ namespace StbcAiCrew
             Lang lang;
             string grammar, free;
             Choose(recognized, speakerName, names, out lang, out grammar, out free);
-            if (!GameBridge.InMission) { LastHeard = free.Length > 0 ? free : grammar; LastResult = "kein Einsatz"; return; }
+            if (!GameBridge.InMission) { LastHeard = free.Length > 0 ? free : grammar; LastResult = Loc.T("kein Einsatz", "no mission"); return; }
             bool en = lang == Lang.En;
             string onMarker = en ? " at " : " auf ";
 
@@ -92,11 +92,11 @@ namespace StbcAiCrew
                 // die freie Fassung: gemessen an echten Spielsätzen liegt verbogenes Gerede bei 0,25–0,35, Befehle ab 0,45.
                 if (!rF.Understood && free.Length > 0 && WordCount(free) > 2 && Phonetics.Similarity(grammar, free) < 0.40f)
                 {
-                    Note("Unsicher erkannt, nicht ausgeführt: „" + grammar + "“ / „" + free + "“");
+                    Note(Loc.T("Unsicher erkannt, nicht ausgeführt: „", "Unsure, not executed: \"") + grammar + Loc.T("“ / „", "\" / \"") + free + Loc.T("“", "\""));
                     return;
                 }
                 int removed = r.Commands.RemoveAll(c => Risky(c.Intent) && !rF.Commands.Exists(f => f.Intent == c.Intent));
-                if (removed > 0) Note("Unsicher erkannt, nicht ausgeführt: " + grammar + " / " + free);
+                if (removed > 0) Note(Loc.T("Unsicher erkannt, nicht ausgeführt: ", "Unsure, not executed: ") + grammar + " / " + free);
                 if (r.Commands.Count == 0)
                 {
                     if (!rF.Understood) return;
@@ -111,22 +111,22 @@ namespace StbcAiCrew
                           (Listen == ListenMode.Address && addressed);
             if (!accept)
             {
-                if (r.Understood) Note(speakerName + " (ohne Ansprache, ignoriert): " + LastHeard);
+                if (r.Understood) Note(speakerName + Loc.T(" (ohne Ansprache, ignoriert): ", " (not addressed, ignored): ") + LastHeard);
                 return;
             }
             if (!r.Understood)
             {
                 if (addressed || ptt || r.NotUnderstood.Count > 0)
                 {
-                    LastResult = "nicht verstanden";
-                    Note(speakerName + ": „" + LastHeard + "“ – nicht verstanden");
+                    LastResult = Loc.T("nicht verstanden", "not understood");
+                    Note(speakerName + ": \"" + LastHeard + "\" – " + Loc.T("nicht verstanden", "not understood"));
                     Beep(false);
                 }
                 return;
             }
             if (r.Commands.TrueForAll(c => c.Intent == Intent.Confirm || c.Intent == Intent.Deny)) return;   // "Ja"/"Nein" im Gespräch
             LastResult = r.ToString();
-            Note(speakerName + ": „" + LastHeard + "“ → " + LastResult + (free != LastHeard && free.Length > 0 ? "  (frei: „" + free + "“)" : ""));
+            Note(speakerName + ": \"" + LastHeard + "\" → " + LastResult + (free != LastHeard && free.Length > 0 ? Loc.T("  (frei: \"", "  (free: \"") + free + "\")" : ""));
             Beep(true);
             Execute(r);
         }
@@ -225,7 +225,7 @@ namespace StbcAiCrew
                     case Intent.SpeedFull: Exec(Station.Helm, "SetSpeedFull"); break;
                     case Intent.SpeedHalf: Exec(Station.Helm, "SetSpeedHalf"); break;
                     case Intent.SpeedQuarter: Exec(Station.Helm, "SetSpeedQuarter"); break;
-                    case Intent.SpeedStop: Nav.Stop("Stopp"); Exec(Station.Helm, "SetSpeedStop"); break;
+                    case Intent.SpeedStop: Nav.Stop(Loc.T("Stopp", "stop")); Exec(Station.Helm, "SetSpeedStop"); break;
                     case Intent.SpeedReverse: Exec(Station.Helm, "SetSpeedReverse"); break;
                     // Navigation
                     case Intent.MoveToTarget:
@@ -233,10 +233,10 @@ namespace StbcAiCrew
                             string t = Target(c);
                             if (t == null && !IsCurrentTarget(c)) { Missing(c); break; }
                             if (Nav.StayOutOfSensors || Nav.AvoidKinds.Count > 0) Nav.Approach(t ?? Contacts.TargetOf(Station.Helm));
-                            else { Nav.Stop("neuer Kurs"); Exec(Station.Helm, "MoveTo"); }
+                            else { Nav.Stop(Loc.T("neuer Kurs", "new course")); Exec(Station.Helm, "MoveTo"); }
                             break;
                         }
-                    case Intent.MoveAway: Nav.Stop("ausweichen"); Exec(Station.Helm, "MoveAwayFrom"); break;
+                    case Intent.MoveAway: Nav.Stop(Loc.T("ausweichen", "evading")); Exec(Station.Helm, "MoveAwayFrom"); break;
                     case Intent.Impulse: if (c.Name != null) Target(c); ImpulseSequence(); break;
                     case Intent.ImpulseEngage: Exec(Station.Helm, "EngageImpulse", force: true); break;
                     case Intent.Warp: WarpSequence(); break;
@@ -244,7 +244,7 @@ namespace StbcAiCrew
                     case Intent.PrepareWarp: Exec(Station.Engineering, "PrepareWarp"); break;
                     // Taktik
                     case Intent.ShieldsUp: _shieldsHeldDown = false; Exec(Station.Tactical, "RaiseShields", force: true); break;
-                    case Intent.ShieldsDown: _shieldsHeldDown = true; Note("Schilde bleiben unten, bis „Schilde hoch“"); Exec(Station.Tactical, "LowerShields", force: true); break;
+                    case Intent.ShieldsDown: _shieldsHeldDown = true; Note(Loc.T("Schilde bleiben unten, bis „Schilde hoch“", "Shields stay down until \"shields up\"")); Exec(Station.Tactical, "LowerShields", force: true); break;
                     case Intent.ModulateShields: Exec(Station.Tactical, "ModulateShields"); break;
                     case Intent.FirePhasers: if (c.Resolved != null) Target(c); else { EnsureEnemyTarget(); if (FriendlyTarget()) break; } Exec(Station.Tactical, "FirePhasers", force: true); break;
                     case Intent.FireTorpedoes: if (c.Resolved != null) Target(c); else { EnsureEnemyTarget(); if (FriendlyTarget()) break; } Exec(Station.Tactical, "ArmTorpedoes", force: true); Later(1.5f, "Torpedos", () => Exec(Station.Tactical, "FireTorpedoes", force: true)); break;
@@ -261,7 +261,7 @@ namespace StbcAiCrew
                     case Intent.SelectTarget:   // ohne gefundenen Namen neben anderen Befehlen meist ein Hörfehler: still übergehen
                         if (Target(c) == null && r.Commands.Count == 1) Missing(c); break;
                     case Intent.RedAlert: _shieldsHeldDown = false; Exec(Station.Tactical, "RaiseShields", force: true); break;
-                    case Intent.CancelRedAlert: Note("Alarm aufheben: nur an der Captain-Konsole möglich"); break;
+                    case Intent.CancelRedAlert: Note(Loc.T("Alarm aufheben: nur an der Captain-Konsole möglich", "Cancel red alert: captain's console only")); break;
                     case Intent.CloakHunt: Exec(Station.Tactical, "CloakHunt", force: true); break;
                     // Technik
                     case Intent.PowerWeapons: Exec(Station.Engineering, "PowerToPhasers", force: true); break;
@@ -290,7 +290,7 @@ namespace StbcAiCrew
                             break;
                         }
                     case Intent.AnswerHail:
-                    case Intent.LaunchProbe: Note(c.Intent + ": nur an der Captain-Konsole möglich"); break;
+                    case Intent.LaunchProbe: Note(c.Intent + Loc.T(": nur an der Captain-Konsole möglich", ": captain's console only")); break;
                     // Daueranweisungen
                     case Intent.HoldShieldsDown: SetOrder("shields", "unten halten"); break;
                     case Intent.HoldShieldsUp: SetOrder("shields", "oben halten"); break;
@@ -302,14 +302,14 @@ namespace StbcAiCrew
                         Exec(Station.Tactical, "DisarmTorpedoes");
                         Exec(Station.Engineering, "ReduceSignature", force: true);
                         break;
-                    case Intent.StealthOff: Orders.Reset(); Note("Schleichfahrt aufgehoben"); break;
-                    case Intent.StayOutOfSensors: Nav.StayOutOfSensors = true; Note("Daueranweisung: außerhalb gegnerischer Ortung bleiben"); if (!approach) Nav.Avoid(null, Contacts.TargetOf(Station.Helm)); break;
-                    case Intent.ReleaseOrders: _shieldsHeldDown = false; Orders.Reset(); Nav.StayOutOfSensors = false; Nav.AvoidKinds.Clear(); Note("Daueranweisungen aufgehoben"); break;
+                    case Intent.StealthOff: Orders.Reset(); Note(Loc.T("Schleichfahrt aufgehoben", "Stealth ended")); break;
+                    case Intent.StayOutOfSensors: Nav.StayOutOfSensors = true; Note(Loc.T("Daueranweisung: außerhalb gegnerischer Ortung bleiben", "Standing order: stay out of enemy sensor range")); if (!approach) Nav.Avoid(null, Contacts.TargetOf(Station.Helm)); break;
+                    case Intent.ReleaseOrders: _shieldsHeldDown = false; Orders.Reset(); Nav.StayOutOfSensors = false; Nav.AvoidKinds.Clear(); Note(Loc.T("Daueranweisungen aufgehoben", "Standing orders lifted")); break;
                     // Manöver
                     case Intent.AvoidHazard: Nav.Avoid(HazardKind(c), Contacts.TargetOf(Station.Helm)); Exec(Station.Helm, "SetSpeedHalf"); break;
                     case Intent.KeepDistance: { string t = c.Name != null ? Target(c) : null; Nav.KeepDistance(t ?? NearestEnemyOrTarget(), c.Number); break; }
                     case Intent.CircleTarget: { string t = c.Name != null ? Target(c) : null; Nav.Circle(t ?? Contacts.TargetOf(Station.Helm), c.Number); Exec(Station.Helm, "SetSpeedHalf"); break; }
-                    case Intent.HoldPosition: Nav.Stop("Position halten"); Exec(Station.Helm, "SetSpeedStop"); break;
+                    case Intent.HoldPosition: Nav.Stop(Loc.T("Position halten", "hold position")); Exec(Station.Helm, "SetSpeedStop"); break;
                     case Intent.Flee: Nav.Flee(); break;
                     case Intent.Confirm:
                     case Intent.Deny: break;
@@ -356,7 +356,7 @@ namespace StbcAiCrew
 
         void Missing(ParsedCommand c)
         {
-            Note("Ziel „" + (c.Name ?? "?") + "“ nicht auf den Konsolen gefunden");
+            Note(Loc.T("Ziel nicht auf den Konsolen gefunden: ", "Target not found on the consoles: ") + (c.Name ?? "?"));
             Beep(false);
         }
 
@@ -376,7 +376,7 @@ namespace StbcAiCrew
             var t = ConsoleTarget(Station.Tactical);
             Contact cur = t != null ? _contacts.Find(x => ReferenceEquals(x.Detectable, t)) : null;
             if (cur == null || (cur.Category != HHHDDNLEDBN.Friendly && cur.Category != HHHDDNLEDBN.Self)) return false;
-            Note("Nicht gefeuert: " + cur.Name + " ist verbündet (zum Beschuss ausdrücklich nennen)");
+            Note(Loc.T("Nicht gefeuert: " + cur.Name + " ist verbündet (zum Beschuss ausdrücklich nennen)", "Not fired: " + cur.Name + " is friendly (name it explicitly to fire)"));
             Beep(false);
             return true;
         }
@@ -391,13 +391,13 @@ namespace StbcAiCrew
             // Das Ziel, das der Befehlende an seiner Konsole markiert hat, gilt; sonst das eigene der Taktik, sonst Captain/Steuer
             var mine = _speaker != Station.Tactical ? ConsoleTarget(_speaker) : null;
             var tac = ConsoleTarget(Station.Tactical);
-            if (mine != null) { if (mine != tac) SetAll(mine, Contacts.TargetOf(_speaker)); else Note("Taktik-Ziel: " + Contacts.TargetOf(Station.Tactical)); return; }
-            if (tac != null) { Note("Taktik-Ziel: " + Contacts.TargetOf(Station.Tactical)); return; }
+            if (mine != null) { if (mine != tac) SetAll(mine, Contacts.TargetOf(_speaker)); else Note(Loc.T("Taktik-Ziel: ", "Tactical target: ") + Contacts.TargetOf(Station.Tactical)); return; }
+            if (tac != null) { Note(Loc.T("Taktik-Ziel: ", "Tactical target: ") + Contacts.TargetOf(Station.Tactical)); return; }
             var other = ConsoleTarget(Station.Captain) ?? ConsoleTarget(Station.Helm);
             if (other != null) { SetAll(other, Contacts.TargetOf(Station.Captain) ?? Contacts.TargetOf(Station.Helm)); return; }
             Contact best = null;
             foreach (var c in _contacts) if (c.Category == HHHDDNLEDBN.Enemy && (best == null || c.DistanceKm < best.DistanceKm)) best = c;
-            if (best == null) { Note("Kein Gegner in Sicht"); return; }
+            if (best == null) { Note(Loc.T("Kein Gegner in Sicht", "No enemy in sight")); return; }
             Select(best.Name);
         }
 
@@ -439,11 +439,25 @@ namespace StbcAiCrew
             {
                 foreach (var console in Consoles())
                     if (console != null && console.GetTarget() != t) console.SetTarget(t);
-                Note("Ziel: " + name);
+                Note(Loc.T("Ziel: ", "Target: ") + name);
                 return true;
             }
             catch (Exception e) { Plugin.Log.LogWarning("Ziel nicht gesetzt: " + e.Message); return false; }
         }
+        /// <summary>Daueranweisungen in der Anzeigesprache (null = keine).</summary>
+        public string OrdersText()
+        {
+            if (Loc.German) return Orders.Describe();
+            if (!Orders.Any) return null;
+            var parts = new List<string>();
+            if (Orders.Shields != "frei") parts.Add(Orders.Shields == "unten halten" ? "keep shields down" : "keep shields up");
+            if (Orders.Speed != "frei") parts.Add("speed at most " + (Orders.Speed == "viertel" ? "quarter" : Orders.Speed == "halb" ? "half" : Orders.Speed == "stopp" ? "stop" : Orders.Speed));
+            if (Orders.Power != "frei") parts.Add("power " + (Orders.Power == "schilde" ? "to shields" : Orders.Power == "waffen" ? "to weapons" : Orders.Power == "antrieb" ? "to engines" : "balanced") + ", don't redistribute");
+            if (Orders.Fire != "frei") parts.Add(Orders.Fire == "halten" ? "hold fire" : "fire only on order");
+            if (Orders.Stealth == "an") parts.Add("stay unnoticed (no weapons, small signature)");
+            return string.Join("; ", parts.ToArray());
+        }
+
         void SetOrder(string field, string value)
         {
             switch (field)
@@ -454,7 +468,7 @@ namespace StbcAiCrew
                 case "fire": Orders.Fire = value; break;
                 case "stealth": Orders.Stealth = value; break;
             }
-            Note("Daueranweisung: " + (Orders.Describe() ?? "keine"));
+            Note(Loc.T("Daueranweisung: ", "Standing order: ") + (OrdersText() ?? Loc.T("keine", "none")));
             foreach (var q in StandingOrders.ApplyNow(field, value)) Exec(q.Key, q.Value, "Daueranweisung", force: true);
         }
 
@@ -464,14 +478,14 @@ namespace StbcAiCrew
         {
             if (Orders.Blocks("SetSpeedFull") == null) Exec(Station.Helm, "SetSpeedFull");
             Exec(Station.Engineering, "PrepareWarp", force: true);
-            JumpSequence("Warp", AI.IAHDEGHOPAK.PrepareWarp, "EngageWarp", 10f, "Kein Warp – ist ein Warpziel auf der Karte gewählt?");
+            JumpSequence("Warp", AI.IAHDEGHOPAK.PrepareWarp, "EngageWarp", 10f, Loc.T("Kein Warp – ist ein Warpziel auf der Karte gewählt?", "No warp – is a warp destination selected on the map?"));
         }
 
         void ImpulseSequence()
         {
             if (Orders.Blocks("SetSpeedFull") == null) Exec(Station.Helm, "SetSpeedFull");
             Exec(Station.Helm, "PrepareImpulse", force: true);
-            JumpSequence("Impuls", AI.IAHDEGHOPAK.PrepareImpulse, "EngageImpulse", 4f, "Kein Impulssprung – ist ein Impulsziel auf der Karte markiert?");
+            JumpSequence(Loc.T("Impuls", "Impulse"), AI.IAHDEGHOPAK.PrepareImpulse, "EngageImpulse", 4f, Loc.T("Kein Impulssprung – ist ein Impulsziel auf der Karte markiert?", "No impulse jump – is an impulse destination marked on the map?"));
         }
 
         /// <summary>
@@ -487,7 +501,7 @@ namespace StbcAiCrew
             int engages = 0;
             Repeat(0.5f, 40f, 0.5f, what, () =>
             {
-                if (Jumped(start)) { Note(what + ": Sprung ausgeführt"); return true; }
+                if (Jumped(start)) { Note(what + Loc.T(": Sprung ausgeführt", ": jump done")); return true; }
                 bool preparing = Flag(prepareFlag);
                 if (preparing) seenPreparing = true;
                 bool ready = (seenPreparing && !preparing) || Time.time - t0 > fallback + (seenPreparing ? 8f : 0f);
@@ -530,14 +544,14 @@ namespace StbcAiCrew
         bool Exec(Station st, string name, string why = "Befehl", bool force = false)
         {
             var cmd = CrewCommands.Find(name);
-            if (cmd == null) { Note("Unbekannter Befehl " + name); return false; }
+            if (cmd == null) { Note(Loc.T("Unbekannter Befehl ", "Unknown command ") + name); return false; }
             if (cmd.Owner != Station.Captain && !GameBridge.IsStationAI(cmd.Owner))
             {
-                Note(OfficerAgent.StationDe(cmd.Owner) + " ist von einem Menschen besetzt: " + cmd.Description);
+                Note(Loc.Station(cmd.Owner) + Loc.T(" ist von einem Menschen besetzt: ", " is manned by a human: ") + name);
                 return false;
             }
             string block = force ? null : Orders.Blocks(name);
-            if (block != null) { Note(name + " unterbleibt (" + block + ")"); return false; }
+            if (block != null) { Note(name + Loc.T(" unterbleibt (" + block + ")", " held back (standing order)")); return false; }
             float last;
             if (_lastRun.TryGetValue(name, out last) && Time.time - last < 0.8f) return false;   // doppelt im selben Satz
             try
@@ -554,7 +568,7 @@ namespace StbcAiCrew
 
         public void Tick(ShipStatus status)
         {
-            if (!GameBridge.InMission) { if (Nav.Current != Navigator.Mode.None) Nav.Stop("Mission vorbei"); _steps.Clear(); _shieldsHeldDown = false; return; }
+            if (!GameBridge.InMission) { if (Nav.Current != Navigator.Mode.None) Nav.Stop(Loc.T("Mission vorbei", "mission over")); _steps.Clear(); _shieldsHeldDown = false; return; }
             _status = status;
             if (status != null && status.ContactList != null) _contacts = status.ContactList;
 

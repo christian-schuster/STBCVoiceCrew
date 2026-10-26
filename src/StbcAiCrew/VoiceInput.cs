@@ -79,6 +79,7 @@ namespace StbcAiCrew
         public bool Speaking => _speaking;
         public volatile string LastHeard = "";
         public volatile string State = "aus";
+        static string CrewSpeaking => Loc.T("Crew spricht …", "crew speaking …");
         public string Device => _mic != null ? _mic.DeviceName : "–";
 
         public VoiceInput(ManualLogSource log, VoiceSettings cfg, string sttBaseUrl, Action<string> onText)
@@ -118,13 +119,13 @@ namespace StbcAiCrew
                     if (mic.Start(want))
                     {
                         lastError = null;
-                        if (SttReady) State = Muted ? "stumm" : "hört zu";
+                        if (SttReady) State = Muted ? Loc.T("stumm", "muted") : Loc.T("hört zu", "listening");
                     }
                     else
                     {
                         if (mic.Error != lastError) _log.LogWarning("Mikrofon nicht verfügbar: " + mic.Error + " – neuer Versuch alle 5 s.");
                         lastError = mic.Error;
-                        State = "kein Mikrofon (" + mic.Error + ")";
+                        State = Loc.T("kein Mikrofon (", "no microphone (") + mic.Error + ")";
                     }
                     _mic = mic;
                 }
@@ -161,10 +162,10 @@ namespace StbcAiCrew
             if (Muted || !SttReady || Deaf)
             {
                 ResetUtterance();
-                State = Muted ? "stumm" : !SttReady ? "Spracherkennung startet …" : "Crew spricht …";
+                State = Muted ? Loc.T("stumm", "muted") : !SttReady ? Loc.T("Spracherkennung startet …", "speech recognition starting …") : CrewSpeaking;
                 return;
             }
-            if (State == "Crew spricht …") State = "hört zu";
+            if (State == CrewSpeaking) State = Loc.T("hört zu", "listening");
 
             bool voiced = db > Math.Max(_noiseDb + _cfg.MarginDb, _cfg.MinDb);
 
@@ -183,7 +184,7 @@ namespace StbcAiCrew
                     _preroll.Clear();
                     _speechFrames = _speechRun;
                     _silenceRun = 0;
-                    State = "hört …";
+                    State = Loc.T("hört …", "hearing …");
                 }
                 return;
             }
@@ -203,9 +204,9 @@ namespace StbcAiCrew
                     for (int i = 0; i < _utterance.Count; i++) Array.Copy(_utterance[i], 0, pcm, i * FrameSamples, FrameSamples);
                     lock (_pending) { _pending.Enqueue(pcm); _pendingPtt.Enqueue(_pttSeen || PttDown); }
                     _signal.Set();
-                    State = "erkennt …";
+                    State = Loc.T("erkennt …", "recognizing …");
                 }
-                else State = "hört zu";
+                else State = Loc.T("hört zu", "listening");
                 ResetUtterance();
             }
         }
@@ -236,7 +237,7 @@ namespace StbcAiCrew
                 }
                 catch (Exception e) { _log.LogWarning("Aufwärmen der Spracherkennung fehlgeschlagen: " + e.Message); }
                 SttReady = true;
-                State = Muted ? "stumm" : "hört zu";
+                State = Muted ? Loc.T("stumm", "muted") : Loc.T("hört zu", "listening");
             }) { IsBackground = true, Name = "StbcAiCrew.SttWarmup" };
             t.Start();
         }
@@ -265,18 +266,18 @@ namespace StbcAiCrew
                         if (text == null)
                         {
                             _log.LogDebug("Verworfen (Rauschen/Halluzination): '" + raw + "'");
-                            if (!_speaking) State = Muted ? "stumm" : "hört zu";
+                            if (!_speaking) State = Muted ? Loc.T("stumm", "muted") : Loc.T("hört zu", "listening");
                             continue;
                         }
                         LastHeard = text;
                         _log.LogInfo("Gehört (" + secs.ToString("0.00") + " s): " + text);
-                        if (!_speaking) State = Muted ? "stumm" : "hört zu";
+                        if (!_speaking) State = Muted ? Loc.T("stumm", "muted") : Loc.T("hört zu", "listening");
                         MainThread.Post(() => { LastPtt = ptt; _onText(text); });
                     }
                     catch (Exception e)
                     {
                         _log.LogWarning("Spracherkennung fehlgeschlagen: " + e.Message);
-                        State = "Fehler der Spracherkennung";
+                        State = Loc.T("Fehler der Spracherkennung", "speech recognition error");
                     }
                 }
             }

@@ -27,7 +27,8 @@ INSTALLATION
 1. Unpack the archive into the game folder (the folder that contains stbc.exe).
    The archive contains BepInEx 5.4.23 (mod loader). If you already use BepInEx 5, copying the folder
    BepInEx\plugins\StbcAiCrew is enough.
-2. Start the game as usual. The overlay in the top left corner shows "Vosk: de bereit" / "en bereit".
+2. Start the game as usual. The overlay in the top left corner shows "Vosk: en ready" (German game: "de bereit").
+   The overlay is shown in German if the game is set to German, otherwise in English.
 3. Uninstall: delete BepInEx\plugins\StbcAiCrew (and, if no other mods use it, winhttp.dll,
    doorstop_config.ini, .doorstop_version and the BepInEx folder).
 
@@ -93,6 +94,7 @@ INSTALLATION
    Enthalten ist BepInEx 5.4.23 (Mod-Lader). Wer BepInEx 5 schon nutzt, kopiert nur den Ordner
    BepInEx\plugins\StbcAiCrew.
 2. Spiel wie gewohnt starten. Oben links zeigt das Overlay „Vosk: de bereit“.
+   Das Overlay ist deutsch, wenn das Spiel auf Deutsch steht, sonst englisch.
 3. Entfernen: BepInEx\plugins\StbcAiCrew löschen (und, falls keine anderen Mods es brauchen, winhttp.dll,
    doorstop_config.ini, .doorstop_version und den Ordner BepInEx).
 

@@ -132,7 +132,7 @@ namespace StbcAiCrew
         WatsonCrew _crew;
         readonly System.Collections.Generic.List<VoskEngine> _vosk = new System.Collections.Generic.List<VoskEngine>();
         bool VoskReady => _vosk.Exists(v => v.Ready);
-        string VoskState => _vosk.Count == 0 ? "kein Modell" : string.Join(", ", _vosk.ConvertAll(v => v.Tag + (v.Ready ? " bereit" : " FEHLT: " + v.Error)).ToArray());
+        string VoskState => _vosk.Count == 0 ? Loc.T("kein Modell", "no model") : string.Join(", ", _vosk.ConvertAll(v => v.Tag + (v.Ready ? Loc.T(" bereit", " ready") : Loc.T(" FEHLT: ", " MISSING: ") + v.Error)).ToArray());
         string _vocabKey;
         /// <summary>Watson-Modus: Befehle ohne Sprachmodell, Original-Crew mit Spielstimmen.</summary>
         public bool WatsonMode => _watson;
@@ -459,6 +459,7 @@ namespace StbcAiCrew
 
         void UpdateWatson()
         {
+            Loc.Refresh();
             bool host = Net.IsHost;
             if (host != _wasHost) { _wasHost = host; Log.LogInfo(host ? "Host: Sprachbefehle aktiv." : "Nicht Host: Sprachbefehle laufen beim Host."); }
             bool inMission = GameBridge.InMission && host;
@@ -496,13 +497,13 @@ namespace StbcAiCrew
             if (Input.GetKeyDown(KeyMute.Value) && _voice != null)
             {
                 _voice.Muted = !_voice.Muted;
-                Toast(_voice.Muted ? "Mikrofon stumm." : "Mikrofon hört wieder zu.");
+                Toast(_voice.Muted ? Loc.T("Mikrofon stumm.", "Microphone muted.") : Loc.T("Mikrofon hört wieder zu.", "Microphone listening again."));
             }
             if (Input.GetKeyDown(KeyOverlay.Value)) _showOverlay = !_showOverlay;
             if (Input.GetKeyDown(KeyStateDump.Value))
             {
-                try { Toast("Zustand: " + StateProbe.Dump(Path.Combine(_dataDir, "dumps"))); }
-                catch (Exception e) { Toast("Dump fehlgeschlagen: " + e.Message); Log.LogError(e); }
+                try { Toast(Loc.T("Zustand: ", "State: ") + StateProbe.Dump(Path.Combine(_dataDir, "dumps"))); }
+                catch (Exception e) { Toast(Loc.T("Dump fehlgeschlagen: ", "Dump failed: ") + e.Message); Log.LogError(e); }
             }
         }
 
@@ -511,22 +512,23 @@ namespace StbcAiCrew
             if (!_showOverlay) return;
             GUILayout.BeginArea(new Rect(10f, 10f, 520f, Screen.height - 20f));
             GUILayout.BeginVertical("box");
-            GUILayout.Label("<b>Brückencrew (Watson-Ersatz)</b>  –  Vosk: " + VoskState +
-                            "  |  " + (GameBridge.InMission ? "im Einsatz" : "kein Einsatz"));
+            GUILayout.Label("<b>" + Loc.T("Brückencrew", "Bridge crew") + "</b>  –  Vosk: " + VoskState +
+                            "  |  " + (GameBridge.InMission ? Loc.T("im Einsatz", "on mission") : Loc.T("kein Einsatz", "no mission")));
             if (_voice != null)
             {
                 string bar = new string('|', Mathf.Clamp(Mathf.RoundToInt((_voice.LevelDb + 70f) / 3f), 0, 20));
-                GUILayout.Label("Mikro (" + _voice.Device + "): " + _voice.State + "  " + bar + (_voice.Speaking ? " ●" : "") +
+                GUILayout.Label(Loc.T("Mikro (", "Mic (") + _voice.Device + "): " + _voice.State + "  " + bar + (_voice.Speaking ? " ●" : "") +
                                 (_voice.PttDown ? "  [Push-to-talk]" : ""));
             }
-            GUILayout.Label("Gehört: " + _crew.LastHeard);
-            GUILayout.Label("Befehl: " + _crew.LastResult);
-            string orders = _crew.Orders.Describe();
+            GUILayout.Label(Loc.T("Gehört: ", "Heard: ") + _crew.LastHeard);
+            GUILayout.Label(Loc.T("Befehl: ", "Command: ") + _crew.LastResult);
+            string orders = _crew.OrdersText();
             if (!string.IsNullOrEmpty(orders) || _crew.Nav.StayOutOfSensors)
-                GUILayout.Label("Daueranweisung: " + (orders ?? "") + (_crew.Nav.StayOutOfSensors ? " · außerhalb der Ortung" : ""));
-            if (_crew.Nav.Current != Navigator.Mode.None) GUILayout.Label("Manöver: " + _crew.Nav.Status);
+                GUILayout.Label(Loc.T("Daueranweisung: ", "Standing orders: ") + (orders ?? "") +
+                                (_crew.Nav.StayOutOfSensors ? Loc.T(" · außerhalb der Ortung", " · out of sensor range") : ""));
+            if (_crew.Nav.Current != Navigator.Mode.None) GUILayout.Label(Loc.T("Manöver: ", "Manoeuvre: ") + _crew.Nav.Status);
             foreach (var l in _crew.Log) GUILayout.Label("<i>" + l + "</i>");
-            GUILayout.Label(KeyPushToTalk.Value + " halten = Befehl · " + KeyMute.Value + " Mikro stumm · " + KeyOverlay.Value + " Overlay");
+            GUILayout.Label(KeyPushToTalk.Value + Loc.T(" halten = Befehl · ", " hold = command · ") + KeyMute.Value + Loc.T(" Mikro stumm · ", " mute mic · ") + KeyOverlay.Value + " Overlay");
             if (_toast != null && Time.realtimeSinceStartup < _toastUntil) GUILayout.Label(_toast);
             GUILayout.EndVertical();
             GUILayout.EndArea();

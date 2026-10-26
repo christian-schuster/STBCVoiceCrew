@@ -50,7 +50,7 @@ namespace StbcAiCrew
         {
             if (Current == Mode.None) return;
             Current = Mode.None;
-            Status = "aus (" + why + ")";
+            Status = Loc.T("aus (", "off (") + why + ")";
             SetManualHeading(false, 0f);
             Plugin.Log.LogInfo("Navigator: Manöver beendet (" + why + ").");
         }
@@ -86,23 +86,23 @@ namespace StbcAiCrew
             switch (Current)
             {
                 case Mode.Approach:
-                    if (target == null) { Stop("Ziel nicht mehr sichtbar"); return; }
-                    if (targetDist < 2500) { Speed("SetSpeedStop"); Stop("Ziel erreicht"); return; }
+                    if (target == null) { Stop(Loc.T("Ziel nicht mehr sichtbar", "target lost")); return; }
+                    if (targetDist < 2500) { Speed("SetSpeedStop"); Stop(Loc.T("Ziel erreicht", "target reached")); return; }
                     break;
                 case Mode.Avoid:
                     // ohne Ziel: Kurs halten (vorwärts) und nur ausweichen
                     if (target == null) goal = Flat(Contacts.OwnForward).normalized;
-                    else if (targetDist < 2500) { Speed("SetSpeedStop"); Stop("Ziel erreicht"); return; }
+                    else if (targetDist < 2500) { Speed("SetSpeedStop"); Stop(Loc.T("Ziel erreicht", "target reached")); return; }
                     break;
                 case Mode.KeepDistance:
-                    if (target == null) { Stop("Ziel nicht mehr sichtbar"); return; }
+                    if (target == null) { Stop(Loc.T("Ziel nicht mehr sichtbar", "target lost")); return; }
                     double want = _distanceKm * 1000.0;
-                    if (Math.Abs(targetDist - want) < want * 0.15) { Speed("SetSpeedStop"); Status = "hält " + _distanceKm + " km"; return; }
+                    if (Math.Abs(targetDist - want) < want * 0.15) { Speed("SetSpeedStop"); Status = Loc.T("hält ", "holding ") + _distanceKm + " km"; return; }
                     if (targetDist < want) goal = -goal;   // zu nah: weg
                     Speed("SetSpeedHalf");
                     break;
                 case Mode.Circle:
-                    if (target == null) { Stop("Ziel nicht mehr sichtbar"); return; }
+                    if (target == null) { Stop(Loc.T("Ziel nicht mehr sichtbar", "target lost")); return; }
                     // tangential um das Ziel, mit Korrektur zum Sollradius
                     var tangent = new Vector2(-goal.y, goal.x);
                     float radial = (float)((targetDist - _distanceKm * 1000.0) / (_distanceKm * 1000.0));
@@ -110,7 +110,7 @@ namespace StbcAiCrew
                     break;
                 case Mode.Flee:
                     Contact enemy = Nearest(contacts, c => c.Category == Sector.HHHDDNLEDBN.Enemy);
-                    if (enemy == null) { Stop("kein Feind mehr in Sicht"); return; }
+                    if (enemy == null) { Stop(Loc.T("kein Feind mehr in Sicht", "no enemy in sight")); return; }
                     goal = -Flat(enemy.Position - own).normalized;
                     break;
             }
@@ -140,7 +140,7 @@ namespace StbcAiCrew
             float heading = Mathf.Atan2(steer.x, steer.y) * Mathf.Rad2Deg;
             SetManualHeading(true, heading);
             Status = Current + (target != null ? " " + target.Name + " " + (targetDist / 1000.0).ToString("0.0") + " km" : "") +
-                     ", Kurs " + Mathf.RoundToInt((heading + 360f) % 360f) + "°" + (push.sqrMagnitude > 0.01f ? ", weicht aus" : "");
+                     Loc.T(", Kurs ", ", heading ") + Mathf.RoundToInt((heading + 360f) % 360f) + "°" + (push.sqrMagnitude > 0.01f ? Loc.T(", weicht aus", ", evading") : "");
         }
 
         /// <summary>Wie weit Gegner uns gerade orten können (Spielwert, Meter), mit Sicherheitsaufschlag.</summary>

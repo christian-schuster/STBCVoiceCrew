@@ -9,3 +9,4 @@ STBC Voice Crew – Changelog
 - Warp/impulse sequences, transporter lowers shields first, standing orders respected by crew reflexes.
 - Experimental manoeuvres (avoid hazards, keep distance, circle, flee, stay out of enemy sensor range).
 - Command language: game language, English, German or both at once (learned per speaker).
+- Overlay in German when the game is set to German, otherwise in English.

@@ -16,7 +16,7 @@ offline speech recognizer (Vosk). The bot crew – Rao, Hoyle and T'nar – foll
 [/list]
 
 [b]Installation[/b]
-Unpack into the game folder (where stbc.exe is). BepInEx 5 is included. Start the game – the overlay in the top left shows the status.
+Unpack into the game folder (where stbc.exe is). BepInEx 5 is included. Start the game – the overlay in the top left shows the status (in English, or German if the game is set to German).
 F4 = push to talk, F5 = mute microphone, F7 = overlay.
 
 [b]Tips[/b]

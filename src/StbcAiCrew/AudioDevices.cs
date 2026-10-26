@@ -35,7 +35,7 @@ namespace StbcAiCrew
                 {
                     string n = Name(true, i);
                     if (n.Length >= 4 && (gameDeviceName.StartsWith(n, StringComparison.OrdinalIgnoreCase) || n.StartsWith(gameDeviceName, StringComparison.OrdinalIgnoreCase)))
-                        return new AudioDevice { Id = i, Name = n, Source = "im Spiel gewählt", Valid = true };
+                        return new AudioDevice { Id = i, Name = n, Source = Loc.T("im Spiel gewählt", "selected in game"), Valid = true };
                 }
             }
             return Resolve(true, configFilter, gameEndpointGuid);
@@ -63,15 +63,15 @@ namespace StbcAiCrew
                 {
                     string endpoint = EndpointId(input, i);
                     if (endpoint != null && endpoint.ToLowerInvariant().Contains(g))
-                        return new AudioDevice { Id = i, Name = Name(input, i), Source = "Spiel", Valid = true };
+                        return new AudioDevice { Id = i, Name = Name(input, i), Source = Loc.T("Spiel", "game"), Valid = true };
                 }
             }
 
             // 3. Windows-Standardgerät (wie Wwise ohne Oculus)
             uint preferred;
             if (PreferredDevice(input, out preferred) && preferred < count)
-                return new AudioDevice { Id = preferred, Name = Name(input, preferred), Source = "Windows-Standard", Valid = true };
-            return new AudioDevice { Id = 0, Name = Name(input, 0), Source = "Windows-Standard", Valid = true };
+                return new AudioDevice { Id = preferred, Name = Name(input, preferred), Source = Loc.T("Windows-Standard", "Windows default"), Valid = true };
+            return new AudioDevice { Id = 0, Name = Name(input, 0), Source = Loc.T("Windows-Standard", "Windows default"), Valid = true };
         }
 
         public static List<string> List(bool input)
