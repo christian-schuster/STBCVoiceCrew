@@ -371,12 +371,18 @@ namespace StbcAiCrew
         /// Eigene oder verbündete Schiffe nur auf ausdrücklichen Befehl mit Namen beschießen ("Feuer auf die Nicholson"),
         /// nie mit einem allgemeinen "Feuer frei", nur weil sie gerade als Ziel gewählt sind.
         /// </summary>
+        string _friendlyWarned;
+        float _friendlyWarnedAt;
+
         bool FriendlyTarget()
         {
             var t = ConsoleTarget(Station.Tactical);
             Contact cur = t != null ? _contacts.Find(x => ReferenceEquals(x.Detectable, t)) : null;
             if (cur == null || (cur.Category != HHHDDNLEDBN.Friendly && cur.Category != HHHDDNLEDBN.Self)) return false;
-            Note(Loc.T("Nicht gefeuert: " + cur.Name + " ist verbündet (zum Beschuss ausdrücklich nennen)", "Not fired: " + cur.Name + " is friendly (name it explicitly to fire)"));
+            // Wiederholt der Captain den Feuerbefehl kurz nach der Warnung, ist das die Bestätigung
+            if (_friendlyWarned == cur.Name && Time.time - _friendlyWarnedAt < 15f) { _friendlyWarned = null; Note(Loc.T("Bestätigt: Feuer auf ", "Confirmed: firing at ") + cur.Name); return false; }
+            _friendlyWarned = cur.Name; _friendlyWarnedAt = Time.time;
+            Note(Loc.T("Nicht gefeuert: " + cur.Name + " ist verbündet – Befehl wiederholen oder Ziel nennen", "Not fired: " + cur.Name + " is friendly – repeat the order or name the target"));
             Beep(false);
             return true;
         }
