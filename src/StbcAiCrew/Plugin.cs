@@ -372,6 +372,7 @@ namespace StbcAiCrew
 
         void AwakeWatson(string pluginDir)
         {
+            Loc.Refresh();
             GameMicFix.Preferred = (GameMicrophone.Value ?? "").Trim();
             GamePatches.VoipHooks = Config.Bind("Diagnose", "SprachchatHooks", true, "Eingriffe in den Sprachchat des Spiels (Mitspieler hören, Crew-Stimmen senden). Aus zur Fehlersuche.").Value;
             GamePatches.MicSelectHook = Config.Bind("Diagnose", "MikrofonauswahlHook", true, "Korrektur der Mikrofonauswahl des Spiels. Aus zur Fehlersuche.").Value;

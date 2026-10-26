@@ -22,6 +22,25 @@ namespace StbcAiCrew
             return n.Contains("oculus") || n.Contains("steam streaming") || n.Contains("virtual");
         }
 
+        /// <summary>
+        /// Gerät, über das niemand spricht: das Steam-Streaming-Mikrofon immer (Remote Play, stumm), das Oculus-Gerät nur
+        /// ohne laufende Rift (dann ist es das Mikrofon der Brille und genau richtig).
+        /// </summary>
+        static bool Unusable(string name, bool rift)
+        {
+            string n = (name ?? "").ToLowerInvariant();
+            if (n.Length == 0 || n.Contains("steam streaming")) return true;
+            return !rift && IsVirtual(n);
+        }
+
+        /// <summary>Bestes Gerät: mit Rift das Headset-Mikrofon der Brille, sonst das erste echte Mikrofon.</summary>
+        static string Best(string[] devices, bool rift)
+        {
+            if (rift) foreach (var d in devices) if (d.IndexOf("oculus", StringComparison.OrdinalIgnoreCase) >= 0) return d;
+            foreach (var d in devices) if (!Unusable(d, rift)) return d;
+            return null;
+        }
+
         /// <summary>Postfix nach der Geräteauswahl von WwiseMicrophoneInputDevice.</summary>
         public static void AfterSelect(object device)
         {
@@ -41,12 +60,10 @@ namespace StbcAiCrew
                 {
                     foreach (var d in devices) if (d.IndexOf(Preferred, StringComparison.OrdinalIgnoreCase) >= 0) { want = d; break; }
                 }
-                else if (string.IsNullOrEmpty(current) || (IsVirtual(current) && !RiftActive()))
+                else if (Unusable(current, RiftActive()))
                 {
-                    // Kein Gerät gewählt (im Test: Name leer, Mikrofontest schlug fehl) oder stummes Oculus-Gerät ohne Rift
-                    bool rift = RiftActive();
-                    foreach (var d in devices) if (rift || !IsVirtual(d)) { want = d; break; }
-                    if (want == null) want = devices[0];
+                    // Kein Gerät gewählt (Name leer, Mikrofontest schlug fehl) oder ein stummes: Steam-Streaming, Oculus ohne Rift
+                    want = Best(devices, RiftActive());
                 }
                 if (want == null || want == current)
                 {
@@ -54,7 +71,7 @@ namespace StbcAiCrew
                     return;
                 }
                 _logged = want;
-                Plugin.Log.LogInfo("Spiel-Mikrofon: " + (current ?? "?") + " → " + want + (string.IsNullOrEmpty(Preferred) ? (string.IsNullOrEmpty(current) ? " (Spiel hatte keins gewählt)" : " (Rift nicht aktiv)") : " (Konfiguration)"));
+                Plugin.Log.LogInfo("Spiel-Mikrofon: " + (current ?? "?") + " → " + want + (string.IsNullOrEmpty(Preferred) ? (string.IsNullOrEmpty(current) ? " (Spiel hatte keins gewählt)" : " (stummes Gerät)") : " (Konfiguration)"));
                 _deviceField.SetValue(device, want);
                 ((DaikonForge.VoIP.AudioInputDeviceBase)device).ChangeMicrophoneDevice(want);
             }

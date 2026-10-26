@@ -69,8 +69,17 @@ namespace StbcAiCrew
 
             // 3. Windows-Standardgerät (wie Wwise ohne Oculus)
             uint preferred;
+            bool silent = false;
             if (PreferredDevice(input, out preferred) && preferred < count)
-                return new AudioDevice { Id = preferred, Name = Name(input, preferred), Source = Loc.T("Windows-Standard", "Windows default"), Valid = true };
+            {
+                // Das Steam-Streaming-Mikrofon (setzt SteamVR gern als Standard) ist stumm: dann ein anderes nehmen
+                silent = input && Name(input, preferred).IndexOf("Steam Streaming", StringComparison.OrdinalIgnoreCase) >= 0;
+                if (!silent) return new AudioDevice { Id = preferred, Name = Name(input, preferred), Source = Loc.T("Windows-Standard", "Windows default"), Valid = true };
+            }
+            if (input)
+                for (uint i = 0; i < count; i++)
+                    if (Name(input, i).IndexOf("Steam Streaming", StringComparison.OrdinalIgnoreCase) < 0)
+                        return new AudioDevice { Id = i, Name = Name(input, i), Source = Loc.T("erstes echtes", "first real"), Valid = true };
             return new AudioDevice { Id = 0, Name = Name(input, 0), Source = Loc.T("Windows-Standard", "Windows default"), Valid = true };
         }
 
