@@ -239,7 +239,7 @@ namespace StbcAiCrew.Voice
             "target", "targeting", "aim", "their", "engines", "propulsion", "weapon", "systems", "clear", "lock", "onto", "select", "mark", "marked", "new", "is",
             "scan", "scanning", "run", "life", "signs", "analyze", "analyse", "attack", "enemy", "hostile", "hostiles", "destroy", "out",
             "power", "more", "balance", "even", "distribute", "evenly", "repair", "fix", "everything", "beam", "energize", "transport", "survivors", "aboard", "board", "bring",
-            "reduce", "minimize", "signature", "disrupt", "hack", "jam", "scramble", "control", "of", "override", "comms", "communications", "intrusion",
+            "reduce", "minimize", "signature", "disrupt", "hack", "scramble", "control", "of", "override", "comms", "communications", "intrusion",
             "avoid", "around", "minefield", "mines", "mine", "anomaly", "nebula", "asteroid", "field", "route", "evade", "kilometers", "km", "clicks", "safe", "circle", "orbit", "position", "here", "retreat", "fall", "flee", "bug",
             "stealth", "mode", "silent", "running", "dark", "detected", "detect", "seen", "see", "noticed", "notice", "spotted", "undetected", "sneak", "end", "sensor", "sensors", "range", "detection", "outside",
             "percent", "zero", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "twenty", "thirty", "forty", "fifty", "hundred",

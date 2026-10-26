@@ -192,6 +192,7 @@ namespace StbcAiCrew.Voice
             if (string.IsNullOrEmpty(text)) return result;
             string t = " " + text.Trim() + " ";
             t = t.Replace("ß", "ss").Replace('-', ' ');   // Schreibweisen vereinheitlichen ("Warp-Spulen" = "Warp Spulen")
+            if (en) t = Regex.Replace(t, @"\b(fly|head|go|move|course|warp|impulse|power)\s+two\b", "$1 to", RegexOptions.IgnoreCase);   // "to" klingt wie "two"
             t = t.Trim();
 
             // Ansprache am Anfang ("Steuer, …", "Rao bitte …", "Crew: …")

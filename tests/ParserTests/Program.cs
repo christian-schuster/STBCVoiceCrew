@@ -145,6 +145,8 @@ var casesEn = new (string text, string intents, string name)[]
     ("Scan for life signs.", "Scan", null),
     ("Helm, set a course for the Tallinn.", "MoveToTarget", "Tallinn"),
     ("Take us to the Nicholson.", "MoveToTarget", "Nicholson"),
+    ("fly two ragusa", "MoveToTarget", "Ragusa"),
+    ("can the target", "Scan", null),
     ("Fly to Plasma Coolant A", "MoveToTarget", null),
     ("Approach the target.", "MoveToTarget", null),
     ("Engage!", "WarpEngage", null),

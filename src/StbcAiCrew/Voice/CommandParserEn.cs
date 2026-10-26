@@ -66,7 +66,7 @@ namespace StbcAiCrew.Voice
             R(Intent.TargetShields, T, @"((target|aim\s+(for|at))\s+(their\s+|the\s+)?shields?)");
             R(Intent.CeaseTargeting, T, @"((cease|stop)\s+targeting|clear\s+(the\s+)?target(ing)?)");
             R(Intent.Analyze, T, @"(analy[sz]\w*)");
-            R(Intent.Scan, T, @"((scan\w*|run\s+a\s+scan(\s+on)?)(\s+(for\s+life\s+signs\s+on\s+)?" + ART_EN + NAME + @")?|life\s+signs)");
+            R(Intent.Scan, T, @"((scan\w*|run\s+a\s+scan(\s+on)?|^\s*can\s+(the|that)\s+target)(\s+(for\s+life\s+signs\s+on\s+)?" + ART_EN + NAME + @")?|life\s+signs)");
             R(Intent.Attack, T, @"(attack\w*(\s+" + ART_EN + NAME + @")?|engage\s+(the\s+)?(enemy|target|hostiles?)|take\s+(them|it)\s+out|destroy\s*" + ART_EN + NAME + "?)");
             R(Intent.SelectTarget, T, @"((new\s+)?target\s*[:,]?\s*(is\s+)?" + ART_EN + NAME + @"|(select|mark|lock\s+on(to)?)\s+" + ART_EN + NAME + ")");
             R(Intent.CancelRedAlert, T, @"(cancel\s+red\s+alert|stand\s+down\s+(from\s+)?red\s+alert|all\s+clear)");
@@ -82,7 +82,7 @@ namespace StbcAiCrew.Voice
             R(Intent.Repair, E, @"(repair|fix)(\s+" + ART_EN + @"(?<sub>\p{L}+))?");
             R(Intent.Transport, E, @"(beam\w*|transport\w*|energi[sz]e|bring\s+(them|the\s+survivors|.+?)\s+(aboard|on\s+board))");
             R(Intent.ReduceSignature, E, @"((reduce|lower|minimi[sz]e)\s+(our\s+)?signature)");
-            R(Intent.Hack, T, @"((disrupt|hack|jam|scramble|take\s+over|take\s+control\s+of|override)\s+(their\s+|the\s+|its\s+)?(?<sub>engines?|propulsion|weapons?|shields?|comm\w*)|^\s*disrupt(\s+(the\s+)?target)?\s*$|system\s+intrusion|hack\w*)");
+            R(Intent.Hack, T, @"((disrupt|hack|scramble|take\s+over|take\s+control\s+of|override)\s+(their\s+|the\s+|its\s+)?(?<sub>engines?|propulsion|weapons?|shields?|comm\w*)|^\s*disrupt(\s+(the\s+)?target)?\s*$|system\s+intrusion|hack\w*)");
 
             // ---------- Captain / conversation ----------
             R(Intent.AnswerHail, C, @"(answer\s+(the\s+)?hail|on\s+screen|open\s+(a\s+)?channel)");
