@@ -130,7 +130,12 @@ namespace StbcAiCrew
         public ConfigEntry<string> CommandLanguage;
         bool _watson;
         WatsonCrew _crew;
-        readonly System.Collections.Generic.List<VoskEngine> _vosk = new System.Collections.Generic.List<VoskEngine>();
+        /// <summary>Aktive Erkenner (wird beim Sprachwechsel als Ganzes ersetzt, die Erkennungs-Threads lesen eine Kopie).</summary>
+        volatile System.Collections.Generic.List<VoskEngine> _vosk = new System.Collections.Generic.List<VoskEngine>();
+        readonly System.Collections.Generic.List<VoskEngine> _retiredVosk = new System.Collections.Generic.List<VoskEngine>();
+        bool _followGameLanguage;
+        string _voskLibDir, _pluginDir;
+        float _nextLangCheck;
         bool VoskReady => _vosk.Exists(v => v.Ready);
         string VoskState => _vosk.Count == 0 ? Loc.T("kein Modell", "no model") : string.Join(", ", _vosk.ConvertAll(v => v.Tag + (v.Ready ? Loc.T(" bereit", " ready") : Loc.T(" FEHLT: ", " MISSING: ") + v.Error)).ToArray());
         string _vocabKey;
@@ -397,12 +402,15 @@ namespace StbcAiCrew
 
             // Befehlssprache: spiel = Sprache des Spiels, de, en, auto = beide gleichzeitig (Sprache je Sprecher gelernt)
             string lang = (CommandLanguage.Value ?? "spiel").Trim().ToLowerInvariant();
-            if (lang == "spiel" || lang == "game")
+            _followGameLanguage = lang == "spiel" || lang == "game";
+            _pluginDir = pluginDir;
+            if (_followGameLanguage)
             {
                 string gl = GameBridge.GameLanguage() ?? GameBridge.VoiceLanguage() ?? "German";
                 lang = gl.StartsWith("German", StringComparison.OrdinalIgnoreCase) ? "de" : "en";
             }
             string libDir = Path.Combine(pluginDir, "vosk");
+            _voskLibDir = libDir;
             if (lang == "de" || lang == "auto") _vosk.Add(new VoskEngine(Log, libDir, ResolvePath(pluginDir, VoskModel.Value), "de"));
             if (lang == "en" || lang == "auto") _vosk.Add(new VoskEngine(Log, libDir, ResolvePath(pluginDir, VoskModelEn.Value), "en"));
             if (_vosk.Exists(v => v.Ready)) _vosk.RemoveAll(v => !v.Ready);
@@ -410,20 +418,21 @@ namespace StbcAiCrew
             // Je Äußerung alle Sprachen parallel; Ergebnis "de‖grammatik‖frei‖sicherheit¦en‖…", die Auswahl trifft WatsonCrew
             Func<short[], string> transcribe = pcm =>
             {
-                var res = new VoskEngine.Result[_vosk.Count];
+                var engines = _vosk;
+                var res = new VoskEngine.Result[engines.Count];
                 var threads = new System.Collections.Generic.List<System.Threading.Thread>();
-                for (int i = 1; i < _vosk.Count; i++)
+                for (int i = 1; i < engines.Count; i++)
                 {
                     int k = i;
-                    var th = new System.Threading.Thread(() => res[k] = _vosk[k].Recognize(pcm)) { IsBackground = true };
+                    var th = new System.Threading.Thread(() => res[k] = engines[k].Recognize(pcm)) { IsBackground = true };
                     th.Start();
                     threads.Add(th);
                 }
-                if (_vosk.Count > 0) res[0] = _vosk[0].Recognize(pcm);
+                if (engines.Count > 0) res[0] = engines[0].Recognize(pcm);
                 foreach (var th in threads) th.Join();
-                var parts = new string[_vosk.Count];
-                for (int i = 0; i < _vosk.Count; i++)
-                    parts[i] = _vosk[i].Tag + "‖" + (res[i].Grammar ?? "") + "‖" + (res[i].Free ?? "") + "‖" + res[i].Confidence.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+                var parts = new string[engines.Count];
+                for (int i = 0; i < engines.Count; i++)
+                    parts[i] = engines[i].Tag + "‖" + (res[i].Grammar ?? "") + "‖" + (res[i].Free ?? "") + "‖" + res[i].Confidence.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
                 return string.Join("¦", parts);
             };
 
@@ -441,6 +450,25 @@ namespace StbcAiCrew
             }
             Log.LogInfo("STBC AI Crew im Watson-Modus geladen (Vosk " + VoskState +
                         ", Zuhören: " + _crew.Listen + ", Push-to-talk: " + KeyPushToTalk.Value + ").");
+        }
+
+        /// <summary>
+        /// Befehlssprache "spiel": Wird die Spielsprache im laufenden Spiel umgestellt, das passende Vosk-Modell nachladen
+        /// (einmalig ca. 0,4 s). Das alte bleibt bis zum Beenden geladen, falls gerade noch eine Erkennung darauf läuft.
+        /// </summary>
+        void FollowGameLanguage()
+        {
+            if (!_followGameLanguage || Time.realtimeSinceStartup < _nextLangCheck) return;
+            _nextLangCheck = Time.realtimeSinceStartup + 5f;
+            string want = Loc.German ? "de" : "en";
+            if (_vosk.Exists(v => v.Tag == want)) return;
+            var e = new VoskEngine(Log, _voskLibDir, ResolvePath(_pluginDir, want == "en" ? VoskModelEn.Value : VoskModel.Value), want);
+            if (!e.Ready) { _followGameLanguage = false; return; }
+            e.SetVocabulary(want == "en" ? VoskEngine.CommandWordsEn : VoskEngine.CommandWords);
+            _retiredVosk.AddRange(_vosk);
+            _vosk = new System.Collections.Generic.List<VoskEngine> { e };
+            _vocabKey = null;   // Kontaktnamen beim nächsten Abfragen ergänzen
+            Toast(Loc.T("Befehlssprache: Deutsch", "Command language: English"));
         }
 
         void OnHeardWatson(string text)
@@ -490,6 +518,7 @@ namespace StbcAiCrew
                 }
             }
             if (host) _crew.Tick(inMission ? _status : null);
+            FollowGameLanguage();
 
             GameMicFix.Probe();
             if (_remoteTap != null) _remoteTap.Tick();
@@ -816,6 +845,7 @@ namespace StbcAiCrew
             if (_voice != null) _voice.Dispose();
             if (_remoteTap != null) _remoteTap.Dispose();
             foreach (var v in _vosk) v.Dispose();
+            foreach (var v in _retiredVosk) v.Dispose();
             if (_player != null) _player.Dispose();
             if (_qwen != null) _qwen.Dispose();
             if (_tts != null) _tts.Dispose();
