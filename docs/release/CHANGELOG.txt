@@ -1,0 +1,11 @@
+STBC Voice Crew – Changelog
+
+1.0.0
+- First public release.
+- Offline voice commands (Vosk) in English and German, replacing the defunct IBM Watson service.
+- Bot crew (Rao, Hoyle, T'nar) executes orders with their original voices; every human on the bridge may command,
+  multiplayer voice chat is understood on the host.
+- Targets by name or from the console of the person giving the order; friendly ships are only fired upon when named.
+- Warp/impulse sequences, transporter lowers shields first, standing orders respected by crew reflexes.
+- Experimental manoeuvres (avoid hazards, keep distance, circle, flee, stay out of enemy sensor range).
+- Command language: game language, English, German or both at once (learned per speaker).

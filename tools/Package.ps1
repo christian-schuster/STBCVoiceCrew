@@ -51,6 +51,7 @@ if (-not $NoBepInEx) {
 # Anleitung und Lizenzhinweise
 Copy-Item (Join-Path $repo "docs\release\README.txt") $stage
 Copy-Item (Join-Path $repo "docs\release\THIRD-PARTY-NOTICES.txt") $stage
+Copy-Item (Join-Path $repo "docs\release\CHANGELOG.txt") $stage
 
 # Datenschutz: keine lokalen Pfade oder persönlichen Angaben in eigenen Dateien (DLL, Texte)
 $private = '[A-Za-z]:\\[^\x00\s]{2,}', '\\Users\\', 'schuster', 'Christian', 'CeeBeeEss', 'Plantronics', '\.pdb'
