@@ -28,7 +28,8 @@ INSTALLATION
    The archive contains BepInEx 5.4.23 (mod loader). If you already use BepInEx 5, copying the folder
    BepInEx\plugins\StbcAiCrew is enough.
 2. Start the game as usual. The overlay in the top left corner shows "Vosk: en ready" (German game: "de bereit").
-   The overlay is shown in German if the game is set to German, otherwise in English.
+   The overlay is shown in German if the game is set to German, otherwise in English. It appears on the desktop
+   monitor only, not in the VR headset – in VR you get feedback through the beeps and the crew's answers.
 3. Uninstall: delete BepInEx\plugins\StbcAiCrew (and, if no other mods use it, winhttp.dll,
    doorstop_config.ini, .doorstop_version and the BepInEx folder).
 
@@ -94,7 +95,8 @@ INSTALLATION
    Enthalten ist BepInEx 5.4.23 (Mod-Lader). Wer BepInEx 5 schon nutzt, kopiert nur den Ordner
    BepInEx\plugins\StbcAiCrew.
 2. Spiel wie gewohnt starten. Oben links zeigt das Overlay „Vosk: de bereit“.
-   Das Overlay ist deutsch, wenn das Spiel auf Deutsch steht, sonst englisch.
+   Das Overlay ist deutsch, wenn das Spiel auf Deutsch steht, sonst englisch. Es erscheint nur auf dem Monitor,
+   nicht in der VR-Brille – dort kommt die Rückmeldung über die Töne und die Antworten der Crew.
 3. Entfernen: BepInEx\plugins\StbcAiCrew löschen (und, falls keine anderen Mods es brauchen, winhttp.dll,
    doorstop_config.ini, .doorstop_version und den Ordner BepInEx).
 
