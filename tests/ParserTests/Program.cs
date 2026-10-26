@@ -60,6 +60,7 @@ var cases = new (string text, string intents, string name)[]
     ("Feuer einstellen.", "CeaseFire", null),
     ("Feuer!", "FirePhasers", null),
     ("Feuer auf mein Ziel", "FirePhasers", null),
+    ("danach feuer auf ragusa", "FirePhasers", "Ragusa"),
     ("feuer meinen ziel", "FirePhasers", null),
     ("Feuer nur auf Befehl", "FireOnOrder", null),
     ("Torpedos feuern!", "FireTorpedoes", null),

@@ -182,7 +182,7 @@ namespace StbcAiCrew.Voice
 
         static readonly Regex Splitter = new Regex(@"[,.;!?]+|\s+und\s+(dann\s+)?|\s+dann\s+|\s+danach\s+|\s+anschließend\s+|\s+and\s+(then\s+)?|\s+then\s+", O);
         static readonly Regex Negation = new Regex(@"\b(nicht|kein\w*|nie|niemals|bloß\s+nicht|don'?t|never)\b", O);
-        static readonly Regex Filler = new Regex(@"^(bitte|so|okay|ok|gut|also|ja|äh|ähm|hm|und|doch|mal)\s+", O);
+        static readonly Regex Filler = new Regex(@"^(bitte|so|okay|ok|gut|also|ja|äh|ähm|hm|und|doch|mal|danach|dann|anschließend|anschliessend)\s+", O);
         static readonly Regex Purpose = new Regex(@"\s+(damit|so\s+dass|sodass|weil)\s+.*$", O);
 
         public static ParseResult Parse(string text, IList<string> knownNames = null, Lang lang = Lang.De)
