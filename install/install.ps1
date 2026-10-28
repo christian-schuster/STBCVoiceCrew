@@ -77,9 +77,11 @@ $zip = Join-Path $env:TEMP $asset.name
 Write-Host "Downloading $($asset.name) ($([math]::Round($asset.size / 1MB, 1)) MB) ..."
 Invoke-WebRequest $asset.browser_download_url -OutFile $zip -UseBasicParsing
 
-# Old plugin folder: the mod takes over its data on first start; only the old DLL must go, or BepInEx might load it
-$old = Join-Path $plugins "StbcAiCrew\StbcAiCrew.dll"
-if (Test-Path $old) { Remove-Item $old -Force }
+# Old plugin folder/DLL name: the mod takes over its data on first start; only the old DLL must go, or BepInEx might load it
+foreach ($d in "StbcAiCrew", "STBC Voice Crew") {
+    $old = Join-Path $plugins "$d\StbcAiCrew.dll"
+    if (Test-Path $old) { Remove-Item $old -Force }
+}
 
 Expand-Archive $zip -DestinationPath $GameDir -Force
 Remove-Item $zip -Force

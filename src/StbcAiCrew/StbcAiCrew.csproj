@@ -12,7 +12,7 @@
     <TargetFramework>net35</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
-    <AssemblyName>StbcAiCrew</AssemblyName>
+    <AssemblyName>de.phuntasyproductions.stbcvoicecrew</AssemblyName>
     <RootNamespace>StbcAiCrew</RootNamespace>
     <Version>1.1.0</Version>
     <Company>Phuntasy Productions</Company>
@@ -49,8 +49,8 @@
   </ItemGroup>
 
   <Target Name="DeployPlugin" AfterTargets="Build" Condition="'$(DeployToGame)' == 'true' And Exists('$(GameDir)\BepInEx')">
-    <!-- Remove the DLL from the former plugin folder, or BepInEx might load the old one; the mod cleans up the rest on start -->
-    <Delete Files="$(GameDir)\BepInEx\plugins\StbcAiCrew\StbcAiCrew.dll" ContinueOnError="true" />
+    <!-- Remove the DLL under its former name/folder, or BepInEx might load the old one too; the mod cleans up the rest on start -->
+    <Delete Files="$(GameDir)\BepInEx\plugins\StbcAiCrew\StbcAiCrew.dll;$(GameDir)\BepInEx\plugins\STBC Voice Crew\StbcAiCrew.dll" ContinueOnError="true" />
     <MakeDir Directories="$(GameDir)\BepInEx\plugins\STBC Voice Crew" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins\STBC Voice Crew" />
     <Message Importance="high" Text="STBC Voice Crew -> $(GameDir)\BepInEx\plugins\STBC Voice Crew" />

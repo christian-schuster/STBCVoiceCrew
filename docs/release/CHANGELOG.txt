@@ -30,6 +30,7 @@ STBC Voice Crew – Changelog
 - Much smaller download: speech models, Piper and voices are downloaded by the mod on first use for the game language.
 - The overlay shows when a newer version is available ([Allgemein] UpdatePruefen).
 - Plugin folder renamed to BepInEx\plugins\STBC Voice Crew; the old StbcAiCrew folder is taken over and removed.
+- Plugin id and DLL renamed to de.phuntasyproductions.stbcvoicecrew; the settings of 1.0 are taken over.
 - Multiplayer: runs on the host only, speaks through the game's voice chat; players without the mod are unaffected.
 
 1.0.0

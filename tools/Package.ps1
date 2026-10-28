@@ -39,7 +39,7 @@ dotnet build (Join-Path $src "StbcAiCrew.csproj") -c Release -p:GameDir="$GameDi
 if ($LASTEXITCODE -ne 0) { throw "Mod build failed" }
 dotnet build (Join-Path $repoDir "install\Installer\Installer.csproj") -c Release | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Installer build failed" }
-$dll = Get-ChildItem (Join-Path $src "bin\Release") -Recurse -Filter StbcAiCrew.dll | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+$dll = Get-ChildItem (Join-Path $src "bin\Release") -Recurse -Filter de.phuntasyproductions.stbcvoicecrew.dll | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 $setup = Get-ChildItem (Join-Path $repoDir "install\Installer\bin\Release") -Recurse -Filter STBC-Voice-Crew-Setup.exe | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 
 $dist = Join-Path $repoDir "dist"
@@ -85,7 +85,7 @@ Copy-Item $setup.FullName (Join-Path $dist "STBC-Voice-Crew-Setup.exe") -Force
 $private = @('[A-Za-z]:\\(Users|SteamLibrary|source)\\', '\\Users\\', '\.pdb')
 $own_patterns = Join-Path $PSScriptRoot 'private-patterns.txt'
 if (Test-Path $own_patterns) { $private += Get-Content $own_patterns | Where-Object { $_ -and -not $_.StartsWith('#') } }
-$own = @(Get-Item (Join-Path $pluginDir "StbcAiCrew.dll")) + @(Get-Item (Join-Path $dist "STBC-Voice-Crew-Setup.exe")) + @(Get-Item (Join-Path $dist "install.ps1")) +
+$own = @(Get-Item (Join-Path $pluginDir "de.phuntasyproductions.stbcvoicecrew.dll")) + @(Get-Item (Join-Path $dist "STBC-Voice-Crew-Setup.exe")) + @(Get-Item (Join-Path $dist "install.ps1")) +
        (Get-ChildItem $stage -File -Filter *.txt) + (Get-ChildItem $stage -File -Filter *.ini)
 foreach ($f in $own) {
     $b = [IO.File]::ReadAllBytes($f.FullName)

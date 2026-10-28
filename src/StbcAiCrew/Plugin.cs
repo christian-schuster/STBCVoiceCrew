@@ -13,7 +13,8 @@ namespace StbcAiCrew
     [BepInProcess("stbc.exe")]
     public sealed class Plugin : BaseUnityPlugin
     {
-        public const string Guid = "de.phuntasyproductions.stbc.voicecrew";
+        public const string Guid = "de.phuntasyproductions.stbcvoicecrew";
+        const string OldGuid = "de.phuntasyproductions.stbc.voicecrew";
 
         public static Plugin Instance { get; private set; }
         public static ManualLogSource Log { get; private set; }
@@ -198,6 +199,7 @@ namespace StbcAiCrew
         {
             Instance = this;
             Log = Logger;
+            MigrateOldConfig();
             BindConfig();
 
             // Steam startet stbc.exe zunächst ohne Parameter; diese Instanz startet Ubisoft Connect und beendet sich,
@@ -395,6 +397,23 @@ namespace StbcAiCrew
         }
 
         // ================= Watson-Modus =================
+
+        /// <summary>
+        /// Bis 1.1 hieß die Kennung "de.phuntasyproductions.stbc.voicecrew" und damit auch die Einstellungsdatei: übernehmen,
+        /// solange es die neue noch nicht gibt.
+        /// </summary>
+        void MigrateOldConfig()
+        {
+            try
+            {
+                string old = Path.Combine(Paths.ConfigPath, OldGuid + ".cfg");
+                if (!File.Exists(old) || File.Exists(Config.ConfigFilePath)) return;
+                File.Move(old, Config.ConfigFilePath);
+                Config.Reload();
+                Log.LogInfo("Einstellungen aus " + OldGuid + ".cfg übernommen.");
+            }
+            catch (Exception e) { Log.LogWarning("Alte Einstellungen nicht übernommen: " + e.Message); }
+        }
 
         /// <summary>
         /// Früher hieß der Plugin-Ordner "StbcAiCrew", jetzt "STBC Voice Crew". Liegt der alte noch daneben: Modelle, Stimmen,

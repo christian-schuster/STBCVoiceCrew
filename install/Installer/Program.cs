@@ -87,7 +87,7 @@ namespace StbcVoiceCrewSetup
 
         public static string InstalledVersion(string gameDir)
         {
-            string dll = Path.Combine(gameDir, "BepInEx", "plugins", "STBC Voice Crew", "StbcAiCrew.dll");
+            string dll = Path.Combine(gameDir, "BepInEx", "plugins", "STBC Voice Crew", "de.phuntasyproductions.stbcvoicecrew.dll");
             return File.Exists(dll) ? FileVersionInfo.GetVersionInfo(dll).FileVersion : null;
         }
 
@@ -113,9 +113,12 @@ namespace StbcVoiceCrewSetup
                     using (var dst = File.Create(zip)) await src.CopyToAsync(dst);
                 }
 
-                // Old plugin folder: the mod takes over its data on first start; only the old DLL must go
-                string oldDll = Path.Combine(gameDir, "BepInEx", "plugins", "StbcAiCrew", "StbcAiCrew.dll");
-                if (File.Exists(oldDll)) File.Delete(oldDll);
+                // Old plugin folder/DLL name: the mod takes over its data on first start; only the old DLL must go
+                foreach (var folder in new[] { "StbcAiCrew", "STBC Voice Crew" })
+                {
+                    string oldDll = Path.Combine(gameDir, "BepInEx", "plugins", folder, "StbcAiCrew.dll");
+                    if (File.Exists(oldDll)) File.Delete(oldDll);
+                }
 
                 status("Installing …");
                 using (var archive = ZipFile.OpenRead(zip))
