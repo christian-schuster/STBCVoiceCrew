@@ -5,7 +5,7 @@ using UnityEngine;
 namespace StbcAiCrew
 {
     /// <summary>
-    /// Phuntasy-Productions-Logo kurz beim Spielstart einblenden: nach der Controllerwahl, vor den Logos des Spiels
+    /// Phuntasy-Productions-Logo kurz beim Spielstart einblenden: direkt vor den Logos des Spiels
     /// (die Startsequenz wartet so lange, siehe GamePatches.HoldIntro). Nur auf dem Desktop-Bildschirm; das Bild steckt als
     /// Ressource in der DLL.
     /// </summary>

@@ -46,13 +46,14 @@ namespace StbcAiCrew
         }
 
         /// <summary>
-        /// Eigenes Logo vor den Logos des Spiels: Ist die Controllerwahl fertig (oder kommt als Nächstes ein Film), schaltet die
+        /// Eigenes Logo vor den Logos des Spiels: Käme als Nächstes das erste Splash-Logo (Ubisoft …), schaltet die
         /// Startsequenz erst weiter, wenn das hier false liefert. Startet beim ersten Aufruf das Logo.
         /// </summary>
         public static Func<bool> HoldIntro;
         static bool _introLogged, _introReleased;
         static readonly FieldInfo IntroElements = AccessTools.Field(typeof(IntroSequence), "_elements");
         static readonly FieldInfo IntroIndex = AccessTools.Field(typeof(IntroSequence), "_curNdx");
+        static readonly MethodInfo IntroNext = AccessTools.Method(typeof(IntroSequence), "GBDBONKGDOM");   // nächster Index mit ShouldRun
 
         static bool IntroUpdatePrefix(IntroSequence __instance)
         {
@@ -69,8 +70,11 @@ namespace StbcAiCrew
                     foreach (var e in els) names.Add(e == null ? "-" : e.GetType().Name + ":" + e.name);
                     Plugin.Log.LogInfo("Startsequenz: " + string.Join(", ", names.ToArray()));
                 }
-                if (i < 0 || i >= els.Length || els[i] == null || !els[i].LLMBJDBFGPK) return true;
-                bool before = els[i] is ControllerCheckElement || (i + 1 < els.Length && els[i + 1] is MovieIntroElement);
+                if (i >= els.Length || (i >= 0 && (els[i] == null || !els[i].LLMBJDBFGPK))) return true;
+                // Nächstes Element, das wirklich läuft (wie die Sequenz selbst es bestimmt); davor halten, wenn es das erste
+                // Logo ist ("Required Splash", "OptionalSplash", "Title Splash")
+                int next = (int)IntroNext.Invoke(__instance, null);
+                bool before = next < els.Length && els[next] != null && els[next].name.IndexOf("Splash", StringComparison.OrdinalIgnoreCase) >= 0;
                 if (!before) return true;
                 if (HoldIntro()) return false;   // Logo läuft noch: Sequenz anhalten
                 _introReleased = true;
