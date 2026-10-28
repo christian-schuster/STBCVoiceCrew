@@ -387,13 +387,22 @@ namespace StbcAiCrew.Captain
                 Status = Loc.T("Ziel noch nicht in Sensorreichweite: ", "objective not yet on sensors: ") + Clean(g.Text);
                 // Die markierten Punkte der Impulskarte nacheinander anfliegen (Signalquelle, Suchgebiet, Treffpunkt)
                 var poi = NextMapPoint();
+                if (Time.time - _searchLogged > 30f)
+                {
+                    _searchLogged = Time.time;
+                    var pts = CaptainSense.MapPoints();
+                    var pn2 = new List<string>(); foreach (var b in pts) pn2.Add(GameBridge.StripLocId(b.AKDKEDEMFDJ) + " " + DistanceKm(b).ToString("0") + "km");
+                    var cn = new List<string>(); foreach (var x in contacts) cn.Add(x.Name + " " + x.DistanceKm.ToString("0") + "km");
+                    Plugin.Log.LogInfo("First Officer Suche: Kartenpunkte " + pts.Count + " [" + string.Join(", ", pn2.ToArray()) + "] Kontakte [" + string.Join(", ", cn.ToArray()) +
+                                       "] Teilziele [" + string.Join(" | ", g.SubTexts.ToArray()) + "] gewählt " + (poi != null ? GameBridge.StripLocId(poi.AKDKEDEMFDJ) : "-") + " " + CaptainSense.MapDiag);
+                }
                 if (poi != null)
                 {
                     string pn = GameBridge.StripLocId(poi.AKDKEDEMFDJ) ?? "?";
                     var p = poi;
                     Status = Loc.T("Impuls zum Kartenpunkt ", "impulse to map point ") + pn;
-                    steps.Add(new Step { Id = "poi:" + p.GetInstanceID(), St = Station.Helm, LineKey = "impulse", Arg = pn, Prep = () => CaptainSense.SetImpulseTarget(p),
-                                         Bot = () => { _visitedPoints.Add(p.GetInstanceID()); _crew.Run(Intent.Impulse); },
+                    steps.Add(new Step { Id = "poi:" + CaptainSense.IdOf(p), St = Station.Helm, LineKey = "impulse", Arg = pn, Prep = () => CaptainSense.SetImpulseTarget(p),
+                                         Bot = () => { _visitedPoints.Add(CaptainSense.IdOf(p)); _crew.Run(Intent.Impulse); },
                                          Done = () => GoalMoved() || DistanceKm(p) < 8, Remind = 45f });
                     return steps;
                 }
@@ -846,25 +855,29 @@ namespace StbcAiCrew.Captain
         /// <summary>Feindlich markiert, aber kein Schiff: explosive Objekte, Minen, Anomalien. Darauf feuert man nicht nebenbei.</summary>
         /// <summary>Schon angeflogene Kartenpunkte (je Mission).</summary>
         readonly HashSet<int> _visitedPoints = new HashSet<int>();
+        float _searchLogged = -999f;
 
         /// <summary>Nächster nicht besuchter Kartenpunkt: Missionsziele zuerst, sonst der nächstgelegene.</summary>
-        Sector.SectorBody NextMapPoint()
+        Sector.HOLJLCLENCA NextMapPoint()
         {
-            Sector.SectorBody best = null;
+            Sector.HOLJLCLENCA best = null;
             bool bestObjective = false;
             double bestDist = double.MaxValue;
-            foreach (var b in CaptainSense.MapPoints())
+            var points = CaptainSense.MapPoints();
+            // Keine markierten Punkte: einfach losfliegen und suchen – die Orte im System nacheinander (Planeten, Stationen, Monde)
+            if (points.Count == 0) points = CaptainSense.SystemBodies();
+            foreach (var b in points)
             {
-                if (_visitedPoints.Contains(b.GetInstanceID())) continue;
+                if (_visitedPoints.Contains(CaptainSense.IdOf(b))) continue;
                 bool obj = CaptainSense.IsObjectivePoint(b);
                 double d = DistanceKm(b);
-                if (d >= 0 && d < 8) { _visitedPoints.Add(b.GetInstanceID()); continue; }   // schon da
+                if (d >= 0 && d < 8) { _visitedPoints.Add(CaptainSense.IdOf(b)); continue; }   // schon da
                 if (best == null || (obj && !bestObjective) || (obj == bestObjective && d < bestDist)) { best = b; bestObjective = obj; bestDist = d; }
             }
             return best;
         }
 
-        static double DistanceKm(Sector.SectorBody b)
+        static double DistanceKm(Sector.HOLJLCLENCA b)
         {
             try { return b != null && b.ALPAOOKFIEE != null && Contacts.HasOwn ? (b.ALPAOOKFIEE.Position - Contacts.OwnPosition).magnitude / 1000.0 : -1; }
             catch { return -1; }

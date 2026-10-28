@@ -76,8 +76,14 @@ namespace StbcAiCrew.Captain
                     if (g.System == null)
                     {
                         // "Warp to the MALKEV System": Name steht nur im Text
-                        var m = System.Text.RegularExpressions.Regex.Match(g.English, @"warp to (?:the )?(.+?) system", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                        if (m.Success) g.System = FindSystem(m.Groups[1].Value);
+                        var m = System.Text.RegularExpressions.Regex.Match(g.English + " | " + string.Join(" | ", g.SubTexts.ToArray()), @"warp to (?:the )?([^|]+?) system", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        // "Warp to the VENOV, TYRIS, or SARZA system": das erste bekannte System der Auswahl
+                        if (m.Success)
+                            foreach (var part in System.Text.RegularExpressions.Regex.Split(m.Groups[1].Value, @",\s*(?:or\s+)?|\s+or\s+"))
+                            {
+                                var sys = FindSystem(part.Trim());
+                                if (sys != null) { g.System = sys; break; }
+                            }
                     }
                     g.Kind = Classify(g.English + " " + (d.ItemName ?? ""));
                     MissionKnowledge.Apply(g);
@@ -194,49 +200,96 @@ namespace StbcAiCrew.Captain
         /// Markierte Punkte der Impulskarte im aktuellen System (Missionsziele zuerst), wie die Steuerkonsole sie zeigt:
         /// Signalquellen, Treffpunkte, Suchgebiete. Gelesen aus den Kartensymbolen (PointOfInterestMapIcon).
         /// </summary>
-        public static List<Sector.SectorBody> MapPoints()
+        static List<Sector.HOLJLCLENCA> _mapObjects = new List<Sector.HOLJLCLENCA>();
+        static float _mapObjectsAt = -999f;
+
+        /// <summary>Alle Objekte im Raum, die Steuer und Karte kennen (Himmelskörper, Navigationspunkte, Stationen, Schiffe).</summary>
+        static List<Sector.HOLJLCLENCA> MapObjects()
         {
-            var list = new List<Sector.SectorBody>();
+            if (Time.realtimeSinceStartup - _mapObjectsAt < 3f) return _mapObjects;
+            _mapObjectsAt = Time.realtimeSinceStartup;
+            var list = new List<Sector.HOLJLCLENCA>();
+            foreach (var mb in UnityEngine.Object.FindObjectsOfType<MonoBehaviour>())
+            {
+                var h = mb as Sector.HOLJLCLENCA;
+                if (h != null && !(mb is Sector.Spacecraft.PlayerSpacecraft)) list.Add(h);
+            }
+            _mapObjects = list;
+            return list;
+        }
+
+        public static int IdOf(Sector.HOLJLCLENCA h) { try { return h != null && h.ALPAOOKFIEE != null ? h.ALPAOOKFIEE.id.value : 0; } catch { return 0; } }
+        public static string MapDiag = "";
+
+        public static List<Sector.HOLJLCLENCA> MapPoints()
+        {
+            var list = new List<Sector.HOLJLCLENCA>();
             try
             {
                 // Aktive Punkte führt das Spielerschiff (je Punkt-ID ein Schalter, vom Missionsskript gesetzt: ActivatePOI)
                 var craft = GameBridge.PlayerShip as Sector.Spacecraft.CMFLDCJNMJJ;
                 var active = craft != null && craft.KBLFFPNELGA != null ? craft.KBLFFPNELGA.MLPNEABKIJD : null;
-                if (active == null) return list;
+                if (active == null) { MapDiag = "(keine Punkttabelle: Schiff " + (craft != null) + ")"; return list; }
                 var here = CurrentSystem;
-                foreach (var b in UnityEngine.Object.FindObjectsOfType<Sector.SectorBody>())
+                int bodies = 0, inTable = 0, on2 = 0;
+                foreach (var kv in active) if (kv.Value) on2++;
+                foreach (var b in MapObjects())
                 {
-                    if (b == null || b is Sector.Spacecraft.PlayerSpacecraft) continue;
+                    bodies++;
+                    if (b != null && b.ALPAOOKFIEE != null && active.ContainsKey(b.ALPAOOKFIEE.id.value)) inTable++;
+                    if (b == null) continue;
                     var st = b.ALPAOOKFIEE;
                     bool on = false;
                     if (st == null || !active.TryGetValue(st.id.value, out on) || !on) continue;
                     try { if (here != null && st.System != here) continue; } catch { }
                     list.Add(b);
                 }
+                MapDiag = "(Körper " + bodies + ", davon in der Tabelle " + inTable + ", aktiv insgesamt " + on2 + "/" + active.Count + ")";
             }
-            catch (Exception e) { Plugin.Log.LogDebug("Kartenpunkte nicht lesbar: " + e.Message); }
+            catch (Exception e) { MapDiag = "(Fehler: " + e.Message + ")"; }
             return list;
         }
-        public static bool IsObjectivePoint(Sector.SectorBody body)
+        /// <summary>Orte im aktuellen System, die die Steuer per Impuls anfliegen kann (Planeten, Stationen, Monde …), ohne Schiffe.</summary>
+        public static List<Sector.HOLJLCLENCA> SystemBodies()
+        {
+            var list = new List<Sector.HOLJLCLENCA>();
+            try
+            {
+                var here = CurrentSystem;
+                foreach (var b in MapObjects())
+                {
+                    if (b == null || b is Sector.Spacecraft.OBIMAHNLBCJ) continue;   // keine Raumschiffe
+                    var st = b.ALPAOOKFIEE;
+                    if (st == null) continue;
+                    try { if (here != null && st.System != here) continue; } catch { }
+                    if (string.IsNullOrEmpty(GameBridge.StripLocId(b.AKDKEDEMFDJ))) continue;
+                    list.Add(b);
+                }
+            }
+            catch (Exception e) { Plugin.Log.LogDebug("Orte im System nicht lesbar: " + e.Message); }
+            return list;
+        }
+
+        public static bool IsObjectivePoint(Sector.HOLJLCLENCA body)
         {
             try
             {
                 var objField = typeof(PointOfInterestMapIcon).GetField("_objectiveVisual", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
                 foreach (var icon in UnityEngine.Object.FindObjectsOfType<PointOfInterestMapIcon>())
-                    if (icon != null && icon.AJHKBDCEKPH == body) { var v = objField != null ? objField.GetValue(icon) as GameObject : null; return v != null && v.activeSelf; }
+                    if (icon != null && (object)icon.AJHKBDCEKPH == (object)body) { var v = objField != null ? objField.GetValue(icon) as GameObject : null; return v != null && v.activeSelf; }
             }
             catch { }
             return false;
         }
 
         /// <summary>Impulsziel der Steuer setzen (wie ein Klick auf die Impulskarte).</summary>
-        public static bool SetImpulseTarget(Sector.SectorBody body)
+        public static bool SetImpulseTarget(Sector.HOLJLCLENCA body)
         {
             try
             {
                 var ship = GameBridge.PlayerShip;
                 var helm = ship != null ? ship.GetComponent<Crew.ConsoleHelmShipInterface>() : null;
-                var target = body as Sector.HOLJLCLENCA;
+                var target = body;
                 if (helm == null || target == null) return false;
                 if (helm.INBICICINJG != target) helm.INBICICINJG = target;
                 return true;
