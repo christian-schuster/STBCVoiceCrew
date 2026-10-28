@@ -81,7 +81,10 @@ $install = (Get-Content (Join-Path $repoDir "install\install.ps1") -Raw).Replace
 Copy-Item $setup.FullName (Join-Path $dist "STBC-Voice-Crew-Setup.exe") -Force
 
 # Privacy: no local paths or personal data in our own files (DLL, setup, texts)
-$private = '[A-Za-z]:\\(Users|SteamLibrary|source)\\', '\\Users\\', 'schuster', 'Christian', 'Plantronics', '\.pdb'
+# Generic patterns here; personal ones (names, e-mail, device names) come from tools\private-patterns.txt, which is not checked in
+$private = @('[A-Za-z]:\\(Users|SteamLibrary|source)\\', '\\Users\\', '\.pdb')
+$own_patterns = Join-Path $PSScriptRoot 'private-patterns.txt'
+if (Test-Path $own_patterns) { $private += Get-Content $own_patterns | Where-Object { $_ -and -not $_.StartsWith('#') } }
 $own = @(Get-Item (Join-Path $pluginDir "StbcAiCrew.dll")) + @(Get-Item (Join-Path $dist "STBC-Voice-Crew-Setup.exe")) + @(Get-Item (Join-Path $dist "install.ps1")) +
        (Get-ChildItem $stage -File -Filter *.txt) + (Get-ChildItem $stage -File -Filter *.ini)
 foreach ($f in $own) {

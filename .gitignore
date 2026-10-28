@@ -12,3 +12,6 @@ dist/
 
 # Local game folder for building (see GameDir.props.example)
 GameDir.props
+
+# Personal patterns for the package privacy check
+tools/private-patterns.txt
