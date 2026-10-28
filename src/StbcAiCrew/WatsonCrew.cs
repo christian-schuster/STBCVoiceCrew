@@ -544,12 +544,18 @@ namespace StbcAiCrew
             float t0 = Time.time, lastEngage = 0f;
             bool seenPreparing = false;
             int engages = 0;
-            Repeat(0.5f, 40f, 0.5f, what, () =>
+            Repeat(0.5f, 60f, 0.5f, what, () =>   // 60 s: Warp wartet ggf. bis zu 40 s auf die Ausrichtung
             {
                 if (Jumped(start)) { Note(what + Loc.T(": Sprung ausgeführt", ": jump done")); return true; }
                 bool preparing = Flag(prepareFlag);
                 if (preparing) seenPreparing = true;
                 bool ready = (seenPreparing && !preparing) || Time.time - t0 > fallback + (seenPreparing ? 8f : 0f);
+                // Warp: erst auslösen, wenn die Steuer auf den Warpkurs zeigt (eine Kehrtwende dauert), höchstens 40 s warten
+                if (ready && what == "Warp")
+                {
+                    var align = Captain.CaptainSense.WarpAlignment;
+                    if (align.HasValue && align.Value < 0.97f && Time.time - t0 < 40f) return false;
+                }
                 if (!ready) return false;
                 if (engages < 2 && (engages == 0 || Time.time - lastEngage > 8f))
                 {
