@@ -87,6 +87,49 @@ namespace StbcAiCrew
             try { var p = CBBCCGMALMP.Find(photonId); return p != null ? p.GPICMMEIAPM : null; }
             catch { return null; }
         }
+
+        /// <summary>Spielereigenschaft, mit der ein Host mit Mod sich zu erkennen gibt (Wert: Mod-Version).</summary>
+        const string ModKey = "stbcvc";
+
+        /// <summary>
+        /// Als Host im Mehrspieler-Raum die eigene Mod-Version in die Photon-Spielereigenschaften schreiben, damit Mitspieler
+        /// mit Mod sehen, dass die Crew beim Host läuft. Spieler ohne Mod ignorieren die Eigenschaft.
+        /// </summary>
+        public static void Announce(string version)
+        {
+            try
+            {
+                var me = NDIOGIGMPBH.DIMFCNEMMPD;
+                if (me == null || !Online || !IsHost) return;
+                var props = me.PCDMCKFFBAC;
+                if (props != null && props.ContainsKey(ModKey) && Equals(props[ModKey], version)) return;
+                var h = new ExitGames.Client.Photon.Hashtable();
+                h[ModKey] = version;
+                me.SetCustomProperties(h);
+            }
+            catch { }
+        }
+
+        /// <summary>Name des Hosts (Master Client), null offline oder unbekannt.</summary>
+        public static string HostName
+        {
+            get { try { var m = NDIOGIGMPBH.MDEEDAHFMGH; return m != null ? m.GPICMMEIAPM : null; } catch { return null; } }
+        }
+
+        /// <summary>Mod-Version des Hosts laut seinen Spielereigenschaften, null wenn der Host die Mod nicht hat.</summary>
+        public static string HostModVersion
+        {
+            get
+            {
+                try
+                {
+                    var m = NDIOGIGMPBH.MDEEDAHFMGH;
+                    var props = m != null ? m.PCDMCKFFBAC : null;
+                    return props != null && props.ContainsKey(ModKey) ? props[ModKey] as string : null;
+                }
+                catch { return null; }
+            }
+        }
     }
 
     /// <summary>Hört die Stimmen der Mitspieler ab (entpackter Sprachchat je Spieler) und lässt Whisper sie verstehen.</summary>

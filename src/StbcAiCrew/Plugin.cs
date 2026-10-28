@@ -746,6 +746,7 @@ namespace StbcAiCrew
             Loc.Refresh();
             bool host = Net.IsHost;
             if (host != _wasHost) { _wasHost = host; Log.LogInfo(host ? "Host: Sprachbefehle aktiv." : "Nicht Host: Sprachbefehle laufen beim Host."); }
+            if (host && Time.realtimeSinceStartup >= _nextAnnounce) { _nextAnnounce = Time.realtimeSinceStartup + 2f; Net.Announce(Info.Metadata.Version.ToString()); }
             bool inMission = GameBridge.InMission && host;
             if (inMission != _wasInMission) _status = null;
             _wasInMission = inMission;
@@ -798,8 +799,47 @@ namespace StbcAiCrew
             }
         }
 
+        float _nextAnnounce;
+        GUIStyle _bannerStyle;
+
+        /// <summary>
+        /// Mehrspieler: wer hostet und ob die Mod damit wirkt. Die Crew läuft nur beim Host – hat er die Mod nicht, gibt es
+        /// keine Sprachbefehle. Bleibt sichtbar, auch wenn das Overlay ausgeblendet ist.
+        /// </summary>
+        void DrawHostBanner()
+        {
+            if (!Net.Online) return;
+            string text, color;
+            if (Net.IsHost)
+            {
+                text = Loc.T("Du bist Host – STBC Voice Crew ist aktiv", "You are the host – STBC Voice Crew is active");
+                color = "#7CFC00";
+            }
+            else
+            {
+                string name = Net.HostName ?? "?";
+                string ver = Net.HostModVersion;
+                if (ver != null)
+                {
+                    text = Loc.T("Host: " + name + " – STBC Voice Crew aktiv (beim Host, " + ver + ")", "Host: " + name + " – STBC Voice Crew active (on the host, " + ver + ")");
+                    color = "#FFD700";
+                }
+                else
+                {
+                    text = Loc.T("Host: " + name + " – hat KEIN STBC Voice Crew: keine Sprachbefehle, kein First Officer",
+                                 "Host: " + name + " – has NO STBC Voice Crew: no voice commands, no First Officer");
+                    color = "#FF5050";
+                }
+            }
+            if (_bannerStyle == null)
+                _bannerStyle = new GUIStyle(GUI.skin.box) { fontSize = 18, richText = true, alignment = TextAnchor.MiddleCenter, wordWrap = true };
+            float w = Mathf.Min(760f, Screen.width - 20f);
+            GUI.Box(new Rect((Screen.width - w) / 2f, 8f, w, 34f), "<b><color=" + color + ">" + text + "</color></b>", _bannerStyle);
+        }
+
         void DrawWatson()
         {
+            DrawHostBanner();
             if (!_showOverlay) return;
             GUILayout.BeginArea(new Rect(10f, 10f, 520f, Screen.height - 20f));
             GUILayout.BeginVertical("box");

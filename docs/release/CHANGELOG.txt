@@ -4,6 +4,8 @@ STBC Voice Crew – Changelog
 Highlights: the First Officer and the open source release on GitHub.
 - New: French voice commands for the bot crew (Vosk model downloaded on first use, [Sprache] BefehlsSprache = fr or
   follows the game language).
+- Multiplayer: a banner at the top of the desktop screen shows who hosts and whether the mod is active there (green: you
+  host, yellow: the host has the mod, red: the host has no mod – no voice commands).
 - New: First Officer ("Number One") – an AI first officer without a language model, always on the bridge and in the lobby.
   - Advises a human captain: warnings when shields are down under fire, the hull is critical, a friendly ship is
     targeted or the warp destination leads away from the mission; hints when the mission stalls or nothing happens.

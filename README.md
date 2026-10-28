@@ -12,7 +12,8 @@ empty.
 
 **Focus: single player.** The mod is made first of all for playing alone with the bot crew. It also works in
 multiplayer (it runs on the host), and the game stays fully compatible with installations without the mod: players who
-don't have it can still join you.
+don't have it can still join you. In multiplayer a banner on the desktop screen shows who hosts and whether the mod
+is active there.
 
 > Unofficial fan mod. Star Trek is a trademark of CBS Studios Inc.; *Star Trek: Bridge Crew* is a game by Red Storm
 > Entertainment / Ubisoft. This project is not affiliated with them and contains no game files.
