@@ -154,7 +154,7 @@ namespace StbcAiCrew.Captain
         {
             if (_missionStart < 0) return;
             _missionStart = -1f; _firstGoalAt = -1f; _bridgeGreeted = false; Autopilot = false; _hailSince = -1f; _announceTake = false; _connGivenAt = -999f; Current = Mode.Lobby;
-            _orders.Clear(); _advised.Clear(); _scanned.Clear(); _visitedPoints.Clear(); _trackKey = null; _goalAnnounced = null; _arrivedAt = null; _selected = null; _trackCount = -1;
+            _orders.Clear(); _advised.Clear(); _scanned.Clear(); _visitedPoints.Clear(); _stoppedAt.Clear(); _trackKey = null; _goalAnnounced = null; _arrivedAt = null; _selected = null; _trackCount = -1;
         }
 
         /// <summary>Lobby: einmal melden, danach selten ein Kalauer.</summary>
@@ -451,6 +451,13 @@ namespace StbcAiCrew.Captain
                 return steps;
             }
             Done("course:" + name); Done("impulse:" + name);
+            // Angekommen: anhalten, sonst fliegt die Bot-Steuer bis ins Ziel hinein (Kollision). Im Kampf und beim Sammeln in Bewegung bleiben.
+            if (kind != GoalKind.Attack && kind != GoalKind.Defend && kind != GoalKind.Gather && !_stoppedAt.Contains(key))
+            {
+                var stopKey = key;
+                steps.Add(new Step { Id = "arrive_stop:" + name, St = Station.Helm, LineKey = "stop", Bot = () => { _stoppedAt.Add(stopKey); _crew.Nav.Stop("angekommen"); _crew.Run(Intent.SpeedStop); },
+                                     Done = () => _stoppedAt.Contains(stopKey), Remind = 30f });
+            }
 
             switch (kind)
             {
@@ -460,7 +467,7 @@ namespace StbcAiCrew.Captain
                         var scanned = c.Transform;
                         float since = Time.time;
                         steps.Add(new Step { Id = "scan:" + name, St = Station.Tactical, LineKey = "scan", Arg = name, Prep = select, Bot = () => { since = Time.time; _crew.Run(Intent.Scan, name); },
-                                             Done = () => { bool done = GoalMoved() || Time.time - since > 30f; if (done && scanned != null) _scanned.Add(scanned); return done; } });
+                                             Done = () => { bool done = GoalMoved() || Time.time - since > 75f; if (done && scanned != null) _scanned.Add(scanned); return done; }, Remind = 60f });   // Scan nicht neu starten, solange er läuft
                     }
                     break;
                 case GoalKind.Attack:
@@ -520,7 +527,7 @@ namespace StbcAiCrew.Captain
             switch (k)
             {
                 case GoalKind.Rescue: return 3.0;     // Transporterreichweite
-                case GoalKind.Scan: return 12.0;
+                case GoalKind.Scan: return 7.0;   // Scanreichweite der Taktik (bei 10,5 km kam kein Scan zustande)
                 case GoalKind.Attack:
                 case GoalKind.Disable: return 10.0;
                 case GoalKind.Defend: return 8.0;
@@ -871,6 +878,8 @@ namespace StbcAiCrew.Captain
         /// <summary>Schon angeflogene Kartenpunkte (je Mission).</summary>
         readonly HashSet<int> _visitedPoints = new HashSet<int>();
         float _searchLogged = -999f;
+        /// <summary>Ziele, an denen schon angehalten wurde (je Mission).</summary>
+        readonly HashSet<string> _stoppedAt = new HashSet<string>();
 
         /// <summary>Nächster nicht besuchter Kartenpunkt: Missionsziele zuerst, sonst der nächstgelegene.</summary>
         Sector.HOLJLCLENCA NextMapPoint(Goal g = null)

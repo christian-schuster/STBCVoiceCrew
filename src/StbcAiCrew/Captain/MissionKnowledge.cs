@@ -31,7 +31,7 @@ namespace StbcAiCrew.Captain
         static readonly Rule[] Rules =
         {
             // Warten (Skript läuft von selbst weiter) – außer es wartet auf uns
-            new Rule(@"waiting for tactical scan", GoalKind.Scan, 12, "note_anomalies"),
+            new Rule(@"waiting for tactical scan", GoalKind.Scan, 7, "note_anomalies"),
             new Rule(@"\bawait\b|arriving shortly|please wait|wait for .*(complete|survey)|^status:|survey underway|will be installed after", GoalKind.Wait, 0, "note_wait"),
             new Rule(@"time until|minimum time until|reactivate once|begun regenerating", GoalKind.Wait),
             new Rule(@"prepare for combat|contact imminent|will attack all ships", GoalKind.Wait, 0, "note_prepare_combat"),
@@ -58,8 +58,8 @@ namespace StbcAiCrew.Captain
             new Rule(@"lower shields and de-?allocate power", null, 0, "note_lower_shields"),
 
             // Nur beobachten
-            new Rule(@"scan data only - do not transport|do not transport", GoalKind.Scan, 15, "note_scan_only"),
-            new Rule(@"do not engage|full scan data only", GoalKind.Scan, 15, "note_scan_only"),
+            new Rule(@"scan data only - do not transport|do not transport", GoalKind.Scan, 8, "note_scan_only"),
+            new Rule(@"do not engage|full scan data only", GoalKind.Scan, 8, "note_scan_only"),
 
             // Stören / Hacken
             new Rule(@"disrupt the vessel'?s comms|disrupt .*comm|hack .*(sensor|network)|disrupt klingon sensors|point to hack into the network|infiltrate the klingon network", GoalKind.Disable, 10, null, "comms"),
@@ -76,11 +76,11 @@ namespace StbcAiCrew.Captain
             new Rule(@"get close to the fugitive", GoalKind.Travel, 3),
 
             // Scannen
-            new Rule(@"scan for life signs|scan .*for (a single )?life sign|scan for survivors|any life sign detected", GoalKind.Scan, 12),
+            new Rule(@"scan for life signs|scan .*for (a single )?life sign|scan for survivors|any life sign detected", GoalKind.Scan, 7),
             new Rule(@"launch (a )?(long range )?probe|fire (a )?(long range )?probe|fire probe|long range scan", GoalKind.Scan, 0, "note_probe"),
-            new Rule(@"tactical scan on anomalies|scan anomalies|impulse to different locations .* anomalies", GoalKind.Scan, 12, "note_anomalies"),
-            new Rule(@"scan (the )?relay buoy|scan .*buoy|scan results will", GoalKind.Scan, 12),
-            new Rule(@"scan ships in the system|scan asteroids|scan the freighters|scan convoy|find the asteroid that matches|locate the (contraband|fugitive|vessel)|identify the ship carrying", GoalKind.Scan, 12, "note_scan_all"),
+            new Rule(@"tactical scan on anomalies|scan anomalies|impulse to different locations .* anomalies", GoalKind.Scan, 7, "note_anomalies"),
+            new Rule(@"scan (the )?relay buoy|scan .*buoy|scan results will", GoalKind.Scan, 7),
+            new Rule(@"scan ships in the system|scan asteroids|scan the freighters|scan convoy|find the asteroid that matches|locate the (contraband|fugitive|vessel)|identify the ship carrying", GoalKind.Scan, 7, "note_scan_all"),
             new Rule(@"search for freighters|look for freighters|shipping routes are marked", GoalKind.Travel, 0, "note_shipping_routes"),
             new Rule(@"search for a concealed location|search for a point", GoalKind.Travel, 0, "note_search_poi"),
 
@@ -98,7 +98,7 @@ namespace StbcAiCrew.Captain
 
             // Allgemein
             new Rule(@"\b(cargo|pods?|debris|wreckage|canisters?|containers?)\b", GoalKind.Rescue, 3),
-            new Rule(@"\b(anomaly|nebula|ion storm|radiation)\b.*\b(scan|investigate|study)\b|\b(scan|investigate|study)\b.*\b(anomaly|nebula|ion storm|radiation)\b", GoalKind.Scan, 15),
+            new Rule(@"\b(anomaly|nebula|ion storm|radiation)\b.*\b(scan|investigate|study)\b|\b(scan|investigate|study)\b.*\b(anomaly|nebula|ion storm|radiation)\b", GoalKind.Scan, 8),
         };
 
         static readonly Regex Within = new Regex(@"within (\d+(?:\.\d+)?) ?(km|m)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
