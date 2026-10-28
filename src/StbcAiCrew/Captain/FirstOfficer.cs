@@ -53,7 +53,8 @@ namespace StbcAiCrew.Captain
         float _missionStart = -1f, _next, _lastSpoke = -999f, _lastJoke, _lastThreat = -999f, _lastHail = -999f, _hailSince = -1f;
         float _lobbySince = -1f, _lobbyLastJoke, _lobbyLastSpoke = -999f, _lobbyNext, _connGivenAt = -999f;
         string _stealthFor;
-        float _redAlertAt = -999f;
+        float _redAlertAt = -999f, _warpBlockedUntil = -999f;
+        int _warpTries;
         bool _greeted, _bridgeGreeted, _askedHint, _announceTake;
         string _trackKey, _goalAnnounced, _arrivedAt, _selected;
         int _trackCount = -1;
@@ -308,9 +309,31 @@ namespace StbcAiCrew.Captain
             {
                 string sys = CaptainSense.NameOf(g.System);
                 var target = g.System;
+                // Warp gesperrt (Mission verbietet es gerade, System nicht freigegeben) oder schon zweimal vergeblich: später wieder
+                if (Time.time < _warpBlockedUntil)
+                {
+                    Status = Loc.T("Warp derzeit nicht möglich: ", "warp unavailable: ") + sys;
+                    return steps;
+                }
                 Status = Loc.T("Warp nach ", "warp to ") + sys;
-                steps.Add(new Step { Id = "warp:" + sys, St = Station.Helm, LineKey = "warp", Arg = sys, Prep = () => CaptainSense.SetWarpTarget(target),
-                                     Bot = () => _crew.Run(Intent.Warp), Done = () => CaptainSense.CurrentSystem == target, Remind = 60f });
+                steps.Add(new Step
+                {
+                    Id = "warp:" + sys, St = Station.Helm, LineKey = "warp", Arg = sys, Prep = () => CaptainSense.SetWarpTarget(target),
+                    Bot = () =>
+                    {
+                        if (CaptainSense.CanWarp == false || ++_warpTries > 2)
+                        {
+                            _warpTries = 0;
+                            _warpBlockedUntil = Time.time + 180f;
+                            _orders.Remove("warp:" + sys);
+                            Plugin.Log.LogInfo("First Officer: Warp nach " + sys + " nicht möglich, neuer Versuch in 3 min");
+                            Say(OfficerLines.Say("warp_blocked"), null);
+                            return;
+                        }
+                        _crew.Run(Intent.Warp);
+                    },
+                    Done = () => { bool there = CaptainSense.CurrentSystem == target; if (there) _warpTries = 0; return there; }, Remind = 60f
+                });
                 return steps;
             }
 

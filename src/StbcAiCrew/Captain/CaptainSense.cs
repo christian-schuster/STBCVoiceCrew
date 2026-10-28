@@ -170,6 +170,16 @@ namespace StbcAiCrew.Captain
             catch (Exception e) { Plugin.Log.LogWarning("Warpziel nicht gesetzt: " + e.Message); return false; }
         }
 
+        /// <summary>Kann die Steuer zum gesetzten Warpziel springen (Ziel gesetzt, anderes System, freigegeben)? null = unbekannt.</summary>
+        public static bool? CanWarp
+        {
+            get
+            {
+                try { var ship = GameBridge.PlayerShip; var helm = ship != null ? ship.GetComponent<Crew.ConsoleHelmShipInterface>() : null; return helm != null ? helm.OIMCGDEPIKM : (bool?)null; }
+                catch { return null; }
+            }
+        }
+
         public static SystemRoot WarpTarget
         {
             get
