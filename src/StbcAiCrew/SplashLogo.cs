@@ -38,9 +38,15 @@ namespace StbcAiCrew
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             float w = Mathf.Min(Screen.width * 0.6f, _logo.width), h = w * _logo.height / _logo.width;
             GUI.color = new Color(1f, 1f, 1f, a);
-            GUI.DrawTexture(new Rect((Screen.width - w) / 2f, (Screen.height - h) / 2f, w, h), _logo, ScaleMode.ScaleToFit, true);
+            float top = (Screen.height - h) / 2f;
+            GUI.DrawTexture(new Rect((Screen.width - w) / 2f, top, w, h), _logo, ScaleMode.ScaleToFit, true);
+            if (_caption == null)
+                _caption = new GUIStyle(GUI.skin.label) { fontSize = Mathf.Max(18, Mathf.RoundToInt(w * 0.045f)), alignment = TextAnchor.UpperCenter, normal = { textColor = Color.white } };
+            GUI.Label(new Rect(0f, top + h + w * 0.03f, Screen.width, w * 0.1f), "STBC Voice Crew Mod", _caption);
             GUI.color = old;
         }
+
+        GUIStyle _caption;
 
         bool Load()
         {
