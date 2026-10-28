@@ -74,12 +74,39 @@ namespace StbcAiCrew
         }
 
         // Bridge.SendConsoleMessage(MIFGHKACDIH ziel, string text, float dauer, ...)
+        /// <summary>Letzte Konsolenmeldungen des Spiels (englischer Originaltext, Zeit), z. B. "Target already scanned".</summary>
+        static readonly System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<float, string>> _console =
+            new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<float, string>>();
+
+        static void Remember(string english)
+        {
+            if (string.IsNullOrEmpty(english)) return;
+            lock (_console)
+            {
+                _console.Add(new System.Collections.Generic.KeyValuePair<float, string>(UnityEngine.Time.time, english));
+                if (_console.Count > 40) _console.RemoveAt(0);
+            }
+        }
+
+        /// <summary>Kam seit 'since' (Spielzeit) eine Konsolenmeldung, die das Muster enthält (Groß-/Kleinschreibung egal)?</summary>
+        public static bool ConsoleSaid(string pattern, float since)
+        {
+            lock (_console)
+                for (int i = _console.Count - 1; i >= 0; i--)
+                {
+                    if (_console[i].Key < since) break;
+                    if (System.Text.RegularExpressions.Regex.IsMatch(_console[i].Value, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase)) return true;
+                }
+            return false;
+        }
+
         static void ConsoleMessagePrefix(MIFGHKACDIH ECBMIBNCBNP, string IPMGLGJABGP)
         {
             if (GameBridge.Injecting) return;
             try
             {
                 string text = GameBridge.StripLocId(IPMGLGJABGP);
+                Remember(GameBridge.EnglishOf(IPMGLGJABGP));
                 // Bedienhinweise (Farbcodes) sind keine Lageinformation
                 if (string.IsNullOrEmpty(text) || text.IndexOf("<#", StringComparison.Ordinal) >= 0) return;
                 string line = "Meldung auf deiner Konsole: " + text;

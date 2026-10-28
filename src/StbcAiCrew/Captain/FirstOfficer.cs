@@ -426,6 +426,7 @@ namespace StbcAiCrew.Captain
             Action select = () => { if (_selected != key) { _crew.Select(c); _selected = key; } };   // nur bei neuem Ziel, sonst überschreibt er die Auswahl des Spielers
 
             double reach = g.Reach > 0 ? g.Reach : Reach(kind);
+            if (kind == GoalKind.Scan) reach = Math.Min(reach, _scanReach);   // nach "out of range" näher heran
             // Mindestabstand (Protomaterie): nicht näher heran, aus der Ferne mit Torpedos
             if (g.MinDistance > 0)
             {
@@ -467,7 +468,16 @@ namespace StbcAiCrew.Captain
                         var scanned = c.Transform;
                         float since = Time.time;
                         steps.Add(new Step { Id = "scan:" + name, St = Station.Tactical, LineKey = "scan", Arg = name, Prep = select, Bot = () => { since = Time.time; _crew.Run(Intent.Scan, name); },
-                                             Done = () => { bool done = GoalMoved() || Time.time - since > 75f; if (done && scanned != null) _scanned.Add(scanned); return done; }, Remind = 60f });   // Scan nicht neu starten, solange er läuft
+                                             Done = () =>
+                                             {
+                                                 // Rückmeldung der Taktik-Konsole auswerten: schon gescannt = fertig, außer Reichweite = näher ran
+                                                 bool already = GamePatches.ConsoleSaid("already scanned", since);
+                                                 if (GamePatches.ConsoleSaid("out of (scan\\w* )?range", since)) { _scanReach = Math.Max(2.0, _scanReach - 2.0); since = Time.time; Plugin.Log.LogInfo("First Officer: Scan außer Reichweite – näher heran (" + _scanReach + " km)"); return true; }
+                                                 if (GamePatches.ConsoleSaid("scanner is down|scanners? (offline|damaged)", since)) { _crew.Run(Intent.Repair, null, "sensors"); since = Time.time; }
+                                                 bool done = GoalMoved() || already || Time.time - since > 75f;
+                                                 if (done && scanned != null) _scanned.Add(scanned);
+                                                 return done;
+                                             }, Remind = 60f });   // Scan nicht neu starten, solange er läuft
                     }
                     break;
                 case GoalKind.Attack:
@@ -527,7 +537,7 @@ namespace StbcAiCrew.Captain
             switch (k)
             {
                 case GoalKind.Rescue: return 3.0;     // Transporterreichweite
-                case GoalKind.Scan: return 7.0;   // Scanreichweite der Taktik (bei 10,5 km kam kein Scan zustande)
+                case GoalKind.Scan: return _scanReachDefault;   // Scanreichweite der Taktik (bei 10,5 km kam kein Scan zustande)
                 case GoalKind.Attack:
                 case GoalKind.Disable: return 10.0;
                 case GoalKind.Defend: return 8.0;
@@ -878,6 +888,8 @@ namespace StbcAiCrew.Captain
         /// <summary>Schon angeflogene Kartenpunkte (je Mission).</summary>
         readonly HashSet<int> _visitedPoints = new HashSet<int>();
         float _searchLogged = -999f;
+        const double _scanReachDefault = 7.0;
+        double _scanReach = _scanReachDefault;
         /// <summary>Ziele, an denen schon angehalten wurde (je Mission).</summary>
         readonly HashSet<string> _stoppedAt = new HashSet<string>();
 
