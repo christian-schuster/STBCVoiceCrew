@@ -15,6 +15,6 @@ Repository: https://github.com/christian-schuster/STBCVoiceCrew (the name is bui
    git tag v1.1.0
    git push origin v1.1.0
    ```
-3. Create the release for tag `v1.1.0` (title "STBC Voice Crew 1.1.0", notes from `CHANGELOG.txt`) and attach the three
+3. Create the release for tag `v1.1.0` (title "STBC Voice Crew 1.1.0 – First Officer & Open Source (MIT)", notes from `release-notes-1.1.0.md`) and attach the three
    files from `dist/`. The setup, the install command and the mod's update check all use "latest release", so the
    asset names must stay `STBC-Voice-Crew-<version>.zip`, `STBC-Voice-Crew-Setup.exe` and `install.ps1`.
