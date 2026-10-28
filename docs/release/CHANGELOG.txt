@@ -1,6 +1,6 @@
 STBC Voice Crew – Changelog
 
-1.1.0 (in progress, not yet released)
+1.1.0 (2026-10-28)
 Highlights: the First Officer and the open source release on GitHub.
 - The Phuntasy Productions logo appears briefly at game start, before the game's own logos ([Allgemein] LogoBeimStart = false turns it off).
 - New: French voice commands for the bot crew (Vosk model downloaded on first use, [Sprache] BefehlsSprache = fr or
@@ -28,13 +28,13 @@ Highlights: the First Officer and the open source release on GitHub.
   - Voice commands: "Number One / Commander, suggestions?", "You have the bridge", "I have the bridge",
     "Number One, dismissed" / "Number One, to the bridge", "Number One, tell me a joke". German: "Nummer Eins / Commander, Vorschlag?",
     "Sie haben die Brücke", "Ich habe die Brücke", "Nummer Eins, wegtreten", "Nummer Eins, erzähl einen Witz".
-  - English, German and French lines; voices by Piper TTS (included).
+  - English, German and French lines; voices by Piper TTS (downloaded on first use).
   - On/off: overlay button, F6, voice command, or [FirstOfficer] Aktiv in the config.
   - Mission execution: warp with alignment wait and coil recharge, breaks away from nearby enemies first, impulse to
     places named in the objectives, scans directly via the tactical scanner (real range and progress), stops on arrival,
     attacks the nearest enemy for 'eliminate' objectives, picks a system from 'Warp to X, Y, or Z'.
 - Test mode for unattended runs ([Test] AutoTest = zufall/kampagne): selects mouse/keyboard, starts solo games,
-  the First Officer takes the bridge, screenshots in BepInEx\plugins\StbcAiCrew\test.
+  the First Officer takes the bridge, screenshots in BepInEx\plugins\STBCVoiceCrew\test.
 - Open source (MIT) on GitHub. Three ways to install: setup EXE (finds the game in all Steam libraries or Ubisoft
   Connect, installs and updates), a one-line PowerShell command, or the ZIP.
 - Much smaller download: speech models, Piper and voices are downloaded by the mod on first use for the game language.
