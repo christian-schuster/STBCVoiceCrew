@@ -754,8 +754,8 @@ namespace StbcAiCrew
             CaptainJokes = Config.Bind("Captain", "Kalauer", true, "In ruhigen Momenten ab und zu ein Star-Trek-Kalauer.");
             CaptainJokeMinutes = Config.Bind("Captain", "KalauerAbstandMinuten", 8f, "Mindestabstand zwischen zwei Kalauern.");
             CaptainVoiceDe = Config.Bind("Captain", "StimmeDeutsch", "de_DE-thorsten-medium", "Piper-Stimme des Captains auf Deutsch (Datei im Ordner piper/voices ohne .onnx).");
-            CaptainVoiceEn = Config.Bind("Captain", "StimmeEnglisch", "en_US-ryan-medium", "Piper-Stimme des Captains auf Englisch.");
-            CaptainVoiceFr = Config.Bind("Captain", "StimmeFranzoesisch", "fr_FR-tom-medium", "Piper-Stimme des Captains auf Französisch.");
+            CaptainVoiceEn = Config.Bind("Captain", "StimmeEnglisch", "en_US-joe-medium", "Piper-Stimme des Captains auf Englisch.");
+            CaptainVoiceFr = Config.Bind("Captain", "StimmeFranzoesisch", "fr_FR-gilles-low", "Piper-Stimme des Captains auf Französisch.");
             CaptainSpeed = Config.Bind("Captain", "Sprechtempo", 1.05f, "Sprechtempo des Captains (1 = normal).");
             KeyStateDump = Config.Bind("Tasten", "Zustandsdump", KeyCode.F10, "Felder des Spielerschiffs in eine Datei schreiben (Reverse Engineering).");
         }
