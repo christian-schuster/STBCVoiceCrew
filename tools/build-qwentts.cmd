@@ -1,11 +1,11 @@
 @echo off
-rem Baut qwentts.cpp (Qwen3-TTS, MIT) mit CUDA fuer die Sprachausgabe des Mods.
-rem Voraussetzungen: Visual Studio 2026 mit C++, Windows-SDK, CMake, CUDA Toolkit 13.4.
-rem Aufruf: build-qwentts.cmd <Quellordner qwentts.cpp> <kurzer Build-Ordner, z. B. G:\qtc>
-rem Hinweise:
-rem  - CUDA 12.x passt nicht zu Visual Studio 2026 (cudafe++ stuerzt ab), daher CUDA 13.4.
-rem  - CMAKE_DEPENDS_USE_COMPILER=OFF umgeht einen Fehler von CMake 3.29 mit NMake + CUDA-Depfiles.
-rem  - Architektur 120 = RTX 50 (Blackwell). Fuer aeltere Karten z. B. 86 (RTX 30) oder 89 (RTX 40) setzen.
+rem Builds qwentts.cpp (Qwen3-TTS, MIT) with CUDA for the speech output of the optional LLM mode.
+rem Requirements: Visual Studio 2026 with C++, Windows SDK, CMake, CUDA Toolkit 13.4.
+rem Usage: build-qwentts.cmd <qwentts.cpp source folder> <short build folder, e.g. C:\qtc>
+rem Notes:
+rem  - CUDA 12.x does not work with Visual Studio 2026 (cudafe++ crashes), hence CUDA 13.4.
+rem  - CMAKE_DEPENDS_USE_COMPILER=OFF works around a CMake 3.29 bug with NMake + CUDA depfiles.
+rem  - Architecture 120 = RTX 50 (Blackwell). For older cards use e.g. 86 (RTX 30) or 89 (RTX 40).
 set SRC=%~1
 set OUT=%~2
 set CU=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.4

@@ -1,21 +1,15 @@
 # Backlog
 
-## Release & Verteilung
-- **In Arbeit (Stand 28.10.):** erledigt: Plugin-Ordner "STBC Voice Crew" + Aufräumen des alten "StbcAiCrew" beim Start,
-  Vosk-Modelle, Piper und Stimmen bei Bedarf laden (curl/tar). Offen: Package.ps1 verkleinern (ohne Modelle/Piper/Stimmen,
-  neuer Ordnername), Installer-EXE (Steam-Bibliotheken über libraryfolders.vdf, Ubisoft-Registry, Auswahldialog),
-  Update-Hinweis in der Mod, GitHub-README, Lizenz, Privatsphäre-Check der Repo-Historie. Alles selbst geschrieben,
-  nichts von anderen STBC-Mods übernehmen.
-- **Open-Source-Release auf GitHub** mit **One-Click-Installer (EXE)** zum Download und **Auto-Update über GitHub Releases**.
-  - Installer findet den Spielordner selbst (Steam-Bibliotheken), entpackt BepInEx + Mod, legt Konfiguration an.
-  - Auto-Update: beim Spielstart (oder im Installer) neueste GitHub-Release-Version prüfen, nur mit Zustimmung laden.
-  - Vorher klären: Lizenz der Mod; Stimmen (Piper-Voices auf lessac/ryan-Basis, nur nicht-kommerziell) evtl. nicht
-    mitliefern, sondern vom Installer bei huggingface laden lassen; espeak-ng (GPL-3.0) Quellverweis.
-- Version 1.1 packen (Piper + Stimmen, Notices, Nexus-Texte) – sobald der First Officer gut genug ist.
+## Release
+- First GitHub release 1.1.0 (see `docs/release/github-release.md`); Nexus update afterwards.
+- Fresh-install test on a clean game copy: setup, speech model download, Piper/voice download.
 
 ## First Officer
-- Ungetestet: Scan über den Scanner der Taktik (Reichweite, Fortschritt), Anhalten am Ziel, Warp unter Beschuss.
-- Sprachereignisse der Bots (Testlauf-Log „Spielstimme: …“) zuordnen, falls direkte Werte nicht reichen.
+- Verify in the game: scanning via the tactical scanner (range, progress), stopping on arrival, warp under fire
+  (break away first, then jump while moving).
+- If direct game values are not enough somewhere, map the bots' voice events (test-run log "Spielstimme: …").
+- Refine the mission rules from more test runs (log lines "First Officer Ziel/Suche/Fortschritt").
 
-## Sprachen
-- Französisch: Vosk-Modell, Befehlsregeln, Tests (1.2).
+## Languages
+- French voice commands: Vosk model, parser rules, tests.
+- Code comments are still German; translate if contributors need it.

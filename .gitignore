@@ -9,3 +9,6 @@ dist/
 
 # Hörproben
 *.wav
+
+# Local game folder for building (see GameDir.props.example)
+GameDir.props

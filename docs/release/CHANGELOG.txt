@@ -25,6 +25,11 @@ STBC Voice Crew – Changelog
     attacks the nearest enemy for 'eliminate' objectives, picks a system from 'Warp to X, Y, or Z'.
 - Test mode for unattended runs ([Test] AutoTest = zufall/kampagne): selects mouse/keyboard, starts solo games,
   the First Officer takes the bridge, screenshots in BepInEx\plugins\StbcAiCrew\test.
+- Open source (MIT) on GitHub. Three ways to install: setup EXE (finds the game in all Steam libraries or Ubisoft
+  Connect, installs and updates), a one-line PowerShell command, or the ZIP.
+- Much smaller download: speech models, Piper and voices are downloaded by the mod on first use for the game language.
+- The overlay shows when a newer version is available ([Allgemein] UpdatePruefen).
+- Plugin folder renamed to BepInEx\plugins\STBC Voice Crew; the old StbcAiCrew folder is taken over and removed.
 - Multiplayer: runs on the host only, speaks through the game's voice chat; players without the mod are unaffected.
 
 1.0.0

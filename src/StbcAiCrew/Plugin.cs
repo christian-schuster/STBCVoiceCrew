@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace StbcAiCrew
 {
-    [BepInPlugin(Guid, "STBC Voice Crew", "1.0.0")]
+    [BepInPlugin(Guid, "STBC Voice Crew", "1.1.0")]
     [BepInProcess("stbc.exe")]
     public sealed class Plugin : BaseUnityPlugin
     {
@@ -137,7 +137,7 @@ namespace StbcAiCrew
         bool _followGameLanguage;
 
         // ---- First Officer ----
-        public ConfigEntry<bool> CaptainEnabled, CaptainCommand, CaptainHints, CaptainAutoCommand;
+        public ConfigEntry<bool> CaptainEnabled, CaptainCommand, CaptainHints, CaptainAutoCommand, CheckUpdates;
         public ConfigEntry<string> CaptainPlayerStation;
         public ConfigEntry<bool> CaptainJokes;
         public ConfigEntry<float> CaptainJokeMinutes;
@@ -501,6 +501,7 @@ namespace StbcAiCrew
             };
 
             SetupVoiceInput();
+            if (CheckUpdates.Value) UpdateCheck.Start(Info.Metadata.Version.ToString());
             Log.LogInfo("STBC Voice Crew im Watson-Modus geladen (Vosk " + VoskState +
                         ", Zuhören: " + _crew.Listen + ", Push-to-talk: " + KeyPushToTalk.Value + ").");
         }
@@ -923,6 +924,7 @@ namespace StbcAiCrew
             CaptainEnabled = Config.Bind("FirstOfficer", "Aktiv", true, "First Officer (ohne Sprachmodell): in der Lobby und auf der Brücke dabei. Ein/aus auch per Overlay, Taste oder Sprache (\"Nummer Eins, wegtreten\" / \"Nummer Eins, auf die Brücke\").");
             CaptainCommand = Config.Bind("FirstOfficer", "Kommando", true, "Führt das Schiff, wenn niemand auf dem Captain-Stuhl sitzt (gibt Befehle, erwartet Bestätigung).");
             CaptainHints = Config.Bind("FirstOfficer", "Hinweise", true, "Berät einen menschlichen Captain: Warnungen bei Gefahr oder Fehlern, Hinweise, wenn es beim Missionsziel nicht weitergeht.");
+            CheckUpdates = Config.Bind("Allgemein", "UpdatePruefen", true, "Check GitHub for a newer version at startup and show a hint in the overlay. / Beim Start auf GitHub nach einer neueren Version sehen.");
             TestAutoStart = Config.Bind("Test", "AutoTest", "", "Unbeaufsichtigter Testlauf: leer = aus, zufall = Zufallsmissionen, kampagne = Kampagne. Wählt Maus/Tastatur, startet Solo-Spiele, der First Officer übernimmt die Brücke.");
             TestShip = Config.Bind("Test", "Schiff", "aegis", "Schiff im Testlauf: aegis, enterprise, tng.");
             TestMaxMissions = Config.Bind("Test", "MaxMissionen", 10, "So viele Missionen startet der Testlauf nacheinander.");
@@ -1094,6 +1096,7 @@ namespace StbcAiCrew
 
             foreach (var n in _brain.Notices) GUILayout.Label("<i>" + n + "</i>");
             if (Downloads.Status != null) GUILayout.Label(Downloads.Status);
+            if (UpdateCheck.Available != null) GUILayout.Label(Loc.T("Update verfügbar: ", "Update available: ") + UpdateCheck.Available + Loc.T(" – Spiel schließen und den Installer starten", " – close the game and run the installer"));
             if (_toast != null && Time.realtimeSinceStartup < _toastUntil) GUILayout.Label(_toast);
 
             GUILayout.EndVertical();

@@ -1,29 +1,32 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Das Spiel läuft auf Unity 5.4 / Mono (.NET-3.5-Profil). Referenziert werden die DLLs direkt
-    aus der Spielinstallation. Pfad bei Bedarf überschreiben:
-      dotnet build -p:GameDir="D:\Pfad\zu\Star Trek Bridge Crew"
+    The game runs on Unity 5.4 / Mono (.NET 3.5 profile). The game's own DLLs are referenced directly from the
+    installation, so the game folder is needed to build. Set it once in GameDir.props (not checked in, see
+    GameDir.props.example), via the environment variable STBC_GAME_DIR, or on the command line:
+      dotnet build -p:GameDir="D:\Games\Star Trek Bridge Crew"
+    After a successful build the DLL is copied to <game>\BepInEx\plugins\STBC Voice Crew (DeployToGame=false skips it).
   -->
+  <Import Project="..\..\GameDir.props" Condition="Exists('..\..\GameDir.props')" />
   <PropertyGroup>
     <TargetFramework>net35</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <AssemblyName>StbcAiCrew</AssemblyName>
     <RootNamespace>StbcAiCrew</RootNamespace>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Company>Phuntasy Productions</Company>
     <Authors>Phuntasy Productions</Authors>
     <Product>STBC Voice Crew</Product>
-    <!-- Keine lokalen Pfade in der veröffentlichten DLL (kein PDB-Pfad, Quellpfade neutralisiert) -->
+    <!-- No local paths in the published DLL (no PDB path, source paths neutralised) -->
     <Deterministic>true</Deterministic>
     <PathMap>$(MSBuildProjectDirectory)=.</PathMap>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <GameDir Condition="'$(GameDir)' == ''">G:\SteamLibrary\steamapps\common\Star Trek Bridge Crew</GameDir>
+    <GameDir Condition="'$(GameDir)' == ''">$(STBC_GAME_DIR)</GameDir>
     <ManagedDir>$(GameDir)\stbc_Data\Managed</ManagedDir>
     <BepInExCoreDir>$(GameDir)\BepInEx\core</BepInExCoreDir>
-    <!-- Nach dem Build direkt ins Spiel kopieren (abschalten mit -p:DeployToGame=false) -->
+    <!-- Copy into the game right after the build (disable with -p:DeployToGame=false) -->
     <DeployToGame Condition="'$(DeployToGame)' == ''">true</DeployToGame>
   </PropertyGroup>
 
@@ -46,7 +49,7 @@
   </ItemGroup>
 
   <Target Name="DeployPlugin" AfterTargets="Build" Condition="'$(DeployToGame)' == 'true' And Exists('$(GameDir)\BepInEx')">
-    <!-- Alte DLL im früheren Ordner entfernen, sonst lädt BepInEx womöglich die alte; den Rest räumt die Mod beim Start auf -->
+    <!-- Remove the DLL from the former plugin folder, or BepInEx might load the old one; the mod cleans up the rest on start -->
     <Delete Files="$(GameDir)\BepInEx\plugins\StbcAiCrew\StbcAiCrew.dll" ContinueOnError="true" />
     <MakeDir Directories="$(GameDir)\BepInEx\plugins\STBC Voice Crew" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins\STBC Voice Crew" />

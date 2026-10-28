@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- One-click installer for STBC Voice Crew: finds the game, downloads the latest GitHub release, installs/updates/removes. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>STBC-Voice-Crew-Setup</AssemblyName>
+    <RootNamespace>StbcVoiceCrewSetup</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- No local paths in the published EXE -->
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=.</PathMap>
+    <DebugType>none</DebugType>
+    <Version>1.1.0</Version>
+    <Product>STBC Voice Crew Setup</Product>
+    <Company>Phuntasy Productions</Company>
+    <Copyright>Copyright (c) 2026 Phuntasy Productions – MIT License</Copyright>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+</Project>

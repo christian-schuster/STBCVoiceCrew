@@ -92,7 +92,7 @@ var cases = new (string text, string intents, string name)[]
     ("Waffen auf volle Leistung", "PowerWeapons", null),
     ("Antrieb auf hundert Prozent", "PowerEngines", null),
     ("Repariere die Schilde.", "Repair", null),
-    // ---- Daueranweisungen / Manöver (Christians Wunschsätze) ----
+    // ---- Daueranweisungen / Manöver (gewünschte Beispielsätze) ----
     ("Umfliege das Minenfeld", "AvoidHazard", null),
     ("um fliege das minenfeld", "AvoidHazard", null),
     ("Weich den Minen aus!", "AvoidHazard", null),
