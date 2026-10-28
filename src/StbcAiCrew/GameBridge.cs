@@ -245,20 +245,30 @@ namespace StbcAiCrew
         /// <summary>Entfernt das Lokalisierungs-Präfix "1234|" aus Spieltexten.</summary>
         static System.Collections.Generic.Dictionary<int, string> _loc;
         static readonly object _locLock = new object();
-        /// <summary>Lokalisierungsdatei (StreamingAssets/Localization/german.txt: ID, Schlüssel, Text).</summary>
-        public static string LocalizationFile = "german.txt";
+        /// <summary>Lokalisierungsdatei der Spielsprache (StreamingAssets/Localization/german.txt usw.: ID, Schlüssel, Text).</summary>
+        public static string LocalizationFile
+        {
+            get
+            {
+                string g = (GameLanguage() ?? "German").ToLowerInvariant();
+                return g.StartsWith("german") ? "german.txt" : g.StartsWith("french") ? "french.txt" : "englishus.txt";
+            }
+        }
+        static string _locFile;
 
         static bool Localized(int id, out string text)
         {
             text = null;
             lock (_locLock)
             {
-                if (_loc == null)
+                string file = LocalizationFile;
+                if (_loc == null || _locFile != file)
                 {
+                    _locFile = file;
                     _loc = new System.Collections.Generic.Dictionary<int, string>();
                     try
                     {
-                        string path = System.IO.Path.Combine(System.IO.Path.Combine(Application.streamingAssetsPath, "Localization"), LocalizationFile);
+                        string path = System.IO.Path.Combine(System.IO.Path.Combine(Application.streamingAssetsPath, "Localization"), file);
                         if (System.IO.File.Exists(path))
                             foreach (var line in System.IO.File.ReadAllLines(path, System.Text.Encoding.UTF8))
                             {
@@ -271,6 +281,14 @@ namespace StbcAiCrew
                 }
                 return _loc.TryGetValue(id, out text);
             }
+        }
+
+        /// <summary>Englischer Originaltext eines Spieltexts ("1234|Scan the …" → "Scan the …"), unabhängig von der Spielsprache.</summary>
+        public static string EnglishOf(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return s ?? "";
+            int bar = s.IndexOf('|');
+            return bar > 0 && bar < 8 ? s.Substring(bar + 1) : s;
         }
 
         public static string StripLocId(string s)

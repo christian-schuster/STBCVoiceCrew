@@ -51,6 +51,33 @@ namespace StbcAiCrew
         /// <summary>Erkanntes von Vosk: "mit Grammatik ‖ frei". ptt = Push-to-talk war gedrückt.</summary>
         Station _speaker = Station.Captain;
 
+        /// <summary>KI-Captain: hört jede verstandene Äußerung mit (Bestätigungen wie "Aye"), Sprecherstation und Text.</summary>
+        public Action<Station, string> CaptainHears;
+
+        /// <summary>Kontakte der letzten Abfrage (wie die Konsolen sie zeigen).</summary>
+        public List<Contact> ContactsNow => _contacts;
+
+        /// <summary>
+        /// Befehl im Namen des Captains ausführen, mit allen Abläufen (Warp, Impuls, Beamen mit Schilden, Zielwahl …),
+        /// genau wie ein gesprochener Befehl. target = Kontaktname oder null (gewähltes Ziel).
+        /// </summary>
+        public void Run(Intent intent, string target = null)
+        {
+            var r = new ParseResult();
+            r.Commands.Add(new ParsedCommand { Intent = intent, Name = target, Resolved = target, Clause = "" });
+            var prev = _speaker;
+            _speaker = Station.Captain;
+            try { Execute(r); }
+            catch (Exception e) { Plugin.Log.LogWarning("Captain-Befehl " + intent + ": " + e.Message); }
+            finally { _speaker = prev; }
+        }
+
+        /// <summary>Kontakt auf allen Konsolen als Ziel wählen (genau dieses Objekt, auch bei gleichen Namen).</summary>
+        public bool Select(Contact c) => c != null && c.Detectable is DIENHALJFIO && SetAll((DIENHALJFIO)c.Detectable, c.Name);
+
+        /// <summary>Gewähltes Ziel einer Konsole.</summary>
+        public static DIENHALJFIO TargetAt(Station st) => ConsoleTarget(st);
+
         public void Heard(Station speaker, string speakerName, string recognized, bool ptt)
         {
             _speaker = speaker;
@@ -59,6 +86,7 @@ namespace StbcAiCrew
             string grammar, free;
             Choose(recognized, speakerName, names, out lang, out grammar, out free);
             if (!GameBridge.InMission) { LastHeard = free.Length > 0 ? free : grammar; LastResult = Loc.T("kein Einsatz", "no mission"); return; }
+            if (CaptainHears != null) { try { CaptainHears(speaker, grammar + " " + free); } catch (Exception e) { Plugin.Log.LogDebug(e); } }
             bool en = lang == Lang.En;
             string onMarker = en ? " at " : " auf ";
 
@@ -624,7 +652,7 @@ namespace StbcAiCrew
 
         // ---------------- Rückmeldung ----------------
 
-        void Note(string s)
+        public void Note(string s)
         {
             Plugin.Log.LogInfo("Watson: " + s);
             Log.Add(DateTime.Now.ToString("HH:mm:ss") + " " + s);

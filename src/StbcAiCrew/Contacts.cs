@@ -17,6 +17,8 @@ namespace StbcAiCrew
         public string Bearing;
         public bool Helm, Tactical, Engineering, Captain;
         public JMHPEPBOFIB Detectable;
+        /// <summary>Spielobjekt im Sternsystem (für den Abgleich mit Missionszielen).</summary>
+        public SystemTransform Transform;
         /// <summary>Position im Sternsystem (Meter); nur für Navigation im Code, nicht für Prompts.</summary>
         public Vector3d Position;
         public bool HasPosition;
@@ -86,6 +88,7 @@ namespace StbcAiCrew
                         DistanceKm = -1
                     };
                     var st = bi.Transform ?? (t.AHMPFHDGMKJ != null ? t.AHMPFHDGMKJ.ALPAOOKFIEE : null);
+                    c.Transform = t.AHMPFHDGMKJ != null ? t.AHMPFHDGMKJ.ALPAOOKFIEE : st;
                     if (own != null && st != null)
                     {
                         var rel = st.Position - own.Position;

@@ -120,6 +120,7 @@ namespace StbcAiCrew
         public ConfigEntry<KeyCode> KeyEndMission;
         public ConfigEntry<KeyCode> KeyStateDump;
         public ConfigEntry<KeyCode> KeyPushToTalk;
+        public ConfigEntry<KeyCode> KeyCaptain;
 
         // ---- Watson-Ersatz ----
         public ConfigEntry<string> Mode;
@@ -134,6 +135,19 @@ namespace StbcAiCrew
         volatile System.Collections.Generic.List<VoskEngine> _vosk = new System.Collections.Generic.List<VoskEngine>();
         readonly System.Collections.Generic.List<VoskEngine> _retiredVosk = new System.Collections.Generic.List<VoskEngine>();
         bool _followGameLanguage;
+
+        // ---- KI-Captain ----
+        public ConfigEntry<bool> CaptainEnabled;
+        public ConfigEntry<string> CaptainPlayerStation;
+        public ConfigEntry<bool> CaptainJokes;
+        public ConfigEntry<float> CaptainJokeMinutes;
+        public ConfigEntry<string> CaptainVoiceDe, CaptainVoiceEn, CaptainVoiceFr;
+        public ConfigEntry<float> CaptainSpeed;
+        Captain.CaptainAI _captain;
+        PiperTts _captainTts;
+        readonly System.Collections.Generic.Queue<System.Collections.Generic.KeyValuePair<short[], int>> _captainAudio =
+            new System.Collections.Generic.Queue<System.Collections.Generic.KeyValuePair<short[], int>>();
+        int _captainPending;
         string _voskLibDir, _pluginDir;
         float _nextLangCheck;
         bool VoskReady => _vosk.Exists(v => v.Ready);
@@ -399,6 +413,7 @@ namespace StbcAiCrew
                 GameVolume = () => GameBridge.GameVoiceVolume
             };
             _crew.Player = _player;
+            SetupCaptain(pluginDir);
 
             // Befehlssprache: spiel = Sprache des Spiels, de, en, auto = beide gleichzeitig (Sprache je Sprecher gelernt)
             string lang = (CommandLanguage.Value ?? "spiel").Trim().ToLowerInvariant();
@@ -471,11 +486,66 @@ namespace StbcAiCrew
             Toast(Loc.T("Befehlssprache: Deutsch", "Command language: English"));
         }
 
+        /// <summary>KI-Captain einrichten: Entscheidungsbaum, Piper-Stimme (falls vorhanden), Sprachchat im Mehrspieler.</summary>
+        void SetupCaptain(string pluginDir)
+        {
+            _captain = new Captain.CaptainAI(_crew)
+            {
+                Enabled = CaptainEnabled.Value,
+                Jokes = CaptainJokes.Value,
+                JokeMinutes = Math.Max(1f, CaptainJokeMinutes.Value),
+                PlayerStation = ParseStation(CaptainPlayerStation.Value) == Station.Captain ? Station.Helm : ParseStation(CaptainPlayerStation.Value),
+                Speak = CaptainSpeak,
+                Speaking = () => _captainPending > 0 || _captainAudio.Count > 0 || (_player != null && _player.Playing)
+            };
+            if (Multiplayer.Value && _crewSender == null) _crewSender = new CrewVoiceSender();
+            if (CaptainEnabled.Value) SetupCaptainVoice(pluginDir);
+        }
+
+        void SetupCaptainVoice(string pluginDir)
+        {
+            var tts = new PiperTts(Log, ResolvePath(pluginDir, PiperExe.Value), ResolvePath(pluginDir, PiperVoiceDir.Value),
+                                   Path.Combine(Path.GetTempPath(), "StbcAiCrew_captain"));
+            if (tts.Available) { tts.Start(); _captainTts = tts; }
+            else Log.LogWarning("KI-Captain: Piper nicht gefunden (" + PiperExe.Value + ") – der Captain spricht nur als Text auf den Konsolen.");
+            Log.LogInfo("KI-Captain aktiv: Spieler an " + _captain.PlayerStation + ", Stimme " + (_captainTts != null ? "Piper" : "aus") + ".");
+        }
+
+        /// <summary>Der Captain spricht: Text auf der Konsole (in VR lesbar), Stimme über Piper, im Mehrspieler über den Sprachchat.</summary>
+        void CaptainSpeak(string text, Station? to)
+        {
+            string shown = "Captain: " + text;
+            if (to.HasValue) GameBridge.ShowConsoleMessage(to.Value, shown, 8f); else GameBridge.ShowOnAllConsoles(shown, 8f);
+            _crew.Note(shown);
+            if (_captainTts == null) return;
+            string voice = Loc.German ? CaptainVoiceDe.Value : CaptainVoiceEn.Value;
+            if (!File.Exists(Path.Combine(ResolvePath(Path.GetDirectoryName(Info.Location), PiperVoiceDir.Value), voice + ".onnx")))
+                voice = CaptainVoiceDe.Value;   // Stimme fehlt: lieber deutsch als stumm
+            _captainPending++;
+            _captainTts.Speak(VoiceSpec.Parse(voice, CaptainSpeed.Value, 0.97f), PiperTts.CleanForSpeech(text), (pcm, rate) =>
+            {
+                _captainPending--;
+                if (pcm != null) _captainAudio.Enqueue(new System.Collections.Generic.KeyValuePair<short[], int>(pcm, rate));
+            });
+        }
+
+        /// <summary>Gesprochene Sätze nacheinander abspielen; das Mikrofon hört solange weg (sonst hört es den Captain als Spieler).</summary>
+        void PlayCaptainAudio()
+        {
+            if (_captainAudio.Count == 0 || _player == null || _player.Playing) return;
+            var a = _captainAudio.Dequeue();
+            float secs = _player.Play(a.Key, a.Value);
+            if (_voice != null) _voice.Deafen(secs + 0.4f);
+            if (_crewSender != null && Net.Online) _crewSender.Enqueue(a.Key, a.Value);
+        }
+
         void OnHeardWatson(string text)
         {
             if (!Net.IsHost) return;
             Station? mine = Net.Online ? Net.StationOf(Net.LocalPlayerId) : null;
             bool ptt = _voice != null && _voice.LastPtt;
+            // Platz, an dem der Spieler wirklich sitzt (nach einem Stationswechsel nicht mehr die Captain-Konsole)
+            if (!Net.Online) mine = Captain.CaptainSense.LocalSeat();
             _crew.Heard(mine ?? ParseStation(MyStation.Value), Net.Online ? (Net.NameOf(Net.LocalPlayerId) ?? "Ich") : "Captain", text, ptt);
         }
 
@@ -518,6 +588,9 @@ namespace StbcAiCrew
                 }
             }
             if (host) _crew.Tick(inMission ? _status : null);
+            if (host && _captain != null) _captain.Tick(inMission ? _status : null);
+            PlayCaptainAudio();
+            if (_crewSender != null) _crewSender.Tick();
             FollowGameLanguage();
 
             GameMicFix.Probe();
@@ -530,6 +603,13 @@ namespace StbcAiCrew
                 Toast(_voice.Muted ? Loc.T("Mikrofon stumm.", "Microphone muted.") : Loc.T("Mikrofon hört wieder zu.", "Microphone listening again."));
             }
             if (Input.GetKeyDown(KeyOverlay.Value)) _showOverlay = !_showOverlay;
+            if (Input.GetKeyDown(KeyCaptain.Value) && _captain != null)
+            {
+                _captain.Enabled = !_captain.Enabled;
+                CaptainEnabled.Value = _captain.Enabled;
+                if (_captain.Enabled && _captainTts == null) SetupCaptainVoice(Path.GetDirectoryName(Info.Location));
+                Toast(_captain.Enabled ? Loc.T("KI-Captain an", "AI captain on") : Loc.T("KI-Captain aus", "AI captain off"));
+            }
             if (Input.GetKeyDown(KeyStateDump.Value))
             {
                 try { Toast(Loc.T("Zustand: ", "State: ") + StateProbe.Dump(Path.Combine(_dataDir, "dumps"))); }
@@ -557,6 +637,7 @@ namespace StbcAiCrew
                 GUILayout.Label(Loc.T("Daueranweisung: ", "Standing orders: ") + (orders ?? "") +
                                 (_crew.Nav.StayOutOfSensors ? Loc.T(" · außerhalb der Ortung", " · out of sensor range") : ""));
             if (_crew.Nav.Current != Navigator.Mode.None) GUILayout.Label(Loc.T("Manöver: ", "Manoeuvre: ") + _crew.Nav.Status);
+            if (_captain != null && _captain.Enabled) GUILayout.Label(Loc.T("KI-Captain: ", "AI captain: ") + (_captain.Active ? _captain.Status : Loc.T("wartet", "standing by")));
             foreach (var l in _crew.Log) GUILayout.Label("<i>" + l + "</i>");
             GUILayout.Label(KeyPushToTalk.Value + Loc.T(" halten = Befehl · ", " hold = command · ") + KeyMute.Value + Loc.T(" Mikro stumm · ", " mute mic · ") + KeyOverlay.Value + " Overlay");
             if (_toast != null && Time.realtimeSinceStartup < _toastUntil) GUILayout.Label(_toast);
@@ -660,6 +741,7 @@ namespace StbcAiCrew
             KeyOverlay = Config.Bind("Tasten", "Overlay", KeyCode.F7, "Overlay ein/aus.");
             KeyTalk = Config.Bind("Tasten", "Sprechen", KeyCode.F8, "Texteingabe an die Crew öffnen.");
             KeyEndMission = Config.Bind("Tasten", "MissionBeenden", KeyCode.F9, "Mission für beendet erklären (Nachbesprechung).");
+            KeyCaptain = Config.Bind("Tasten", "KiCaptain", KeyCode.F6, "KI-Captain ein/aus (Watson-Modus).");
             KeyPushToTalk = Config.Bind("Tasten", "PushToTalk", KeyCode.F4, "Watson-Modus: gedrückt halten = Befehl an die Crew, ohne sie anzusprechen.");
             Mode = Config.Bind("Allgemein", "Modus", "watson", "watson = schnelle Sprachbefehle ohne Sprachmodell (Vosk, Original-Crew mit Spielstimmen), llm = KI-Crew mit Sprachmodell (Stand Tag LLM-Version).");
             ListenModeSetting = Config.Bind("Sprache", "ZuhoerModus", "beides", "Watson-Modus: beides = Ansprache (Steuer/Rao, Taktik/Hoyle, Technik/T'nar, Crew), Push-to-talk oder kurzer Befehl; ansprache = nur mit Anrede; ptt = nur mit Taste; dauernd = alles Erkannte.");
@@ -667,6 +749,14 @@ namespace StbcAiCrew
             VoskModel = Config.Bind("Watson", "VoskModell", "vosk/vosk-model-small-de-0.15", "Deutsches Vosk-Modell (relativ zum Plugin-Ordner oder absolut). Die Vosk-DLLs liegen im Ordner vosk.");
             VoskModelEn = Config.Bind("Watson", "VoskModellEnglisch", "vosk/vosk-model-small-en-us-0.15", "Englisches Vosk-Modell (relativ zum Plugin-Ordner oder absolut).");
             CommandLanguage = Config.Bind("Sprache", "BefehlsSprache", "spiel", "Sprache der Sprachbefehle: spiel = wie das Spiel eingestellt ist, de, en, auto = Deutsch und Englisch gleichzeitig (doppelte CPU-Last, Sprache wird je Sprecher gelernt).");
+            CaptainEnabled = Config.Bind("Captain", "KiCaptain", false, "KI-Captain: Du sitzt an einer Bot-Station und der Captain (ohne Sprachmodell) führt das Schiff, gibt Befehle und erwartet Bestätigung.");
+            CaptainPlayerStation = Config.Bind("Captain", "SpielerStation", "steuer", "Einzelspieler: An diese Station wechselst du zu Missionsbeginn (steuer, taktik, technik).");
+            CaptainJokes = Config.Bind("Captain", "Kalauer", true, "In ruhigen Momenten ab und zu ein Star-Trek-Kalauer.");
+            CaptainJokeMinutes = Config.Bind("Captain", "KalauerAbstandMinuten", 8f, "Mindestabstand zwischen zwei Kalauern.");
+            CaptainVoiceDe = Config.Bind("Captain", "StimmeDeutsch", "de_DE-thorsten-medium", "Piper-Stimme des Captains auf Deutsch (Datei im Ordner piper/voices ohne .onnx).");
+            CaptainVoiceEn = Config.Bind("Captain", "StimmeEnglisch", "en_US-ryan-medium", "Piper-Stimme des Captains auf Englisch.");
+            CaptainVoiceFr = Config.Bind("Captain", "StimmeFranzoesisch", "fr_FR-tom-medium", "Piper-Stimme des Captains auf Französisch.");
+            CaptainSpeed = Config.Bind("Captain", "Sprechtempo", 1.05f, "Sprechtempo des Captains (1 = normal).");
             KeyStateDump = Config.Bind("Tasten", "Zustandsdump", KeyCode.F10, "Felder des Spielerschiffs in eine Datei schreiben (Reverse Engineering).");
         }
 
@@ -846,6 +936,7 @@ namespace StbcAiCrew
             if (_remoteTap != null) _remoteTap.Dispose();
             foreach (var v in _vosk) v.Dispose();
             foreach (var v in _retiredVosk) v.Dispose();
+            if (_captainTts != null) _captainTts.Dispose();
             if (_player != null) _player.Dispose();
             if (_qwen != null) _qwen.Dispose();
             if (_tts != null) _tts.Dispose();

@@ -44,7 +44,7 @@ namespace StbcAiCrew
                 var mgr = NovaPlayerManager.IEFBKOMBFGO;
                 if (player == null || mgr == null) return null;
                 var info = mgr.GetInfoForPlayer(player);
-                return info != null ? GameBridge.FromGameStation(info.FJMHMOOJNJG) : null;
+                return info != null ? SeatOf(info) : null;
             }
             catch { return null; }
         }
@@ -57,10 +57,29 @@ namespace StbcAiCrew
                 var mgr = NovaPlayerManager.IEFBKOMBFGO;
                 if (mgr == null || !Online) return false;
                 foreach (var info in mgr.GetPlayers())
-                    if (info != null && GameBridge.FromGameStation(info.FJMHMOOJNJG) == st) return true;
+                    if (info != null && SeatOf(info) == st) return true;
             }
             catch { }
             return false;
+        }
+
+        /// <summary>
+        /// Station, an der ein Spieler gerade sitzt: die Konsole, nicht die Rolle. Wechselt der Captain an die Steuer
+        /// (eingebauter Stationswechsel), bleibt seine Rolle "Captain", er sitzt aber an der Steuer.
+        /// </summary>
+        public static Station? SeatOf(NovaPlayerInfo info)
+        {
+            if (info == null) return null;
+            try
+            {
+                var c = info.GHJLPNMIOAJ;
+                if (c is ConsoleCaptain) return Station.Captain;
+                if (c is ConsoleHelm) return Station.Helm;
+                if (c is ConsoleTactical) return Station.Tactical;
+                if (c is ConsoleEngineering) return Station.Engineering;
+            }
+            catch { }
+            return GameBridge.FromGameStation(info.FJMHMOOJNJG);
         }
 
         public static string NameOf(int photonId)
