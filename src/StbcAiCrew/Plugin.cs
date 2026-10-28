@@ -874,7 +874,7 @@ namespace StbcAiCrew
             if (!_showOverlay) return;
             GUILayout.BeginArea(new Rect(10f, 10f, 520f, Screen.height - 20f));
             GUILayout.BeginVertical("box");
-            GUILayout.Label("<b>" + Loc.T("Brückencrew", "Bridge crew") + "</b>  –  Vosk: " + VoskState +
+            GUILayout.Label("<b>STBC Voice Crew Mod</b>  –  Vosk: " + VoskState +
                             "  |  " + (GameBridge.InMission ? Loc.T("im Einsatz", "on mission") : Loc.T("kein Einsatz", "no mission")));
             if (_voice != null)
             {
