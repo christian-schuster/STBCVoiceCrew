@@ -10,7 +10,7 @@ STBC Voice Crew – Changelog
   - Takes command when nobody sits in the captain's chair: reads the objectives, sets the warp destination, gives
     orders to the bot crew and to human officers (spoken and on their console), waits for "Aye", reminds, praises.
     Orders come one at a time: he speaks, the crew executes and answers, then the next order follows.
-    Before warping he breaks away from nearby enemies and holds fire, so the helm can align with the warp course.
+    Before warping near an enemy he gives full thrust for a few seconds and holds fire, then jumps while moving.
   - Speaks only when nobody else is talking (crew, game voices, briefing, players).
   - Rare Star Trek puns on the bridge and in the lobby.
   - Voice commands: "Number One / Commander, suggestions?", "You have the bridge", "I have the bridge",

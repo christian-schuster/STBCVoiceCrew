@@ -56,6 +56,7 @@ namespace StbcAiCrew.Captain
         float _redAlertAt = -999f, _warpBlockedUntil = -999f;
         int _warpTries;
         bool _alertAnnounced;
+        float _breakawayAt = -1f;   // Freifliegen vor dem Warp: höchstens 8 s, sonst ist man ein leichtes Ziel
         bool _greeted, _bridgeGreeted, _askedHint, _announceTake;
         string _trackKey, _goalAnnounced, _arrivedAt, _selected;
         int _trackCount = -1;
@@ -322,15 +323,15 @@ namespace StbcAiCrew.Captain
                     return steps;
                 }
                 // Feind dicht dran: erst Schub und Abstand gewinnen, sonst richtet sich die Steuer nie sauber auf den Warpkurs aus
-                if (enemy != null && enemy.DistanceKm < 20)
+                if (enemy != null && enemy.DistanceKm < 20 && (_breakawayAt < 0 || Time.time - _breakawayAt <= 8f || Time.time - _breakawayAt > 90f))
                 {
                     Status = Loc.T("Abstand gewinnen vor dem Warp", "gaining distance before warp");
                     var foe = enemy.Transform;
-                    steps.Add(new Step { Id = "breakaway:" + sys, St = Station.Helm, LineKey = "flee", Bot = () => _crew.Run(Intent.Flee),
-                                         Done = () => { var x = Find(_crew.ContactsNow, foe); return x == null || x.DistanceKm >= 20; }, Remind = 20f });
+                    steps.Add(new Step { Id = "breakaway:" + sys, St = Station.Helm, LineKey = "breakaway", Bot = () => { _breakawayAt = Time.time; _crew.Run(Intent.Flee); },
+                                         Done = () => { var x = Find(_crew.ContactsNow, foe); return x == null || x.DistanceKm >= 20 || (_breakawayAt > 0 && Time.time - _breakawayAt > 8f); }, Remind = 20f });
                     return steps;
                 }
-                Done("breakaway:" + sys);
+                Done("breakaway:" + sys);   // nach höchstens 8 s Schub: springen, auch wenn der Feind noch nah ist
                 Status = Loc.T("Warp nach ", "warp to ") + sys;
                 steps.Add(new Step
                 {
