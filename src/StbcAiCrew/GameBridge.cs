@@ -118,7 +118,14 @@ namespace StbcAiCrew
             catch { return null; }
         }
 
-        public static bool GameVoicePlaying()
+        public static bool GameVoicePlaying() => VoicePlaying(i => !IgnoredVoice(i));
+
+        /// <summary>Spricht gerade einer der Bots (Rao, Hoyle, T'nar), etwa die Bestätigung eines Befehls?</summary>
+        public static bool CrewVoicePlaying() => VoicePlaying(i =>
+            (KFLPAPJAAGO)i == KFLPAPJAAGO.Crewbot_Helm_Rao || (KFLPAPJAAGO)i == KFLPAPJAAGO.Crewbot_Tac_Hoyle || (KFLPAPJAAGO)i == KFLPAPJAAGO.Crewbot_Eng_Tnar);
+
+        /// <summary>VOManager führt je Sprecher eine Warteschlange (Index = Sprecher); spielt eine der gewählten gerade?</summary>
+        static bool VoicePlaying(Func<int, bool> speaker)
         {
             try
             {
@@ -130,7 +137,7 @@ namespace StbcAiCrew
                 if (list == null) return false;
                 for (int i = 0; i < list.Count; i++)
                 {
-                    if (IgnoredVoice(i)) continue;
+                    if (!speaker(i)) continue;
                     var q = list[i] as DHECOBKMDDB;
                     try { if (q != null && q.IsPlaying()) return true; } catch { }   // leere Warteschlange wirft
                 }

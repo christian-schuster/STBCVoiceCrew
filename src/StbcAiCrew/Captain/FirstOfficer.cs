@@ -598,7 +598,7 @@ namespace StbcAiCrew.Captain
             o = new Order { Id = s.Id, St = s.St, Human = human, Done = s.Done, Line = line, NextRemind = Time.time + s.Remind };
             _orders[s.Id] = o;
             // Erst aussprechen, dann führt der Bot aus; dem Menschen Zeit zum Reagieren lassen
-            Act(line, human ? (Station?)s.St : null, human ? null : s.Bot, human ? 3f : 2.5f);
+            Act(line, human ? (Station?)s.St : null, human ? null : s.Bot, human ? 3f : 1.5f);   // 1,5 s, bis die Antwort des Bots einsetzt
             Plugin.Log.LogInfo("First Officer: " + (human ? "an Mensch " : "an Bot ") + s.St + ": " + s.Id);
         }
 
@@ -700,12 +700,14 @@ namespace StbcAiCrew.Captain
             get
             {
                 if (_acting && Time.time - _actingSince > 20f) _acting = false;   // Sicherung, falls der Rückruf ausbleibt
-                return _acting || Time.time < _readyAt;
+                if (_acting || Time.time < _readyAt) return true;
+                // Die Crew antwortet noch ("Aye, Captain"): ausreden lassen, höchstens 10 s nach dem Befehl
+                return Time.time < _readyAt + 10f && GameBridge.CrewVoicePlaying();
             }
         }
 
-        /// <summary>Satz sprechen, danach die Handlung ausführen, dann pause Sekunden für die Antwort der Crew.</summary>
-        void Act(string line, Station? to, Action action, float pause = 2.5f)
+        /// <summary>Satz sprechen, danach die Handlung ausführen, dann warten, bis die Crew geantwortet hat (mindestens pause Sekunden).</summary>
+        void Act(string line, Station? to, Action action, float pause = 1.5f)
         {
             _acting = true;
             _actingSince = Time.time;
