@@ -196,27 +196,27 @@ namespace StbcAiCrew.Captain
         /// </summary>
         public static List<Sector.SectorBody> MapPoints()
         {
-            var objective = new List<Sector.SectorBody>();
-            var other = new List<Sector.SectorBody>();
+            var list = new List<Sector.SectorBody>();
             try
             {
+                // Aktive Punkte führt das Spielerschiff (je Punkt-ID ein Schalter, vom Missionsskript gesetzt: ActivatePOI)
+                var craft = GameBridge.PlayerShip as Sector.Spacecraft.CMFLDCJNMJJ;
+                var active = craft != null && craft.KBLFFPNELGA != null ? craft.KBLFFPNELGA.MLPNEABKIJD : null;
+                if (active == null) return list;
                 var here = CurrentSystem;
-                var seen = new HashSet<int>();
-                var objField = typeof(PointOfInterestMapIcon).GetField("_objectiveVisual", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                foreach (var icon in UnityEngine.Object.FindObjectsOfType<PointOfInterestMapIcon>())
+                foreach (var b in UnityEngine.Object.FindObjectsOfType<Sector.SectorBody>())
                 {
-                    var body = icon != null ? icon.AJHKBDCEKPH : null;
-                    if (body == null || body is Sector.Spacecraft.PlayerSpacecraft || !seen.Add(body.GetInstanceID())) continue;
-                    try { if (here != null && body.ALPAOOKFIEE != null && body.ALPAOOKFIEE.System != here) continue; } catch { }
-                    var vis = objField != null ? objField.GetValue(icon) as GameObject : null;
-                    (vis != null && vis.activeSelf ? objective : other).Add(body);
+                    if (b == null || b is Sector.Spacecraft.PlayerSpacecraft) continue;
+                    var st = b.ALPAOOKFIEE;
+                    bool on = false;
+                    if (st == null || !active.TryGetValue(st.id.value, out on) || !on) continue;
+                    try { if (here != null && st.System != here) continue; } catch { }
+                    list.Add(b);
                 }
             }
             catch (Exception e) { Plugin.Log.LogDebug("Kartenpunkte nicht lesbar: " + e.Message); }
-            objective.AddRange(other);
-            return objective;
+            return list;
         }
-
         public static bool IsObjectivePoint(Sector.SectorBody body)
         {
             try
