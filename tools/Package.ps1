@@ -67,6 +67,10 @@ if (-not $NoBepInEx) {
     $core = Join-Path $stage "BepInEx\core"
     New-Item -ItemType Directory -Force $core | Out-Null
     Get-ChildItem (Join-Path $GameDir "BepInEx\core") -File | Copy-Item -Destination $core
+    # BepInEx must start from Camera instead of Application ([Preloader.Entrypoint] Type), otherwise the game stays black
+    $cfg = Join-Path $stage "BepInEx\config"
+    New-Item -ItemType Directory -Force $cfg | Out-Null
+    Copy-Item (Join-Path $repoDir "install\BepInEx.cfg") $cfg
 }
 
 # Documentation and licenses in the plugin folder: in the game folder, CHANGELOG.txt would overwrite BepInEx's changelog.txt
@@ -86,7 +90,7 @@ $private = @('[A-Za-z]:\\(Users|SteamLibrary|source)\\', '\\Users\\', '\.pdb')
 $own_patterns = Join-Path $PSScriptRoot 'private-patterns.txt'
 if (Test-Path $own_patterns) { $private += Get-Content $own_patterns | Where-Object { $_ -and -not $_.StartsWith('#') } }
 $own = @(Get-Item (Join-Path $pluginDir "de.phuntasyproductions.stbcvoicecrew.dll")) + @(Get-Item (Join-Path $dist "STBC-Voice-Crew-Setup.exe")) + @(Get-Item (Join-Path $dist "install.ps1")) +
-       (Get-ChildItem $pluginDir -File -Filter *.txt) + (Get-ChildItem $stage -File -Filter *.ini)
+       (Get-ChildItem $pluginDir -File -Filter *.txt) + (Get-ChildItem $stage -File -Filter *.ini) + (Get-ChildItem $stage -Recurse -File -Filter *.cfg)
 foreach ($f in $own) {
     $b = [IO.File]::ReadAllBytes($f.FullName)
     foreach ($t in [Text.Encoding]::ASCII.GetString($b), [Text.Encoding]::Unicode.GetString($b)) {
