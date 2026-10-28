@@ -64,10 +64,10 @@ namespace StbcAiCrew
         /// Befehl im Namen des Captains ausführen, mit allen Abläufen (Warp, Impuls, Beamen mit Schilden, Zielwahl …),
         /// genau wie ein gesprochener Befehl. target = Kontaktname oder null (gewähltes Ziel).
         /// </summary>
-        public void Run(Intent intent, string target = null)
+        public void Run(Intent intent, string target = null, string subsystem = null)
         {
             var r = new ParseResult();
-            r.Commands.Add(new ParsedCommand { Intent = intent, Name = target, Resolved = target, Clause = "" });
+            r.Commands.Add(new ParsedCommand { Intent = intent, Name = target, Resolved = target, Subsystem = subsystem, Clause = "" });
             var prev = _speaker;
             _speaker = Station.Captain;
             try { Execute(r); }

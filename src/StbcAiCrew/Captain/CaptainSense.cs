@@ -7,7 +7,7 @@ using UnityEngine;
 namespace StbcAiCrew.Captain
 {
     /// <summary>Art eines Missionsziels (aus dem englischen Originaltext erkannt, gilt so in jeder Spielsprache).</summary>
-    public enum GoalKind { Travel, Scan, Attack, Disable, Rescue, Defend, Hail, Wait }
+    public enum GoalKind { Travel, Scan, Attack, Disable, Rescue, Defend, Hail, Wait, Escape, Gather, Stealth }
 
     /// <summary>Ein offenes Missionsziel, so wie es die Captain-Konsole zeigt.</summary>
     public sealed class Goal
@@ -20,9 +20,17 @@ namespace StbcAiCrew.Captain
         public string SystemName;
         public int Count, Total;     // Zähler ("Überlebende 3/5"), Total 0 = keiner
         public int OpenSubGoals;
+        /// <summary>Offene Teilziele (Originaltext), in der Reihenfolge der Konsole: die eigentlichen Schrittanweisungen.</summary>
+        public List<string> SubTexts = new List<string>();
         public bool HasTimer;
         /// <summary>Reichweite aus dem Missionswissen (km), 0 = Standard der Art.</summary>
         public double Reach;
+        /// <summary>Missionswissen: Sonderhinweis (Schlüssel in OfficerLines, "note_…"), Mindestabstand, Teilsystem fürs Stören.</summary>
+        public string Note;
+        public double MinDistance;
+        public string Subsystem;
+        /// <summary>Optionales Ziel ("OPTIONAL: …"): erst, wenn nichts anderes ansteht.</summary>
+        public bool Optional;
         public string Key => English + "|" + (Target != null ? Target.GetInstanceID().ToString() : "") + "|" + SystemName;
     }
 
@@ -55,11 +63,18 @@ namespace StbcAiCrew.Captain
                         Total = d.ShowCounter ? d.TotalCount : 0,
                         HasTimer = d.ShowTimer
                     };
-                    if (d.SubDirectives != null) foreach (var s in d.SubDirectives) if (s != null && !s.Completed && !s.Failed) g.OpenSubGoals++;
+                    if (d.SubDirectives != null)
+                        foreach (var s in d.SubDirectives)
+                            if (s != null && !s.Completed && !s.Failed)
+                            {
+                                g.OpenSubGoals++;
+                                string t = GameBridge.EnglishOf(s.DescriptionString);
+                                if (!string.IsNullOrEmpty(t)) g.SubTexts.Add(t);
+                            }
                     try { g.System = g.Target != null ? g.Target.System : null; } catch { }
                     if (g.System == null && !string.IsNullOrEmpty(d.SystemName)) g.System = FindSystem(d.SystemName);
                     g.Kind = Classify(g.English + " " + (d.ItemName ?? ""));
-                    g.Reach = MissionKnowledge.Apply(g);
+                    MissionKnowledge.Apply(g);
                     list.Add(g);
                 }
             }
@@ -114,6 +129,19 @@ namespace StbcAiCrew.Captain
                 string want = GameBridge.StripLocId(name);
                 foreach (var s in m.MLHNDAEKLHO)
                     if (s != null && (s.SystemName == name || GameBridge.StripLocId(s.SystemName) == want)) return s;
+            }
+            catch { }
+            return null;
+        }
+
+        /// <summary>Irgendein anderes Sternsystem (Fluchtziel).</summary>
+        public static SystemRoot OtherSystem(SystemRoot here)
+        {
+            try
+            {
+                var m = Map;
+                if (m == null || m.MLHNDAEKLHO == null) return null;
+                foreach (var s in m.MLHNDAEKLHO) if (s != null && s != here) return s;
             }
             catch { }
             return null;

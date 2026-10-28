@@ -51,6 +51,7 @@ namespace StbcAiCrew.Captain
         float _goalSince;
         float _missionStart = -1f, _next, _lastSpoke = -999f, _lastJoke, _lastThreat = -999f, _lastHail = -999f, _hailSince = -1f;
         float _lobbySince = -1f, _lobbyLastJoke, _lobbyLastSpoke = -999f, _lobbyNext, _connGivenAt = -999f;
+        string _stealthFor;
         bool _greeted, _bridgeGreeted, _askedHint, _announceTake;
         string _trackKey, _goalAnnounced, _arrivedAt, _selected;
         int _trackCount = -1;
@@ -222,7 +223,9 @@ namespace StbcAiCrew.Captain
                     if (!string.IsNullOrEmpty(g.Text)) Say(OfficerLines.Say("new_goal", Clean(g.Text)), null);
                 }
                 foreach (var s in Plan(g, contacts, threat ? enemy : null)) { if (s.Prep != null) s.Prep(); if (s.Bot != null) Issue(s); }
-                if (g.Kind != GoalKind.Attack && g.Kind != GoalKind.Defend && enemy != null) Issue(FightStep(enemy, true));
+                // Feinde in der Nähe bekämpfen – außer der Auftrag verbietet es (Schleichfahrt, nur beobachten) oder es heißt fliehen
+                bool peaceful = g.Note == "note_stealth" || g.Note == "note_scan_only" || g.Kind == GoalKind.Escape;
+                if (g.Kind != GoalKind.Attack && g.Kind != GoalKind.Defend && enemy != null && !peaceful) Issue(FightStep(enemy, true));
             }
             else if (enemy != null) Issue(FightStep(enemy, true));
             else Status = Loc.T("keine offenen Ziele", "no open objectives");
@@ -234,8 +237,14 @@ namespace StbcAiCrew.Captain
         {
             if (goals.Count == 0) return null;
             var here = CaptainSense.CurrentSystem;
-            foreach (var g in goals) if (g.Kind != GoalKind.Wait && (g.System == null || g.System == here) && Find(contacts, g.Target) != null) return g;
-            foreach (var g in goals) if (g.Kind != GoalKind.Wait) return g;
+            // Pflicht vor Kür: optionale Ziele erst, wenn sonst nichts ansteht; Warteziele laufen von selbst
+            for (int pass = 0; pass < 2; pass++)
+            {
+                bool optional = pass == 1;
+                foreach (var g in goals) if (g.Optional == optional && g.Kind == GoalKind.Escape) return g;   // Flucht geht vor
+                foreach (var g in goals) if (g.Optional == optional && g.Kind != GoalKind.Wait && (g.System == null || g.System == here) && Find(contacts, g.Target) != null) return g;
+                foreach (var g in goals) if (g.Optional == optional && g.Kind != GoalKind.Wait) return g;
+            }
             return goals[0];
         }
 
@@ -244,6 +253,46 @@ namespace StbcAiCrew.Captain
         {
             var steps = new List<Step>();
             var here = CaptainSense.CurrentSystem;
+            GoalKind kind = g.Kind;
+
+            // Flucht ohne Ziel im System: raus (Warp in irgendein anderes System) oder per Impuls weg von den Verfolgern
+            if (kind == GoalKind.Escape && g.Target == null)
+            {
+                Status = Loc.T("Flucht: ", "escape: ") + Clean(g.Text);
+                if (g.Note == "note_impulse_escape")
+                {
+                    steps.Add(new Step { Id = "flee:" + g.Key, St = Station.Helm, LineKey = "flee", Bot = () => _crew.Run(Intent.Flee), Done = GoalMoved, Remind = 40f });
+                    return steps;
+                }
+                var from = here;
+                var dest = g.System != null && g.System != here ? g.System : CaptainSense.OtherSystem(here);
+                if (dest != null)
+                {
+                    string sys = CaptainSense.NameOf(dest);
+                    steps.Add(new Step { Id = "escape:" + sys, St = Station.Helm, LineKey = "escape", Arg = sys, Prep = () => CaptainSense.SetWarpTarget(dest),
+                                         Bot = () => _crew.Run(Intent.Warp), Done = () => CaptainSense.CurrentSystem != from, Remind = 30f });
+                }
+                return steps;
+            }
+            if (kind == GoalKind.Escape) kind = GoalKind.Travel;   // Fluchtpunkt im System (Nebelrand): hinfliegen, schnell
+            if (kind == GoalKind.Gather && g.Reach > 0) kind = GoalKind.Travel;   // "Fly within 10 KM of …": dort bleiben
+            if (kind == GoalKind.Wait || kind == GoalKind.Hail)
+            {
+                Status = Clean(g.Text);
+                return steps;
+            }
+
+            // Missionswissen: Schilde für die Energiewelle, Schleichfahrt
+            if (g.Note == "note_raise_shields")
+                steps.Add(new Step { Id = "wave_shields", St = Station.Tactical, LineKey = "shields", Bot = () => _crew.Run(Intent.ShieldsUp), Done = ShieldsUp });
+            if (g.Note == "note_lower_shields")
+                steps.Add(new Step { Id = "wave_shields_down", St = Station.Tactical, LineKey = "shields_down", Bot = () => _crew.Run(Intent.ShieldsDown), Done = () => !ShieldsUp() });
+            if (g.Note == "note_stealth")
+            {
+                string sk = g.Key;
+                steps.Add(new Step { Id = "stealth:" + sk, St = Station.Engineering, LineKey = "stealth", Bot = () => { _crew.Run(Intent.StealthOn); _stealthFor = sk; },
+                                     Done = () => _stealthFor == sk, Remind = 120f });
+            }
 
             // a) Anderes Sternsystem: Warp
             if (g.System != null && here != null && g.System != here)
@@ -270,7 +319,23 @@ namespace StbcAiCrew.Captain
             Status = Clean(g.Text) + " – " + name + " " + d.ToString("0.0") + " km";
             Action select = () => { if (_selected != key) { _crew.Select(c); _selected = key; } };   // nur bei neuem Ziel, sonst überschreibt er die Auswahl des Spielers
 
-            double reach = g.Reach > 0 ? g.Reach : Reach(g.Kind);
+            double reach = g.Reach > 0 ? g.Reach : Reach(kind);
+            // Mindestabstand (Protomaterie): nicht näher heran, aus der Ferne mit Torpedos
+            if (g.MinDistance > 0)
+            {
+                reach = Math.Max(reach, g.MinDistance + 3);
+                double min = g.MinDistance;
+                if (d < min)
+                    steps.Add(new Step { Id = "keep_distance:" + name, St = Station.Helm, LineKey = "keep_distance", Arg = min.ToString("0"), Prep = select,
+                                         Bot = () => _crew.Run(Intent.MoveAway, name), Done = () => { var x = Find(_crew.ContactsNow, g.Target); return x == null || x.DistanceKm >= min; }, Remind = 20f });
+            }
+            // Teilchen sammeln: mitten hindurch, volle Fahrt
+            if (kind == GoalKind.Gather)
+            {
+                steps.Add(new Step { Id = "gather:" + name, St = Station.Helm, LineKey = "gather", Arg = name, Prep = select,
+                                     Bot = () => { _crew.Run(Intent.MoveToTarget, name); _crew.Run(Intent.SpeedFull); }, Done = GoalMoved, Remind = 30f });
+                return steps;
+            }
             if (d > reach)
             {
                 bool far = d > 60;
@@ -281,22 +346,32 @@ namespace StbcAiCrew.Captain
             }
             Done("course:" + name); Done("impulse:" + name);
 
-            switch (g.Kind)
+            switch (kind)
             {
                 case GoalKind.Scan:
                     steps.Add(new Step { Id = "scan:" + name, St = Station.Tactical, LineKey = "scan", Arg = name, Prep = select, Bot = () => _crew.Run(Intent.Scan, name), Done = GoalMoved });
                     break;
                 case GoalKind.Attack:
-                    steps.Add(new Step { Id = "attack:" + name, St = Station.Tactical, LineKey = "attack", Arg = name, Prep = select, Bot = () => _crew.Run(Intent.FirePhasers, name), Done = GoalMoved, Remind = 30f });
+                    // Mit Mindestabstand: Torpedos (Phaser reichen nicht so weit)
+                    if (g.MinDistance > 0)
+                        steps.Add(new Step { Id = "torpedo:" + name, St = Station.Tactical, LineKey = "torpedo", Arg = name, Prep = select, Bot = () => _crew.Run(Intent.FireTorpedoes, name), Done = GoalMoved, Remind = 30f });
+                    else
+                        steps.Add(new Step { Id = "attack:" + name, St = Station.Tactical, LineKey = "attack", Arg = name, Prep = select, Bot = () => _crew.Run(Intent.FirePhasers, name), Done = GoalMoved, Remind = 30f });
                     break;
                 case GoalKind.Disable:
                     // Kommt das Stören nicht voran (manche Schiffe können nicht hacken), mit Phasern auf den Antrieb
-                    if (Time.time - _goalSince > 75f)
+                    string sub = g.Subsystem ?? "engines";
+                    if (sub == "engines" && Time.time - _goalSince > 75f)
                         steps.Add(new Step { Id = "disable_fire:" + name, St = Station.Tactical, LineKey = "disable_fire", Arg = name, Prep = select, Bot = () => _crew.Run(Intent.FirePhasers, name), Done = GoalMoved, Remind = 30f });
                     else
-                        steps.Add(new Step { Id = "disable:" + name, St = Station.Tactical, LineKey = "disable", Arg = name, Prep = select, Bot = () => _crew.Run(Intent.Hack, name), Done = GoalMoved, Remind = 30f });
+                        steps.Add(new Step { Id = "disable:" + name + ":" + sub, St = Station.Tactical, LineKey = sub == "engines" ? "disable" : "disable_" + sub, Arg = name, Prep = select,
+                                             Bot = () => _crew.Run(Intent.Hack, name, sub), Done = GoalMoved, Remind = 30f });
                     break;
                 case GoalKind.Rescue:
+                    // Schiffe, die ihre Schilde nicht senken: erst die Schilde runterschießen
+                    if (g.Note == "note_shields_then_beam")
+                        steps.Add(new Step { Id = "shields_off:" + name, St = Station.Tactical, LineKey = "attack_shields", Arg = name, Prep = select,
+                                             Bot = () => { _crew.Run(Intent.TargetShields); _crew.Run(Intent.FirePhasers, name); }, Done = GoalMoved, Remind = 30f });
                     steps.Add(new Step { Id = "stop:" + name, St = Station.Helm, LineKey = "stop", Prep = select, Bot = () => _crew.Run(Intent.SpeedStop),
                                          Done = () => { var s = ShipStatus.Read(); return GoalMoved() || (s != null && (s.FullStop || !s.Moving)); }, Remind = 30f });
                     steps.Add(new Step { Id = "beam:" + name, St = Station.Engineering, LineKey = "beam", Arg = name, Bot = () => _crew.Run(Intent.Transport, name), Done = GoalMoved });
@@ -391,6 +466,14 @@ namespace StbcAiCrew.Captain
 
             if (g == null) return threat;
 
+            // Missionswissen: was bei diesem Ziel zu beachten ist, einmal je Ziel
+            Contact gc = Find(contacts, g.Target);
+            if (g.MinDistance > 0 && gc != null && gc.DistanceKm < g.MinDistance &&
+                Advice("w_min:" + g.Key, 45f, true, "warn_min_distance", g.MinDistance.ToString("0"))) return threat;
+            if (g.Kind == GoalKind.Scan && st != null && (st.ImpulsePreparing || st.WarpPreparing) && gc != null && gc.DistanceKm < 30 &&
+                Advice("w_unscanned:" + g.Key, 60f, true, "warn_leave_unscanned", gc.Name)) return threat;
+            if (g.Note != null && Advice("note:" + g.Key + ":" + g.Note, 9999f, false, g.Note, gc != null ? gc.Name : "")) return threat;
+
             // Warpziel führt weg von allen Missionszielen
             var wt = CaptainSense.WarpTarget;
             if (wt != null && g.System != null && wt != CaptainSense.CurrentSystem && wt != g.System && !goals.Exists(x => x.System == wt) &&
@@ -448,7 +531,8 @@ namespace StbcAiCrew.Captain
                     var g = goals[0];
                     Plugin.Log.LogInfo("First Officer Ziel: [" + g.Kind + "] \"" + g.English + "\" System=" + (g.System != null ? CaptainSense.NameOf(g.System) : "?") +
                                        " Ziel=" + (g.Target != null ? GameBridge.StripLocId(g.Target.BaseName) : "-") + (g.Total > 0 ? " Zähler " + g.Count + "/" + g.Total : "") +
-                                       (g.OpenSubGoals > 0 ? " Teilziele " + g.OpenSubGoals : "") + (g.HasTimer ? " Timer" : ""));
+                                       (g.OpenSubGoals > 0 ? " Teilziele " + g.OpenSubGoals : "") + (g.SubTexts.Count > 0 ? " \"" + g.SubTexts[0] + "\"" : "") +
+                                       (g.Note != null ? " Hinweis " + g.Note : "") + (g.Optional ? " optional" : "") + (g.HasTimer ? " Timer" : ""));
                 }
             }
             else if (_trackCount >= 0 && count != _trackCount) _moved = true;
