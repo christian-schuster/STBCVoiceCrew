@@ -154,7 +154,7 @@ namespace StbcAiCrew.Captain
         {
             if (_missionStart < 0) return;
             _missionStart = -1f; _firstGoalAt = -1f; _bridgeGreeted = false; Autopilot = false; _hailSince = -1f; _announceTake = false; _connGivenAt = -999f; Current = Mode.Lobby;
-            _orders.Clear(); _advised.Clear(); _trackKey = null; _goalAnnounced = null; _arrivedAt = null; _selected = null; _trackCount = -1;
+            _orders.Clear(); _advised.Clear(); _scanned.Clear(); _visitedPoints.Clear(); _trackKey = null; _goalAnnounced = null; _arrivedAt = null; _selected = null; _trackCount = -1;
         }
 
         /// <summary>Lobby: einmal melden, danach selten ein Kalauer.</summary>
@@ -374,11 +374,29 @@ namespace StbcAiCrew.Captain
                 return steps;
             }
 
-            // b) Ziel im System
+            // b) Ziel im System. Scan-Ziele ohne festes Objekt ("Scan Anomalies in this System", "Scan ships in the system"):
+            //    das nächste passende, noch nicht gescannte Objekt auf den Sensoren nehmen
+            if (g.Target == null && kind == GoalKind.Scan)
+            {
+                var next = NextUnscanned(contacts, g);
+                if (next != null) g.Target = next.Transform;
+            }
             Contact c = Find(contacts, g.Target);
             if (c == null)
             {
                 Status = Loc.T("Ziel noch nicht in Sensorreichweite: ", "objective not yet on sensors: ") + Clean(g.Text);
+                // Die markierten Punkte der Impulskarte nacheinander anfliegen (Signalquelle, Suchgebiet, Treffpunkt)
+                var poi = NextMapPoint();
+                if (poi != null)
+                {
+                    string pn = GameBridge.StripLocId(poi.AKDKEDEMFDJ) ?? "?";
+                    var p = poi;
+                    Status = Loc.T("Impuls zum Kartenpunkt ", "impulse to map point ") + pn;
+                    steps.Add(new Step { Id = "poi:" + p.GetInstanceID(), St = Station.Helm, LineKey = "impulse", Arg = pn, Prep = () => CaptainSense.SetImpulseTarget(p),
+                                         Bot = () => { _visitedPoints.Add(p.GetInstanceID()); _crew.Run(Intent.Impulse); },
+                                         Done = () => GoalMoved() || DistanceKm(p) < 8, Remind = 45f });
+                    return steps;
+                }
                 if (g.Target != null) steps.Add(new Step { Id = "search:" + g.Key, St = Station.Helm, LineKey = "search", Arg = Clean(g.Text) });
                 return steps;
             }
@@ -418,7 +436,13 @@ namespace StbcAiCrew.Captain
             switch (kind)
             {
                 case GoalKind.Scan:
-                    steps.Add(new Step { Id = "scan:" + name, St = Station.Tactical, LineKey = "scan", Arg = name, Prep = select, Bot = () => _crew.Run(Intent.Scan, name), Done = GoalMoved });
+                    {
+                        // Gescannt ist es, wenn das Ziel weiterkommt (Zähler, Teilziel) oder nach 30 s Scan; dann das nächste Objekt
+                        var scanned = c.Transform;
+                        float since = Time.time;
+                        steps.Add(new Step { Id = "scan:" + name, St = Station.Tactical, LineKey = "scan", Arg = name, Prep = select, Bot = () => { since = Time.time; _crew.Run(Intent.Scan, name); },
+                                             Done = () => { bool done = GoalMoved() || Time.time - since > 30f; if (done && scanned != null) _scanned.Add(scanned); return done; } });
+                    }
                     break;
                 case GoalKind.Attack:
                     // Mit Mindestabstand: Torpedos (Phaser reichen nicht so weit)
@@ -820,6 +844,63 @@ namespace StbcAiCrew.Captain
         }
 
         /// <summary>Feindlich markiert, aber kein Schiff: explosive Objekte, Minen, Anomalien. Darauf feuert man nicht nebenbei.</summary>
+        /// <summary>Schon angeflogene Kartenpunkte (je Mission).</summary>
+        readonly HashSet<int> _visitedPoints = new HashSet<int>();
+
+        /// <summary>Nächster nicht besuchter Kartenpunkt: Missionsziele zuerst, sonst der nächstgelegene.</summary>
+        Sector.SectorBody NextMapPoint()
+        {
+            Sector.SectorBody best = null;
+            bool bestObjective = false;
+            double bestDist = double.MaxValue;
+            foreach (var b in CaptainSense.MapPoints())
+            {
+                if (_visitedPoints.Contains(b.GetInstanceID())) continue;
+                bool obj = CaptainSense.IsObjectivePoint(b);
+                double d = DistanceKm(b);
+                if (d >= 0 && d < 8) { _visitedPoints.Add(b.GetInstanceID()); continue; }   // schon da
+                if (best == null || (obj && !bestObjective) || (obj == bestObjective && d < bestDist)) { best = b; bestObjective = obj; bestDist = d; }
+            }
+            return best;
+        }
+
+        static double DistanceKm(Sector.SectorBody b)
+        {
+            try { return b != null && b.ALPAOOKFIEE != null && Contacts.HasOwn ? (b.ALPAOOKFIEE.Position - Contacts.OwnPosition).magnitude / 1000.0 : -1; }
+            catch { return -1; }
+        }
+
+        /// <summary>Schon gescannte Objekte (je Mission), damit Scan-Ziele ohne festes Objekt weiterwandern.</summary>
+        readonly HashSet<SystemTransform> _scanned = new HashSet<SystemTransform>();
+
+        static readonly HashSet<string> ScanStopWords = new HashSet<string>
+        {
+            "scan", "scans", "scanned", "perform", "tactical", "system", "systems", "gather", "data", "this", "these", "status",
+            "impulse", "different", "locations", "location", "find", "waiting", "complete", "compiling", "investigate", "nearby",
+            "every", "their", "there", "where", "which", "while", "region", "smuggled", "cargo", "single", "life", "sign", "signs"
+        };
+
+        /// <summary>
+        /// Nächstes passendes, noch nicht gescanntes Objekt für ein Scan-Ziel ohne festes Objekt. Passend heißt: Name enthält
+        /// ein Stichwort aus Ziel oder Teilziel ("Anomalies" → "anoma", "freighters" → "freig"); ohne Stichwort-Treffer nichts.
+        /// </summary>
+        Contact NextUnscanned(List<Contact> contacts, Goal g)
+        {
+            var stems = new List<string>();
+            var words = new List<string>((g.English ?? "").ToLowerInvariant().Split(new[] { ' ', ',', '.', ':', '-' }, StringSplitOptions.RemoveEmptyEntries));
+            foreach (var s in g.SubTexts) words.AddRange(s.ToLowerInvariant().Split(new[] { ' ', ',', '.', ':', '-' }, StringSplitOptions.RemoveEmptyEntries));
+            foreach (var w in words) if (w.Length >= 5 && !ScanStopWords.Contains(w)) stems.Add(w.Substring(0, 5));
+            Contact best = null;
+            foreach (var c in contacts)
+            {
+                if (c.Transform == null || _scanned.Contains(c.Transform) || c.Category == HHHDDNLEDBN.Self) continue;
+                string n = (c.Name ?? "").ToLowerInvariant();
+                if (!stems.Exists(s => n.Contains(s))) continue;
+                if (best == null || c.DistanceKm < best.DistanceKm) best = c;
+            }
+            return best;
+        }
+
         static bool Hazard(string name) =>
             System.Text.RegularExpressions.Regex.IsMatch(name ?? "", @"volatile|mine\b|mines|anomal|debris|barrel|asteroid|explosive|core", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 

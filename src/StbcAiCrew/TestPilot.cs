@@ -23,6 +23,7 @@ namespace StbcAiCrew
         const BindingFlags All = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
         float _next, _menuSince = -1f, _briefingSince = -1f, _lastClick, _nextShot;
         int _shot;
+        bool _shotLogged;
         int _missions;
         bool _inMission;
 
@@ -143,6 +144,7 @@ namespace StbcAiCrew
         {
             if (ShotDir == null || now < _nextShot) return;
             _nextShot = now + 15f;
+            if (_shot == 0 && !_shotLogged) { _shotLogged = true; Log("Bildschirmfotos nach " + ShotDir); }
             System.IO.Directory.CreateDirectory(ShotDir);
             Application.CaptureScreenshot(System.IO.Path.Combine(ShotDir, "latest.png"));
             if (GameBridge.InMission && _shot++ % 4 == 0)   // jede Minute eins aufheben

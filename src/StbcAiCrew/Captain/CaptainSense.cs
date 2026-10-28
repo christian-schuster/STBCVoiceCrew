@@ -190,6 +190,60 @@ namespace StbcAiCrew.Captain
             }
         }
 
+        /// <summary>
+        /// Markierte Punkte der Impulskarte im aktuellen System (Missionsziele zuerst), wie die Steuerkonsole sie zeigt:
+        /// Signalquellen, Treffpunkte, Suchgebiete. Gelesen aus den Kartensymbolen (PointOfInterestMapIcon).
+        /// </summary>
+        public static List<Sector.SectorBody> MapPoints()
+        {
+            var objective = new List<Sector.SectorBody>();
+            var other = new List<Sector.SectorBody>();
+            try
+            {
+                var here = CurrentSystem;
+                var seen = new HashSet<int>();
+                var objField = typeof(PointOfInterestMapIcon).GetField("_objectiveVisual", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                foreach (var icon in UnityEngine.Object.FindObjectsOfType<PointOfInterestMapIcon>())
+                {
+                    var body = icon != null ? icon.AJHKBDCEKPH : null;
+                    if (body == null || body is Sector.Spacecraft.PlayerSpacecraft || !seen.Add(body.GetInstanceID())) continue;
+                    try { if (here != null && body.ALPAOOKFIEE != null && body.ALPAOOKFIEE.System != here) continue; } catch { }
+                    var vis = objField != null ? objField.GetValue(icon) as GameObject : null;
+                    (vis != null && vis.activeSelf ? objective : other).Add(body);
+                }
+            }
+            catch (Exception e) { Plugin.Log.LogDebug("Kartenpunkte nicht lesbar: " + e.Message); }
+            objective.AddRange(other);
+            return objective;
+        }
+
+        public static bool IsObjectivePoint(Sector.SectorBody body)
+        {
+            try
+            {
+                var objField = typeof(PointOfInterestMapIcon).GetField("_objectiveVisual", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                foreach (var icon in UnityEngine.Object.FindObjectsOfType<PointOfInterestMapIcon>())
+                    if (icon != null && icon.AJHKBDCEKPH == body) { var v = objField != null ? objField.GetValue(icon) as GameObject : null; return v != null && v.activeSelf; }
+            }
+            catch { }
+            return false;
+        }
+
+        /// <summary>Impulsziel der Steuer setzen (wie ein Klick auf die Impulskarte).</summary>
+        public static bool SetImpulseTarget(Sector.SectorBody body)
+        {
+            try
+            {
+                var ship = GameBridge.PlayerShip;
+                var helm = ship != null ? ship.GetComponent<Crew.ConsoleHelmShipInterface>() : null;
+                var target = body as Sector.HOLJLCLENCA;
+                if (helm == null || target == null) return false;
+                if (helm.INBICICINJG != target) helm.INBICICINJG = target;
+                return true;
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("Impulsziel nicht gesetzt: " + e.Message); return false; }
+        }
+
         public static SystemRoot WarpTarget
         {
             get
