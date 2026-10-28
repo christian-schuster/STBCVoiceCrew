@@ -137,7 +137,7 @@ namespace StbcAiCrew
         bool _followGameLanguage;
 
         // ---- First Officer ----
-        public ConfigEntry<bool> CaptainEnabled, CaptainCommand, CaptainHints;
+        public ConfigEntry<bool> CaptainEnabled, CaptainCommand, CaptainHints, CaptainAutoCommand;
         public ConfigEntry<string> CaptainPlayerStation;
         public ConfigEntry<bool> CaptainJokes;
         public ConfigEntry<float> CaptainJokeMinutes;
@@ -497,6 +497,7 @@ namespace StbcAiCrew
                 Enabled = CaptainEnabled.Value,
                 Command = CaptainCommand.Value,
                 Hints = CaptainHints.Value,
+                AutoCommand = CaptainAutoCommand.Value,
                 Jokes = CaptainJokes.Value,
                 JokeMinutes = Math.Max(1f, CaptainJokeMinutes.Value),
                 PlayerStation = ParseStation(CaptainPlayerStation.Value) == Station.Captain ? Station.Helm : ParseStation(CaptainPlayerStation.Value),
@@ -677,11 +678,12 @@ namespace StbcAiCrew
                 GUILayout.Label("First Officer: " + mode + (_captain.Enabled && GameBridge.InMission ? " – " + _captain.Status : ""));
                 if (GUILayout.Button(_captain.Enabled ? Loc.T("Ausschalten", "Turn off") : Loc.T("Einschalten", "Turn on"), GUILayout.Width(100f)))
                     _captain.SetEnabled(!_captain.Enabled, true);
-                if (_captain.Enabled && GameBridge.InMission && !Net.Online)
+                if (_captain.Enabled && GameBridge.InMission)
                 {
-                    bool atCaptain = Captain.CaptainSense.LocalSeat() == Station.Captain;
-                    if (GUILayout.Button(atCaptain ? Loc.T("Brücke übergeben", "Hand over the bridge") : Loc.T("Brücke übernehmen", "Take the bridge"), GUILayout.Width(140f)))
-                    { if (atCaptain) _captain.GiveConn(); else _captain.TakeConn(); }
+                    // Übergeben: Spieler bleibt auf dem Stuhl und schaut zu; Übernehmen: Spieler führt wieder
+                    bool watching = _captain.Autopilot || Captain.CaptainSense.LocalSeat() != Station.Captain;
+                    if (GUILayout.Button(watching ? Loc.T("Brücke übernehmen", "Take the bridge") : Loc.T("Brücke übergeben", "Hand over the bridge"), GUILayout.Width(140f)))
+                    { if (watching) _captain.TakeConn(); else _captain.TakeBridge(); }
                 }
                 GUILayout.EndHorizontal();
             }
@@ -799,6 +801,7 @@ namespace StbcAiCrew
             CaptainEnabled = Config.Bind("FirstOfficer", "Aktiv", true, "First Officer (ohne Sprachmodell): in der Lobby und auf der Brücke dabei. Ein/aus auch per Overlay, Taste oder Sprache (\"Nummer Eins, wegtreten\" / \"Nummer Eins, auf die Brücke\").");
             CaptainCommand = Config.Bind("FirstOfficer", "Kommando", true, "Führt das Schiff, wenn niemand auf dem Captain-Stuhl sitzt (gibt Befehle, erwartet Bestätigung).");
             CaptainHints = Config.Bind("FirstOfficer", "Hinweise", true, "Berät einen menschlichen Captain: Warnungen bei Gefahr oder Fehlern, Hinweise, wenn es beim Missionsziel nicht weitergeht.");
+            CaptainAutoCommand = Config.Bind("FirstOfficer", "AutoKommando", false, "Übernimmt zu jedem Missionsbeginn selbst die Brücke; du bleibst auf dem Captain-Stuhl und schaust zu (wie \"Number One, take the bridge\"). Zum Zuschauen und für automatische Tests.");
             CaptainPlayerStation = Config.Bind("FirstOfficer", "SpielerStation", "steuer", "\"Sie haben die Brücke\": An diese Station wechselst du (steuer, taktik, technik).");
             CaptainJokes = Config.Bind("FirstOfficer", "Kalauer", true, "In ruhigen Momenten, auch in der Lobby, ab und zu ein Star-Trek-Kalauer.");
             CaptainJokeMinutes = Config.Bind("FirstOfficer", "KalauerAbstandMinuten", 8f, "Mindestabstand zwischen zwei Kalauern.");

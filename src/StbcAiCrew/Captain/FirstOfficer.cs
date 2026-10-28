@@ -31,6 +31,10 @@ namespace StbcAiCrew.Captain
         /// <summary>Schiff führen, wenn niemand auf dem Captain-Stuhl sitzt.</summary>
         public bool Command = true;
         public bool Hints = true;
+        /// <summary>Autopilot: führt das Schiff, obwohl der Spieler auf dem Captain-Stuhl sitzt (der schaut zu).</summary>
+        public bool Autopilot;
+        /// <summary>Zu jedem Missionsbeginn selbst übernehmen (unbeaufsichtigtes Testen).</summary>
+        public bool AutoCommand;
         public bool Jokes = true;
         public float JokeMinutes = 8f;
         /// <summary>"Sie haben die Brücke": an diese Station wechselt der Spieler.</summary>
@@ -110,7 +114,9 @@ namespace StbcAiCrew.Captain
             {
                 Track();
                 // Nach "Sie haben die Brücke" sitzt der Spieler noch kurz auf dem Stuhl, bis der Wechsel durch ist
-                bool command = Command && (!CaptainSense.HumanAtCaptainConsole() || Time.time - _connGivenAt < 8f);
+                if (AutoCommand && !Autopilot && Settled) { Plugin.Log.LogInfo("First Officer: AutoKommando – übernimmt die Brücke"); TakeBridge(); }
+                // Autopilot: der Spieler bleibt auf dem Stuhl und schaut zu, der First Officer führt alle Stationen
+                bool command = Command && (Autopilot || !CaptainSense.HumanAtCaptainConsole() || Time.time - _connGivenAt < 8f);
                 if (command && Current != Mode.Commanding)
                 {
                     _orders.Clear(); _selected = null;
@@ -146,7 +152,7 @@ namespace StbcAiCrew.Captain
         void ResetMission()
         {
             if (_missionStart < 0) return;
-            _missionStart = -1f; _firstGoalAt = -1f; _bridgeGreeted = false; _hailSince = -1f; _announceTake = false; _connGivenAt = -999f; Current = Mode.Lobby;
+            _missionStart = -1f; _firstGoalAt = -1f; _bridgeGreeted = false; Autopilot = false; _hailSince = -1f; _announceTake = false; _connGivenAt = -999f; Current = Mode.Lobby;
             _orders.Clear(); _advised.Clear(); _trackKey = null; _goalAnnounced = null; _arrivedAt = null; _selected = null; _trackCount = -1;
         }
 
@@ -684,7 +690,10 @@ namespace StbcAiCrew.Captain
                     case "joke":   // auf Zuruf, außer im Gefecht
                         if (Enabled) Say(EventLog.UnderThreat(20f) && GameBridge.InMission ? OfficerLines.Say("joke_later") : OfficerLines.Joke(), null);
                         break;
-                    case "give_conn": GiveConn(); break;
+                    case "give_conn": TakeBridge(); break;
+                    case "helm": GiveConn(Station.Helm); break;
+                    case "tactical": GiveConn(Station.Tactical); break;
+                    case "engineering": GiveConn(Station.Engineering); break;
                     case "take_conn": TakeConn(); break;
                     case "hint":
                         if (!Enabled) break;
@@ -717,10 +726,26 @@ namespace StbcAiCrew.Captain
         }
 
         /// <summary>"Sie haben die Brücke": der Spieler wechselt an seine Station, der First Officer übernimmt.</summary>
-        public void GiveConn()
+        /// <summary>
+        /// "Number One, take the bridge" / "Sie haben die Brücke": der Spieler bleibt auf dem Captain-Stuhl und schaut zu,
+        /// der First Officer führt alle Stationen (auch zum unbeaufsichtigten Testen, siehe AutoKommando).
+        /// </summary>
+        public void TakeBridge()
+        {
+            if (!Enabled || !GameBridge.InMission || Autopilot) return;
+            Autopilot = true;
+            Say(OfficerLines.Say("conn_ack"), null);
+            _bridgeGreeted = true;
+            Current = Mode.Commanding;   // keine zweite Ansage beim nächsten Takt
+            _orders.Clear(); _selected = null;
+        }
+
+        /// <summary>"I'll take the helm": der Spieler wechselt an eine Station, der First Officer führt.</summary>
+        public void GiveConn(Station st)
         {
             if (!Enabled || !GameBridge.InMission) return;
             if (CaptainSense.LocalSeat() != Station.Captain) return;
+            PlayerStation = st;
             Say(OfficerLines.Say("conn_ack"), null);
             _bridgeGreeted = true;
             _connGivenAt = Time.time;
@@ -732,7 +757,16 @@ namespace StbcAiCrew.Captain
         /// <summary>"Ich übernehme": der Spieler kehrt auf den Captain-Stuhl zurück.</summary>
         public void TakeConn()
         {
-            if (!GameBridge.InMission || CaptainSense.LocalSeat() == Station.Captain) return;
+            if (!GameBridge.InMission) return;
+            if (Autopilot)
+            {
+                Autopilot = false;
+                AutoCommand = false;   // wer übernimmt, will selbst spielen
+                Current = Mode.Advising;
+                _orders.Clear();
+                Say(OfficerLines.Say("hand_back"), Station.Captain);
+            }
+            if (CaptainSense.LocalSeat() == Station.Captain) return;
             _connGivenAt = -999f;
             CaptainSense.MoveLocalPlayerTo(Station.Captain);
         }
