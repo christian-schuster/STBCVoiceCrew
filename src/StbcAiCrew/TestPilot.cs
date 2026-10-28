@@ -37,11 +37,11 @@ namespace StbcAiCrew
                 Screenshot(now);
                 if (GameBridge.InMission)
                 {
-                    if (!_inMission) { _inMission = true; _missions++; Log("Mission " + _missions + " läuft"); }
+                    if (!_inMission) { _inMission = true; _missions++; Log("Testlauf-Mission " + _missions + " läuft: " + MissionName()); }
                     _menuSince = _briefingSince = -1f;
                     return;
                 }
-                if (_inMission) { _inMission = false; Log("Mission " + _missions + " beendet"); }
+                if (_inMission) { _inMission = false; Log("Testlauf-Mission " + _missions + " beendet"); }
                 if (ControllerSelect() || Intro()) return;
                 if (_missions >= MaxMissions) return;
                 if (MainMenu(now)) return;
@@ -186,6 +186,13 @@ namespace StbcAiCrew
                 if (m != null) m.Invoke(null, null);
             }
             catch (Exception e) { Plugin.Log.LogDebug("Testpilot Ereignis " + eventType + ": " + e.Message); }
+        }
+
+        /// <summary>Name der laufenden Mission (Kampagne) bzw. Missionsart (Zufallsmission).</summary>
+        static string MissionName()
+        {
+            try { var m = Loader.EJLNDBGLIFL; return m == null ? "?" : (m.GetMissionDisplayName() ?? m.GetMissionTableDisplayName() ?? "?"); }
+            catch { return "?"; }
         }
 
         static void Log(string s) => Plugin.Log.LogInfo("Testpilot: " + s);

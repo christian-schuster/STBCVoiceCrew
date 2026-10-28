@@ -218,7 +218,14 @@ namespace StbcAiCrew.Captain
             return list;
         }
 
-        public static int IdOf(Sector.HOLJLCLENCA h) { try { return h != null && h.ALPAOOKFIEE != null ? h.ALPAOOKFIEE.id.value : 0; } catch { return 0; } }
+        public static int IdOf(Sector.HOLJLCLENCA h)
+        {
+            if (h == null) return 0;
+            int id = 0;
+            try { if (h.ALPAOOKFIEE != null) id = h.ALPAOOKFIEE.id.value; } catch { }
+            var o = h as UnityEngine.Object;
+            return id != 0 ? id : (o != null ? o.GetInstanceID() : h.GetHashCode());   // ohne Kennung: Unity-Objekt-ID
+        }
         public static string MapDiag = "";
 
         public static List<Sector.HOLJLCLENCA> MapPoints()

@@ -386,7 +386,7 @@ namespace StbcAiCrew.Captain
             {
                 Status = Loc.T("Ziel noch nicht in Sensorreichweite: ", "objective not yet on sensors: ") + Clean(g.Text);
                 // Die markierten Punkte der Impulskarte nacheinander anfliegen (Signalquelle, Suchgebiet, Treffpunkt)
-                var poi = NextMapPoint();
+                var poi = NextMapPoint(g);
                 if (Time.time - _searchLogged > 30f)
                 {
                     _searchLogged = Time.time;
@@ -858,25 +858,33 @@ namespace StbcAiCrew.Captain
         float _searchLogged = -999f;
 
         /// <summary>Nächster nicht besuchter Kartenpunkt: Missionsziele zuerst, sonst der nächstgelegene.</summary>
-        Sector.HOLJLCLENCA NextMapPoint()
+        Sector.HOLJLCLENCA NextMapPoint(Goal g = null)
         {
-            Sector.HOLJLCLENCA best = null;
-            bool bestObjective = false;
-            double bestDist = double.MaxValue;
             var points = CaptainSense.MapPoints();
+            bool marked = points.Count > 0;
             // Keine markierten Punkte: einfach losfliegen und suchen – die Orte im System nacheinander (Planeten, Stationen, Monde)
-            if (points.Count == 0) points = CaptainSense.SystemBodies();
+            if (!marked) points = CaptainSense.SystemBodies();
+            // Orte, die Ziel oder Teilziel beim Namen nennen ("Travel to the RM-101 Orbit Region", "Ryburn I"), haben Vorrang
+            string said = g == null ? "" : (g.English + " | " + string.Join(" | ", g.SubTexts.ToArray())).ToLowerInvariant();
+            Sector.HOLJLCLENCA best = null;
+            int bestScore = int.MinValue;
+            double bestDist = double.MaxValue;
             foreach (var b in points)
             {
-                if (_visitedPoints.Contains(CaptainSense.IdOf(b))) continue;
-                bool obj = CaptainSense.IsObjectivePoint(b);
+                int id = CaptainSense.IdOf(b);
+                if (_visitedPoints.Contains(id)) continue;
+                string name = GameBridge.StripLocId(b.AKDKEDEMFDJ) ?? "";
+                if (!marked && (Hazard(name) || name.StartsWith("Prop", StringComparison.OrdinalIgnoreCase))) continue;   // keine Minen, Trümmer, Deko
                 double d = DistanceKm(b);
-                if (d >= 0 && d < 8) { _visitedPoints.Add(CaptainSense.IdOf(b)); continue; }   // schon da
-                if (best == null || (obj && !bestObjective) || (obj == bestObjective && d < bestDist)) { best = b; bestObjective = obj; bestDist = d; }
+                if (d >= 0 && d < 8) { _visitedPoints.Add(id); continue; }   // schon da
+                int score = (marked ? 10 : 0) + (CaptainSense.IsObjectivePoint(b) ? 5 : 0);
+                if (name.Length >= 3 && said.Contains(name.ToLowerInvariant())) score += 20;
+                else foreach (var w in name.ToLowerInvariant().Split(' ', '-', ','))
+                        if (w.Length >= 3 && said.Contains(w)) { score += 8; break; }
+                if (score > bestScore || (score == bestScore && d < bestDist)) { best = b; bestScore = score; bestDist = d; }
             }
             return best;
         }
-
         static double DistanceKm(Sector.HOLJLCLENCA b)
         {
             try { return b != null && b.ALPAOOKFIEE != null && Contacts.HasOwn ? (b.ALPAOOKFIEE.Position - Contacts.OwnPosition).magnitude / 1000.0 : -1; }
