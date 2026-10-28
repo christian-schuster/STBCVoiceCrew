@@ -202,7 +202,7 @@ namespace StbcAiCrew.Voice
         /// <summary>Befehlswortschatz für die Grammatik (aus den Regeln des Parsers und den Sprechweisen der Tests).</summary>
         public static readonly string[] CommandWords =
         {
-            "nummer", "eins", "erster", "offizier", "vorschlag", "empfehlung", "wegtreten", "kommando", "haben", "habe", "sie",   // First Officer
+            "nummer", "eins", "erster", "offizier", "commander", "vorschlag", "empfehlung", "wegtreten", "kommando", "haben", "habe", "sie",   // First Officer
             "subsystem", "subsysteme", "system", "auswählen", "wähle", "wählen", "stören", "störe", "anvisieren", "visiere",
             "maximal", "maximale", "maximalen", "maximum", "minimum", "minimal", "minimale",
             "übernehmen", "übernimm", "übernehme", "hacken", "hacke", "kommunikation", "eindringen",
@@ -230,7 +230,7 @@ namespace StbcAiCrew.Voice
         /// <summary>Englischer Befehlswortschatz (Regeln aus CommandParserEn und Star-Trek-Wendungen).</summary>
         public static readonly string[] CommandWordsEn =
         {
-            "number", "first", "suggestion", "recommendation", "dismissed", "have", "you",   // First Officer
+            "number", "first", "commander", "suggestion", "recommendation", "dismissed", "have", "you",   // First Officer
             "helm", "conn", "navigation", "navigator", "ensign", "mister", "rao", "tactical", "weapons", "officer", "lieutenant", "hoyle", "engineering", "engineer", "chief", "tnar", "crew", "bridge", "everyone", "all", "stations", "computer",
             "please", "now", "ok", "okay", "alright", "right", "so", "just", "and", "then", "yes", "yeah", "no", "aye", "affirmative", "negative", "cancel", "belay", "that", "not", "don't", "do", "never", "only", "when", "i", "say", "my", "your", "our", "their", "us", "it", "them", "we", "they", "can't", "won't",
             "full", "half", "quarter", "one", "speed", "impulse", "ahead", "throttle", "maximum", "max", "top", "faster", "slower", "slow", "speed", "up", "down", "floor", "stop", "all", "halt", "come", "reverse", "back", "astern",

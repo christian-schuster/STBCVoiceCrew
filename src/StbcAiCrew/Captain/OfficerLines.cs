@@ -524,7 +524,7 @@ namespace StbcAiCrew.Captain
         /// <summary>Spricht der Satz den First Officer an ("Nummer Eins", "Erster Offizier", "Number One" …)? s klein, mit Leerzeichen gerahmt.</summary>
         public static bool IsAddressed(string s) =>
             Has(s, "nummer eins", "nummer 1", "erster offizier", "ersten offizier", "first officer", "number one", "number 1",
-                "premier officier", "numéro un", "numero un");
+                "premier officier", "numéro un", "numero un", "commander", "kommandant", "commandant");
 
         /// <summary>
         /// Befehl an den First Officer: "off", "give_conn", "take_conn", "hint" oder null. Übergabe und Rückkehr der Brücke
