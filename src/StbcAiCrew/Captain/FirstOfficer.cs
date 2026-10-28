@@ -55,6 +55,7 @@ namespace StbcAiCrew.Captain
         string _stealthFor;
         float _redAlertAt = -999f, _warpBlockedUntil = -999f;
         int _warpTries;
+        bool _alertAnnounced;
         bool _greeted, _bridgeGreeted, _askedHint, _announceTake;
         string _trackKey, _goalAnnounced, _arrivedAt, _selected;
         int _trackCount = -1;
@@ -203,9 +204,10 @@ namespace StbcAiCrew.Captain
             {
                 _lastThreat = Time.time;
                 // Alarmstatus vom Spiel selbst (CommandManager.SetRedAlert), einmal je Gefecht ansagen
-                if (!EventLog.RedAlert && !CaptainSense.RedAlert && Time.time - _redAlertAt > 60f)
+                if (!_alertAnnounced && !EventLog.RedAlert && !CaptainSense.RedAlert)
                 {
                     _redAlertAt = Time.time;
+                    _alertAnnounced = true;   // bis zur Entwarnung nicht noch einmal
                     Act(OfficerLines.Say("red_alert"), null, () => CaptainSense.SetRedAlert(true));
                     return true;
                 }
@@ -215,9 +217,10 @@ namespace StbcAiCrew.Captain
                 if (st != null && st.Shields >= 0 && st.Shields < 40 && Time.time - EventLog.LastHitTime < 10f)
                     Issue(new Step { Id = "power_shields", St = Station.Engineering, LineKey = "power_shields", Bot = () => _crew.Run(Intent.PowerShields), Remind = 20f });
             }
-            else if ((EventLog.RedAlert || CaptainSense.RedAlert) && Time.time - _lastThreat > 45f && _lastThreat > 0)
+            else if ((EventLog.RedAlert || CaptainSense.RedAlert || _alertAnnounced) && Time.time - _lastThreat > 45f && _lastThreat > 0)
             {
                 _lastThreat = -999f;
+                _alertAnnounced = false;
                 Act(OfficerLines.Say("all_clear"), null, () => CaptainSense.SetRedAlert(false));
                 return false;
             }
@@ -232,9 +235,12 @@ namespace StbcAiCrew.Captain
                     _goalAnnounced = g.Key;
                     if (!string.IsNullOrEmpty(g.Text)) { Act(OfficerLines.Say("new_goal", Clean(g.Text)), null, null, 1f); return threat; }
                 }
-                foreach (var s in Plan(g, contacts, threat ? enemy : null)) { if (s.Prep != null) s.Prep(); if (s.Bot != null) Issue(s); }
-                // Feinde in der Nähe bekämpfen – außer der Auftrag verbietet es (Schleichfahrt, nur beobachten) oder es heißt fliehen
-                bool peaceful = g.Note == "note_stealth" || g.Note == "note_scan_only" || g.Kind == GoalKind.Escape;
+                var plan = Plan(g, contacts, threat ? enemy : null);
+                foreach (var s in plan) { if (s.Prep != null) s.Prep(); if (s.Bot != null) Issue(s); }
+                // Feinde in der Nähe bekämpfen – außer der Auftrag verbietet es (Schleichfahrt, nur beobachten), es heißt fliehen,
+                // oder wir gehen gerade auf Warp (ein neues Ziel auf allen Konsolen würde die Steuer vom Warpkurs abbringen)
+                bool leaving = plan.Exists(s => s.Id.StartsWith("warp:") || s.Id.StartsWith("escape:") || s.Id.StartsWith("breakaway:") || s.Id.StartsWith("flee:"));
+                bool peaceful = g.Note == "note_stealth" || g.Note == "note_scan_only" || g.Kind == GoalKind.Escape || leaving;
                 if (g.Kind != GoalKind.Attack && g.Kind != GoalKind.Defend && enemy != null && !peaceful) Issue(FightStep(enemy, true));
             }
             else if (enemy != null) Issue(FightStep(enemy, true));
@@ -315,6 +321,16 @@ namespace StbcAiCrew.Captain
                     Status = Loc.T("Warp derzeit nicht möglich: ", "warp unavailable: ") + sys;
                     return steps;
                 }
+                // Feind dicht dran: erst Schub und Abstand gewinnen, sonst richtet sich die Steuer nie sauber auf den Warpkurs aus
+                if (enemy != null && enemy.DistanceKm < 12)
+                {
+                    Status = Loc.T("Abstand gewinnen vor dem Warp", "gaining distance before warp");
+                    var foe = enemy.Transform;
+                    steps.Add(new Step { Id = "breakaway:" + sys, St = Station.Helm, LineKey = "flee", Bot = () => _crew.Run(Intent.Flee),
+                                         Done = () => { var x = Find(_crew.ContactsNow, foe); return x == null || x.DistanceKm >= 12; }, Remind = 20f });
+                    return steps;
+                }
+                Done("breakaway:" + sys);
                 Status = Loc.T("Warp nach ", "warp to ") + sys;
                 steps.Add(new Step
                 {
