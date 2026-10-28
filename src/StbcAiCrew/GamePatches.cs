@@ -42,6 +42,41 @@ namespace StbcAiCrew
             }
             else Plugin.Log.LogInfo("Mikrofonauswahl-Hook aus (Konfiguration).");
             PatchAllOverloads(harmony, typeof(PlayerSpacecraft), "takeHit", nameof(TakeHitPostfix));
+            if (HoldIntro != null) Patch(harmony, typeof(IntroSequence), "Update", nameof(IntroUpdatePrefix));
+        }
+
+        /// <summary>
+        /// Eigenes Logo vor den Logos des Spiels: Ist die Controllerwahl fertig (oder kommt als Nächstes ein Film), schaltet die
+        /// Startsequenz erst weiter, wenn das hier false liefert. Startet beim ersten Aufruf das Logo.
+        /// </summary>
+        public static Func<bool> HoldIntro;
+        static bool _introLogged, _introReleased;
+        static readonly FieldInfo IntroElements = AccessTools.Field(typeof(IntroSequence), "_elements");
+        static readonly FieldInfo IntroIndex = AccessTools.Field(typeof(IntroSequence), "_curNdx");
+
+        static bool IntroUpdatePrefix(IntroSequence __instance)
+        {
+            if (HoldIntro == null || _introReleased) return true;
+            try
+            {
+                var els = IntroElements.GetValue(__instance) as IntroElement[];
+                int i = (int)IntroIndex.GetValue(__instance);
+                if (els == null) return true;
+                if (!_introLogged)
+                {
+                    _introLogged = true;
+                    var names = new System.Collections.Generic.List<string>();
+                    foreach (var e in els) names.Add(e == null ? "-" : e.GetType().Name + ":" + e.name);
+                    Plugin.Log.LogInfo("Startsequenz: " + string.Join(", ", names.ToArray()));
+                }
+                if (i < 0 || i >= els.Length || els[i] == null || !els[i].LLMBJDBFGPK) return true;
+                bool before = els[i] is ControllerCheckElement || (i + 1 < els.Length && els[i + 1] is MovieIntroElement);
+                if (!before) return true;
+                if (HoldIntro()) return false;   // Logo läuft noch: Sequenz anhalten
+                _introReleased = true;
+                return true;
+            }
+            catch { return true; }
         }
 
         // takeHit gibt es mehrfach (Überladungen): alle patchen, der Postfix braucht keine Parameter

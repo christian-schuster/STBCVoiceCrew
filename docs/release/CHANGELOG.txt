@@ -2,7 +2,7 @@ STBC Voice Crew – Changelog
 
 1.1.0 (in progress, not yet released)
 Highlights: the First Officer and the open source release on GitHub.
-- The Phuntasy Productions logo appears briefly at game start ([Allgemein] LogoBeimStart = false turns it off).
+- The Phuntasy Productions logo appears briefly at game start, before the game's own logos ([Allgemein] LogoBeimStart = false turns it off).
 - New: French voice commands for the bot crew (Vosk model downloaded on first use, [Sprache] BefehlsSprache = fr or
   follows the game language).
 - Multiplayer: a banner at the top of the desktop screen shows who hosts and whether the mod is active there (green: you

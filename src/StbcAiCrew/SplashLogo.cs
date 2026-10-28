@@ -5,8 +5,9 @@ using UnityEngine;
 namespace StbcAiCrew
 {
     /// <summary>
-    /// Phuntasy-Productions-Logo kurz beim Spielstart einblenden, während der Startbildschirme des Spiels
-    /// (nur auf dem Desktop-Bildschirm). Das Bild steckt als Ressource in der DLL.
+    /// Phuntasy-Productions-Logo kurz beim Spielstart einblenden: nach der Controllerwahl, vor den Logos des Spiels
+    /// (die Startsequenz wartet so lange, siehe GamePatches.HoldIntro). Nur auf dem Desktop-Bildschirm; das Bild steckt als
+    /// Ressource in der DLL.
     /// </summary>
     public sealed class SplashLogo
     {
@@ -16,11 +17,17 @@ namespace StbcAiCrew
         float _start = -1f;
         bool _done;
 
+        /// <summary>Logo starten (beim ersten Aufruf) und true liefern, solange es noch läuft.</summary>
+        public bool Running()
+        {
+            if (_start < 0f) _start = Time.realtimeSinceStartup;
+            return !_done && Time.realtimeSinceStartup - _start <= FadeIn + Hold + FadeOut;
+        }
+
         public void Draw()
         {
-            if (_done) return;
+            if (_done || _start < 0f) return;
             if (_logo == null && !Load()) { _done = true; return; }
-            if (_start < 0f) _start = Time.realtimeSinceStartup;
             float t = Time.realtimeSinceStartup - _start;
             if (t > FadeIn + Hold + FadeOut) { _done = true; UnityEngine.Object.Destroy(_logo); _logo = null; return; }
             float a = t < FadeIn ? t / FadeIn : t < FadeIn + Hold ? 1f : 1f - (t - FadeIn - Hold) / FadeOut;

@@ -218,6 +218,7 @@ namespace StbcAiCrew
             }
             Log.LogInfo("Spielinstanz (gestartet von " + (LaunchInstance.ParentProcessName() ?? "?") + "): Mod wird aktiv.");
             _active = true;
+            if (ShowLogo.Value) GamePatches.HoldIntro = _splash.Running;
 
             string pluginDir = Path.GetDirectoryName(Info.Location);
             MigrateOldPluginFolder(pluginDir);
