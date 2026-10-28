@@ -20,5 +20,21 @@ Vosk models (Alpha Cephei Inc.)
   vosk-model-small-de-0.15    – Apache License 2.0 (license text: vosk\vosk-model-small-de-0.15\COPYING)
   vosk-model-small-en-us-0.15 – Apache License 2.0 (as listed on https://alphacephei.com/vosk/models)
 
+Piper TTS 1.2 (piper.exe, piper_phonemize.dll) – MIT License – https://github.com/rhasspy/piper
+  Runtime components shipped with it (folder BepInEx\plugins\StbcAiCrew\piper\piper):
+    espeak-ng (espeak-ng.dll, espeak-ng-data) – GPL-3.0-or-later
+      Source code: https://github.com/espeak-ng/espeak-ng (the unmodified upstream release used by Piper)
+    ONNX Runtime (onnxruntime.dll, onnxruntime_providers_shared.dll) – MIT – https://github.com/microsoft/onnxruntime
+    libtashkeel model (libtashkeel_model.ort) – MIT – https://github.com/mush42/libtashkeel
+
+Piper voices (https://huggingface.co/rhasspy/piper-voices) – see each voice's MODEL_CARD
+  de_DE-thorsten-medium – recordings: Thorsten-Voice, CC0; fine-tuned from the en_US "lessac" voice
+  en_US-joe-medium      – recordings: CC0; fine-tuned from the en_US "lessac" voice
+  fr_FR-gilles-low      – recordings: CC0; fine-tuned from the en_US "ryan" voice
+  The base voices were trained on data under other terms: "lessac" on the Lessac/Blizzard 2013 data (research licence,
+  https://www.cstr.ed.ac.uk/projects/blizzard/2013/lessac_blizzard2013/license.html), "ryan" on the RyanSpeech
+  data (CC BY-NC-SA 4.0). Use the voices for non-commercial purposes only.
+
+GNU GPL 3.0:        https://www.gnu.org/licenses/gpl-3.0.html
 Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
 GNU LGPL 2.1:       https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html

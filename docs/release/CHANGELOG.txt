@@ -1,5 +1,23 @@
 STBC Voice Crew – Changelog
 
+1.1.0 (in progress, not yet released)
+- New: First Officer ("Number One") – an AI first officer without a language model, always on the bridge and in the lobby.
+  - Advises a human captain: warnings when shields are down under fire, the hull is critical, a friendly ship is
+    targeted or the warp destination leads away from the mission; hints when the mission stalls or nothing happens.
+  - Knows the mission flow: rules derived from the game's own mission scripts (campaign and all random missions) –
+    distances, "scan only", "don't destroy", "knock their shields down before beaming", safe distances, escapes,
+    particle gathering, silent running, energy waves.
+  - Takes command when nobody sits in the captain's chair: reads the objectives, sets the warp destination, gives
+    orders to the bot crew and to human officers (spoken and on their console), waits for "Aye", reminds, praises.
+  - Speaks only when nobody else is talking (crew, game voices, briefing, players).
+  - Rare Star Trek puns on the bridge and in the lobby.
+  - Voice commands: "Number One / Commander, suggestions?", "You have the bridge", "I have the bridge",
+    "Number One, dismissed" / "Number One, to the bridge". German: "Nummer Eins / Commander, Vorschlag?",
+    "Sie haben die Brücke", "Ich habe die Brücke", "Nummer Eins, wegtreten".
+  - English, German and French lines; voices by Piper TTS (included).
+  - On/off: overlay button, F6, voice command, or [FirstOfficer] Aktiv in the config.
+- Multiplayer: runs on the host only, speaks through the game's voice chat; players without the mod are unaffected.
+
 1.0.0
 - First public release.
 - Offline voice commands (Vosk) in English and German, replacing the defunct IBM Watson service.

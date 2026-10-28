@@ -1,5 +1,5 @@
 STBC Voice Crew – voice commands for Star Trek: Bridge Crew
-Version 1.0.0 – by Phuntasy Productions – https://phuntasyproductions.de
+Version 1.1.0 – by Phuntasy Productions – https://phuntasyproductions.de
 =============================================================
 (Deutsch weiter unten)
 
@@ -38,7 +38,24 @@ HOW TO SPEAK TO THE CREW
 - Longer orders or conversation: address the station first – "Helm, …", "Rao, …", "Tactical, …",
   "Engineering, …", "Crew, …" – or hold F4 (push to talk) while speaking.
 - Two high beeps: understood. One low beep: not understood.
-- Keys: F4 push to talk, F5 mute/unmute microphone, F7 overlay on/off.
+- Keys: F4 push to talk, F5 mute/unmute microphone, F6 First Officer on/off, F7 overlay on/off.
+
+FIRST OFFICER ("NUMBER ONE")
+An AI first officer who is always with you – in the lobby and on the bridge. No language model, no internet.
+- While you are the captain he advises you: short warnings when something is dangerous or wrong (shields down
+  under fire, hull critical, friendly ship targeted, wrong warp destination, leaving before a required scan) and a
+  hint when the mission is not moving forward. He knows the mission flow from the game's own mission scripts.
+- If nobody sits in the captain's chair, he takes command: he reads the objectives, sets the warp destination and
+  gives orders – the bots execute them at once, human officers hear them and see them on their console, and he
+  waits for "Aye".
+- He only speaks when nobody else does, and only briefly. Now and then, in quiet moments, a Star Trek pun.
+- Talk to him with "Number One", "Commander" or "First Officer":
+    "Number One, suggestions?"      – his recommendation for the current situation
+    "You have the bridge"           – you move to the helm, he takes command (single player)
+    "I have the bridge"             – you are the captain again
+    "Number One, dismissed"         – he stays quiet; "Number One, to the bridge" brings him back
+  Acknowledge his orders with "Aye", "Acknowledged", "Understood" …
+- On/off also with F6 or the button in the overlay. Languages: English, German, French (game language).
 
 EXAMPLES
 Helm:        full speed / half impulse / all stop / reverse / set a course for the Tallinn / approach the target /
@@ -56,7 +73,8 @@ SETTINGS (BepInEx\config\de.phuntasyproductions.stbc.voicecrew.cfg, created on f
 - [Crew] Reflexe = true
 
 KNOWN LIMITATIONS
-- Warp and impulse destinations must still be selected on the navigation map.
+- Warp and impulse destinations must still be selected on the navigation map (the First Officer sets the warp
+  destination himself when he is in command).
 - Answering hails, launching probes and cancelling red alert only work at the captain's console.
 - Manoeuvres steer the bot helm directly and are experimental.
 
@@ -105,7 +123,24 @@ SO SPRICHST DU MIT DER CREW
 - Längere Befehle: Station ansprechen – „Steuer, …“, „Rao, …“, „Taktik, …“, „Technik, …“, „Crew, …“ – oder beim
   Sprechen F4 halten (Push-to-talk).
 - Zwei hohe Töne: verstanden. Ein tiefer Ton: nicht verstanden.
-- Tasten: F4 Push-to-talk, F5 Mikrofon stumm/an, F7 Overlay an/aus.
+- Tasten: F4 Push-to-talk, F5 Mikrofon stumm/an, F6 Erster Offizier an/aus, F7 Overlay an/aus.
+
+ERSTER OFFIZIER („NUMMER EINS“)
+Ein KI-Erster-Offizier, der immer dabei ist – in der Lobby und auf der Brücke. Ohne Sprachmodell, ohne Internet.
+- Solange du Captain bist, berät er dich: kurze Warnungen bei Gefahr oder Fehlern (Schilde unten unter Beschuss,
+  Hülle kritisch, Verbündeter im Ziel, falsches Warpziel, Abflug vor dem nötigen Scan) und ein Hinweis, wenn es
+  beim Missionsziel nicht weitergeht. Den Missionsablauf kennt er aus den Missionsskripten des Spiels.
+- Sitzt niemand auf dem Captain-Stuhl, übernimmt er das Kommando: Er liest die Missionsziele, setzt das Warpziel und
+  gibt Befehle – die Bots führen sie sofort aus, menschliche Offiziere hören sie und sehen sie auf ihrer Konsole,
+  und er wartet auf ein „Aye“.
+- Er spricht nur, wenn sonst niemand spricht, und kurz. Ab und zu, in ruhigen Momenten, ein Star-Trek-Kalauer.
+- Ansprache mit „Nummer Eins“, „Commander“ oder „Erster Offizier“:
+    „Nummer Eins, Vorschlag?“       – seine Empfehlung zur Lage
+    „Sie haben die Brücke“          – du wechselst an die Steuer, er führt (Einzelspieler)
+    „Ich habe die Brücke“           – du bist wieder Captain
+    „Nummer Eins, wegtreten“        – er schweigt; „Nummer Eins, auf die Brücke“ holt ihn zurück
+  Seine Befehle bestätigst du mit „Aye“, „Jawohl“, „Verstanden“ …
+- Ein/aus auch mit F6 oder dem Knopf im Overlay. Sprachen: Deutsch, Englisch, Französisch (wie das Spiel).
 
 BEISPIELE
 Steuer:  volle Fahrt / halbe Kraft / voller Stopp / rückwärts / fliege zur Tallinn / fliege zum Ziel / Impuls /
@@ -123,7 +158,8 @@ EINSTELLUNGEN (BepInEx\config\de.phuntasyproductions.stbc.voicecrew.cfg, entsteh
 - [Crew] Reflexe = true
 
 BEKANNTE GRENZEN
-- Warp- und Impulsziele werden weiterhin auf der Navigationskarte gewählt.
+- Warp- und Impulsziele werden weiterhin auf der Navigationskarte gewählt (führt der Erste Offizier, setzt er das
+  Warpziel selbst).
 - Rufe annehmen, Sonden starten und Alarm aufheben gehen nur an der Captain-Konsole.
 - Manöver steuern die Bot-Steuer direkt und sind experimentell.
 
