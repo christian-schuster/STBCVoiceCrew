@@ -37,7 +37,8 @@ namespace StbcAiCrew.Captain
         public Station PlayerStation = Station.Helm;
 
         /// <summary>Sprechen: Text in der Spielsprache, Station des Adressaten (Konsole zeigt ihn an) oder null für alle.</summary>
-        public Action<string, Station?> Speak;
+        /// <summary>Sprechen: Text, Station des Adressaten (null = alle), Rückruf, sobald der Satz zu Ende gesprochen ist.</summary>
+        public Action<string, Station?, Action> Speak;
         /// <summary>Spricht gerade irgendwer (First Officer, Crew, Spiel, Mitspieler)?</summary>
         public Func<bool> Speaking = () => false;
         /// <summary>Ein- oder ausgeschaltet (per Sprache): Einstellung speichern.</summary>
@@ -52,6 +53,7 @@ namespace StbcAiCrew.Captain
         float _missionStart = -1f, _next, _lastSpoke = -999f, _lastJoke, _lastThreat = -999f, _lastHail = -999f, _hailSince = -1f;
         float _lobbySince = -1f, _lobbyLastJoke, _lobbyLastSpoke = -999f, _lobbyNext, _connGivenAt = -999f;
         string _stealthFor;
+        float _redAlertAt = -999f;
         bool _greeted, _bridgeGreeted, _askedHint, _announceTake;
         string _trackKey, _goalAnnounced, _arrivedAt, _selected;
         int _trackCount = -1;
@@ -181,13 +183,14 @@ namespace StbcAiCrew.Captain
         bool Decide(ShipStatus st)
         {
             var contacts = _crew.ContactsNow ?? new List<Contact>();
+            // Ein Befehl nach dem anderen: erst aussprechen, dann ausführen, dann der Crew Zeit für ihre Antwort lassen
+            if (Busy) return EventLog.UnderThreat(20f);
 
             // 1. Rufe
             if (CaptainSense.HailPending && Time.time - _lastHail > 6f)
             {
                 _lastHail = Time.time;
-                Say(OfficerLines.Say("hail"), null);
-                CaptainSense.AnswerHail();
+                Act(OfficerLines.Say("hail"), null, () => CaptainSense.AnswerHail());
                 Status = Loc.T("Ruf angenommen", "hail answered");
                 return false;
             }
@@ -198,18 +201,24 @@ namespace StbcAiCrew.Captain
             if (threat)
             {
                 _lastThreat = Time.time;
-                if (!CaptainSense.RedAlert) { CaptainSense.SetRedAlert(true); Say(OfficerLines.Say("red_alert"), null); }
+                // Alarmstatus vom Spiel selbst (CommandManager.SetRedAlert), einmal je Gefecht ansagen
+                if (!EventLog.RedAlert && !CaptainSense.RedAlert && Time.time - _redAlertAt > 60f)
+                {
+                    _redAlertAt = Time.time;
+                    Act(OfficerLines.Say("red_alert"), null, () => CaptainSense.SetRedAlert(true));
+                    return true;
+                }
                 if (st != null && st.ShieldState == "PoweredOff")
                     Issue(new Step { Id = "shields", St = Station.Tactical, LineKey = "shields", Bot = () => _crew.Run(Intent.ShieldsUp),
                                      Done = () => GameBridge.PlayerShip == null || ShieldsUp() });
                 if (st != null && st.Shields >= 0 && st.Shields < 40 && Time.time - EventLog.LastHitTime < 10f)
                     Issue(new Step { Id = "power_shields", St = Station.Engineering, LineKey = "power_shields", Bot = () => _crew.Run(Intent.PowerShields), Remind = 20f });
             }
-            else if (CaptainSense.RedAlert && Time.time - _lastThreat > 45f && _lastThreat > 0)
+            else if ((EventLog.RedAlert || CaptainSense.RedAlert) && Time.time - _lastThreat > 45f && _lastThreat > 0)
             {
-                CaptainSense.SetRedAlert(false);
-                Say(OfficerLines.Say("all_clear"), null);
                 _lastThreat = -999f;
+                Act(OfficerLines.Say("all_clear"), null, () => CaptainSense.SetRedAlert(false));
+                return false;
             }
 
             // 3. Missionsziel
@@ -220,7 +229,7 @@ namespace StbcAiCrew.Captain
                 if (g.Key != _goalAnnounced)
                 {
                     _goalAnnounced = g.Key;
-                    if (!string.IsNullOrEmpty(g.Text)) Say(OfficerLines.Say("new_goal", Clean(g.Text)), null);
+                    if (!string.IsNullOrEmpty(g.Text)) { Act(OfficerLines.Say("new_goal", Clean(g.Text)), null, null, 1f); return threat; }
                 }
                 foreach (var s in Plan(g, contacts, threat ? enemy : null)) { if (s.Prep != null) s.Prep(); if (s.Bot != null) Issue(s); }
                 // Feinde in der Nähe bekämpfen – außer der Auftrag verbietet es (Schleichfahrt, nur beobachten) oder es heißt fliehen
@@ -574,20 +583,22 @@ namespace StbcAiCrew.Captain
                     return;
                 }
                 if (Time.time < o.NextRemind || Speaking()) return;
-                if (!o.Human) { s.Bot(); o.NextRemind = Time.time + s.Remind; return; }   // Bot: einfach erneut
+                if (Busy) return;
+                if (!o.Human) { o.NextRemind = Time.time + s.Remind; Act(null, null, s.Bot); return; }   // Bot: einfach erneut
                 if (o.Reminders >= 3) { Say(OfficerLines.Say("give_up"), o.St); o.NextRemind = Time.time + 120f; o.Reminders = 0; return; }
                 o.Reminders++;
                 o.NextRemind = Time.time + s.Remind;
-                Say(OfficerLines.Say("remind", OfficerLines.Title(s.St)) + " " + o.Line, o.St);
+                Act(OfficerLines.Say("remind", OfficerLines.Title(s.St)) + " " + o.Line, o.St, null, 3f);
                 return;
             }
+            if (Busy) return;
             if (s.Done != null && s.Done()) return;
             bool human = !GameBridge.IsStationAI(s.St) && s.St != Station.Captain;
             string line = OfficerLines.Say(s.LineKey + (human ? "_human" : "_bot"), s.Arg ?? "") ?? OfficerLines.Say(s.LineKey + "_human", s.Arg ?? "");
             o = new Order { Id = s.Id, St = s.St, Human = human, Done = s.Done, Line = line, NextRemind = Time.time + s.Remind };
             _orders[s.Id] = o;
-            if (line != null) Say(line, human ? (Station?)s.St : null);
-            if (!human) s.Bot();
+            // Erst aussprechen, dann führt der Bot aus; dem Menschen Zeit zum Reagieren lassen
+            Act(line, human ? (Station?)s.St : null, human ? null : s.Bot, human ? 3f : 2.5f);
             Plugin.Log.LogInfo("First Officer: " + (human ? "an Mensch " : "an Bot ") + s.St + ": " + s.Id);
         }
 
@@ -678,12 +689,43 @@ namespace StbcAiCrew.Captain
 
         // ---------------- Hilfen ----------------
 
-        void Say(string text, Station? to)
+        // ---------------- Reihenfolge: sprechen → ausführen → warten ----------------
+
+        bool _acting;
+        float _actingSince, _readyAt;
+
+        /// <summary>Wartet er gerade darauf, dass ein Befehl gesprochen, ausgeführt und beantwortet ist?</summary>
+        bool Busy
+        {
+            get
+            {
+                if (_acting && Time.time - _actingSince > 20f) _acting = false;   // Sicherung, falls der Rückruf ausbleibt
+                return _acting || Time.time < _readyAt;
+            }
+        }
+
+        /// <summary>Satz sprechen, danach die Handlung ausführen, dann pause Sekunden für die Antwort der Crew.</summary>
+        void Act(string line, Station? to, Action action, float pause = 2.5f)
+        {
+            _acting = true;
+            _actingSince = Time.time;
+            Action finish = () =>
+            {
+                try { if (action != null) action(); }
+                catch (Exception e) { Plugin.Log.LogWarning("First Officer: " + e.Message); }
+                _readyAt = Time.time + pause;
+                _acting = false;
+            };
+            if (string.IsNullOrEmpty(line)) finish();
+            else Say(line, to, finish);
+        }
+
+        void Say(string text, Station? to, Action spoken = null)
         {
             if (string.IsNullOrEmpty(text)) return;
             _lastSpoke = Time.time;
             Plugin.Log.LogInfo("First Officer sagt: " + text);
-            if (Speak != null) Speak(text, to);
+            if (Speak != null) Speak(text, to, spoken); else if (spoken != null) spoken();
         }
 
         static string Clean(string s)

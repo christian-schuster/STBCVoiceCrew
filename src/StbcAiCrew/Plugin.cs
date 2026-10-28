@@ -145,8 +145,11 @@ namespace StbcAiCrew
         public ConfigEntry<float> CaptainSpeed;
         Captain.FirstOfficer _captain;
         PiperTts _captainTts;
-        readonly System.Collections.Generic.Queue<System.Collections.Generic.KeyValuePair<short[], int>> _captainAudio =
-            new System.Collections.Generic.Queue<System.Collections.Generic.KeyValuePair<short[], int>>();
+        /// <summary>Ein gesprochener Satz des First Officers; Done läuft, sobald er zu Ende gesprochen ist.</summary>
+        sealed class OfficerAudio { public short[] Pcm; public int Rate; public Action Done; }
+        readonly System.Collections.Generic.Queue<OfficerAudio> _captainAudio = new System.Collections.Generic.Queue<OfficerAudio>();
+        readonly System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<float, Action>> _captainDone =
+            new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<float, Action>>();
         int _captainPending;
         string _voskLibDir, _pluginDir;
         float _nextLangCheck;
@@ -524,31 +527,54 @@ namespace StbcAiCrew
         }
 
         /// <summary>Der First Officer spricht: Text auf der Konsole (in VR lesbar), Stimme über Piper, im Mehrspieler über den Sprachchat.</summary>
-        void CaptainSpeak(string text, Station? to)
+        void CaptainSpeak(string text, Station? to, Action done)
         {
             string shown = Captain.OfficerLines.Name + ": " + text;
             if (GameBridge.InMission) { if (to.HasValue) GameBridge.ShowConsoleMessage(to.Value, shown, 8f); else GameBridge.ShowOnAllConsoles(shown, 8f); }
             _crew.Note(shown);
-            if (_captainTts == null) return;
+            if (_captainTts == null) { AfterSpeech(text.Length * 0.06f, done); return; }   // nur Text: Lesezeit abwarten
             string voice = Loc.Lang == "de" ? CaptainVoiceDe.Value : Loc.Lang == "fr" ? CaptainVoiceFr.Value : CaptainVoiceEn.Value;
             if (!File.Exists(Path.Combine(ResolvePath(Path.GetDirectoryName(Info.Location), PiperVoiceDir.Value), voice + ".onnx")))
                 voice = Loc.Lang == "de" ? CaptainVoiceDe.Value : CaptainVoiceEn.Value;   // Stimme fehlt: Ersatz statt stumm
             _captainPending++;
             _captainTts.Speak(VoiceSpec.Parse(voice, CaptainSpeed.Value, 0.97f), PiperTts.CleanForSpeech(text), (pcm, rate) =>
             {
-                _captainPending--;
-                if (pcm != null) _captainAudio.Enqueue(new System.Collections.Generic.KeyValuePair<short[], int>(pcm, rate));
+                lock (_captainAudio)
+                {
+                    _captainPending--;
+                    if (pcm != null) _captainAudio.Enqueue(new OfficerAudio { Pcm = pcm, Rate = rate, Done = done });
+                    else if (done != null) _captainDone.Add(new System.Collections.Generic.KeyValuePair<float, Action>(0f, done));   // Stimme fehlgeschlagen: gleich weiter
+                }
             });
+        }
+
+        /// <summary>done nach secs Sekunden im Hauptthread ausführen.</summary>
+        void AfterSpeech(float secs, Action done)
+        {
+            if (done == null) return;
+            lock (_captainAudio) _captainDone.Add(new System.Collections.Generic.KeyValuePair<float, Action>(Time.realtimeSinceStartup + secs, done));
         }
 
         /// <summary>Gesprochene Sätze nacheinander abspielen; das Mikrofon hört solange weg (sonst hört es den Captain als Spieler).</summary>
         void PlayCaptainAudio()
         {
-            if (_captainAudio.Count == 0 || _player == null || _player.Playing) return;
-            var a = _captainAudio.Dequeue();
-            float secs = _player.Play(a.Key, a.Value);
+            // Fällige "zu Ende gesprochen"-Rückrufe (Befehl ausführen, nächster Schritt)
+            System.Collections.Generic.List<Action> due = null;
+            lock (_captainAudio)
+                for (int i = _captainDone.Count - 1; i >= 0; i--)
+                    if (_captainDone[i].Key <= Time.realtimeSinceStartup) { (due = due ?? new System.Collections.Generic.List<Action>()).Add(_captainDone[i].Value); _captainDone.RemoveAt(i); }
+            if (due != null) foreach (var d in due) { try { d(); } catch (Exception e) { Log.LogWarning("First Officer: " + e.Message); } }
+
+            OfficerAudio a;
+            lock (_captainAudio)
+            {
+                if (_captainAudio.Count == 0 || _player == null || _player.Playing) return;
+                a = _captainAudio.Dequeue();
+            }
+            float secs = _player.Play(a.Pcm, a.Rate);
             if (_voice != null) _voice.Deafen(secs + 0.4f);
-            if (_crewSender != null && Net.Online) _crewSender.Enqueue(a.Key, a.Value);
+            if (_crewSender != null && Net.Online) _crewSender.Enqueue(a.Pcm, a.Rate);
+            AfterSpeech(secs, a.Done);
         }
 
         void OnHeardWatson(string text)
