@@ -80,6 +80,7 @@ When a newer version is available, the overlay tells you; close the game and run
 - Longer orders: address the station first ("Helm, …", "Tactical, …", "Engineering, …", "Crew, …") or hold **F4**.
 - Two high beeps: understood. One low beep: not understood.
 - Keys: **F4** push to talk, **F5** mute microphone, **F6** First Officer on/off, **F7** overlay (desktop only, not in VR).
+  Back to the captain's chair: **Backspace** (the game's own station switch).
 - Settings: `BepInEx\config\de.phuntasyproductions.stbcvoicecrew.cfg` (created on first start).
 - More in [docs/release/README.txt](docs/release/README.txt).
 

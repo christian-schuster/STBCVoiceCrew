@@ -62,6 +62,8 @@ An AI first officer who is always with you – in the lobby and on the bridge. N
     "Number One, tell me a joke"    – a Star Trek pun on request (not during combat)
   Acknowledge his orders with "Aye", "Acknowledged", "Understood" …
 - On/off also with F6 or the button in the overlay. Languages: English, German, French (game language).
+- While nobody sits in the captain's chair, he commands. Back to the captain's chair: Backspace (the game's own
+  station switch), then "I have the bridge".
 
 EXAMPLES
 Helm:        full speed / half impulse / all stop / reverse / set a course for the Tallinn / approach the target /
@@ -153,6 +155,8 @@ Ein KI-Erster-Offizier, der immer dabei ist – in der Lobby und auf der Brücke
     „Nummer Eins, erzähl einen Witz“ – ein Kalauer auf Zuruf (nicht im Gefecht)
   Seine Befehle bestätigst du mit „Aye“, „Jawohl“, „Verstanden“ …
 - Ein/aus auch mit F6 oder dem Knopf im Overlay. Sprachen: Deutsch, Englisch, Französisch (wie das Spiel).
+- Solange niemand auf dem Captain-Stuhl sitzt, führt er. Zurück auf den Captain-Stuhl: Rücktaste/Backspace (der
+  Stationswechsel des Spiels), dann „Ich habe die Brücke“.
 
 BEISPIELE
 Steuer:  volle Fahrt / halbe Kraft / voller Stopp / rückwärts / fliege zur Tallinn / fliege zum Ziel / Impuls /
