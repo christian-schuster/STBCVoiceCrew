@@ -277,6 +277,7 @@ namespace StbcAiCrew.Captain
         List<Step> Plan(Goal g, List<Contact> contacts, Contact enemy)
         {
             var steps = new List<Step>();
+            if (_crew.Jumping) { Status = Loc.T("Sprung läuft", "jump in progress"); return steps; }
             var here = CaptainSense.CurrentSystem;
             GoalKind kind = g.Kind;
 
@@ -887,7 +888,12 @@ namespace StbcAiCrew.Captain
         }
         static double DistanceKm(Sector.HOLJLCLENCA b)
         {
-            try { return b != null && b.ALPAOOKFIEE != null && Contacts.HasOwn ? (b.ALPAOOKFIEE.Position - Contacts.OwnPosition).magnitude / 1000.0 : -1; }
+            try
+            {
+                var own = GameBridge.PlayerShip as Sector.HOLJLCLENCA;
+                if (b == null || b.ALPAOOKFIEE == null || own == null || own.ALPAOOKFIEE == null) return -1;
+                return (b.ALPAOOKFIEE.Position - own.ALPAOOKFIEE.Position).magnitude / 1000.0;
+            }
             catch { return -1; }
         }
 

@@ -57,6 +57,9 @@ namespace StbcAiCrew
         /// </summary>
         public Func<Station, string, bool> CaptainHears;
 
+        /// <summary>Läuft gerade ein Sprung (Warp/Impuls)? Dann keine neuen Flugbefehle.</summary>
+        public bool Jumping => _steps.Exists(x => x.What == "Warp" || x.What == Loc.T("Impuls", "Impulse"));
+
         /// <summary>Kontakte der letzten Abfrage (wie die Konsolen sie zeigen).</summary>
         public List<Contact> ContactsNow => _contacts;
 
