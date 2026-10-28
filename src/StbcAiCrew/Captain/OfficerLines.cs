@@ -142,6 +142,7 @@ namespace StbcAiCrew.Captain
             ["note_stop"] = new[] { "Captain, dort müssen wir anhalten.", "Captain, nah ran und dann voller Stopp." },
             ["note_rescue_then_warp"] = new[] { "Captain, so viele retten wie möglich, dann sofort Warp.", "Captain, wir haben nicht ewig. Retten und raus." },
             ["note_min_distance"] = new[] { "Captain, Sicherheitsabstand halten. Nicht zu nah ran.", "Captain, wenn das Ding hochgeht, wollen wir weit weg sein." },
+            ["note_prepare_combat"] = new[] { "Captain, ein Kampf steht bevor. Schilde hoch, Torpedos scharf.", "Captain, gleich wird es ernst. Gefechtsbereitschaft empfohlen." },
         };
 
         static readonly Dictionary<string, string[]> En = new Dictionary<string, string[]>
@@ -267,6 +268,7 @@ namespace StbcAiCrew.Captain
             ["note_stop"] = new[] { "Captain, we need to come to a full stop there.", "Captain, get close, then all stop." },
             ["note_rescue_then_warp"] = new[] { "Captain, save as many as we can, then warp out immediately.", "Captain, we don't have forever. Rescue and go." },
             ["note_min_distance"] = new[] { "Captain, keep a safe distance. Don't get too close.", "Captain, when that thing goes up, we want to be far away." },
+            ["note_prepare_combat"] = new[] { "Captain, combat is imminent. Shields up, torpedoes armed.", "Captain, this is about to get serious. I recommend battle readiness." },
         };
 
         static readonly Dictionary<string, string[]> Fr = new Dictionary<string, string[]>
@@ -392,6 +394,7 @@ namespace StbcAiCrew.Captain
             ["note_stop"] = new[] { "Capitaine, il faudra s'arrêter complètement là-bas.", "Capitaine, approchons, puis arrêt complet." },
             ["note_rescue_then_warp"] = new[] { "Capitaine, sauvons-en le plus possible, puis distorsion immédiate.", "Capitaine, le temps presse. On sauve et on part." },
             ["note_min_distance"] = new[] { "Capitaine, gardons une distance de sécurité.", "Capitaine, quand ça explosera, il vaut mieux être loin." },
+            ["note_prepare_combat"] = new[] { "Capitaine, un combat est imminent. Boucliers levés, torpilles armées.", "Capitaine, ça va chauffer. Je recommande l'état d'alerte." },
         };
 
         /// <summary>Kalauer für ruhige Momente (selbst geschrieben, keine Zitate).</summary>
@@ -512,7 +515,7 @@ namespace StbcAiCrew.Captain
         {
             string s = " " + (heard ?? "").ToLowerInvariant() + " ";
             return Has(s, " aye", " jawohl", " ja ", " verstanden", " zu befehl", " wird gemacht", " erledigt", " bin dabei", " sofort",
-                       " okay", " ok ", " roger", " copy", " on it", " done", " yes", " understood", " will do", " affirmative",
+                       " okay", " ok ", " roger", " copy", " on it", " done", " yes", " understood", " will do", " affirmative", " acknowledged", " firing", " engaging",
                        " oui", " compris", " à vos ordres", " a vos ordres", " bien reçu", " c'est fait");
         }
 

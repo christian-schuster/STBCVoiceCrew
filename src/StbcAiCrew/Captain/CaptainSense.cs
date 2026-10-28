@@ -73,6 +73,12 @@ namespace StbcAiCrew.Captain
                             }
                     try { g.System = g.Target != null ? g.Target.System : null; } catch { }
                     if (g.System == null && !string.IsNullOrEmpty(d.SystemName)) g.System = FindSystem(d.SystemName);
+                    if (g.System == null)
+                    {
+                        // "Warp to the MALKEV System": Name steht nur im Text
+                        var m = System.Text.RegularExpressions.Regex.Match(g.English, @"warp to (?:the )?(.+?) system", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        if (m.Success) g.System = FindSystem(m.Groups[1].Value);
+                    }
                     g.Kind = Classify(g.English + " " + (d.ItemName ?? ""));
                     MissionKnowledge.Apply(g);
                     list.Add(g);
@@ -92,7 +98,7 @@ namespace StbcAiCrew.Captain
             if (Has(s, "destroy", "eliminate", "defeat", "attack", "neutrali", "engage", "fight", "kill", "take out")) return GoalKind.Attack;
             if (Has(s, "defend", "protect", "escort", "guard", "survive", "hold off", "repel")) return GoalKind.Defend;
             if (Has(s, "scan", "investigate", "analy", "survey", "examine", "search", "locate", "identify", "inspect", "study")) return GoalKind.Scan;
-            if (Has(s, "hail", "contact", "communicat", "respond", "answer")) return GoalKind.Hail;
+            if (Has(s, "hail", "make contact", "contact the", "respond to", "answer the")) return GoalKind.Hail;
             if (Has(s, "wait", "standby", "stand by")) return GoalKind.Wait;
             return GoalKind.Travel;
         }
@@ -128,7 +134,8 @@ namespace StbcAiCrew.Captain
                 if (m == null || m.MLHNDAEKLHO == null || string.IsNullOrEmpty(name)) return null;
                 string want = GameBridge.StripLocId(name);
                 foreach (var s in m.MLHNDAEKLHO)
-                    if (s != null && (s.SystemName == name || GameBridge.StripLocId(s.SystemName) == want)) return s;
+                    if (s != null && (s.SystemName == name || string.Equals(GameBridge.StripLocId(s.SystemName), want, StringComparison.OrdinalIgnoreCase) ||
+                                      string.Equals(SVR.Localization.GetLocalizedText(s.SystemName), want, StringComparison.OrdinalIgnoreCase))) return s;
             }
             catch { }
             return null;

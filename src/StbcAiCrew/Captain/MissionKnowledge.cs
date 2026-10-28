@@ -34,6 +34,7 @@ namespace StbcAiCrew.Captain
             new Rule(@"waiting for tactical scan", GoalKind.Scan, 12, "note_anomalies"),
             new Rule(@"\bawait\b|arriving shortly|please wait|wait for .*(complete|survey)|^status:|survey underway|will be installed after", GoalKind.Wait, 0, "note_wait"),
             new Rule(@"time until|minimum time until|reactivate once|begun regenerating", GoalKind.Wait),
+            new Rule(@"prepare for combat|contact imminent|will attack all ships", GoalKind.Wait, 0, "note_prepare_combat"),
 
             // Flucht: Stern bricht aus, Explosion, Verfolgung
             new Rule(@"warp out before|escape the erupting star|escape protomatter explosion|reach edge of nebula to escape|impulse to nebula terminus to escape", GoalKind.Escape, 0, "note_escape"),
@@ -84,6 +85,7 @@ namespace StbcAiCrew.Captain
             new Rule(@"search for a concealed location|search for a point", GoalKind.Travel, 0, "note_search_poi"),
 
             // Gebiet sichern, Gegner bekämpfen
+            new Rule(@"focus fire|fire on|destroy the borg|attack(ing)? force", GoalKind.Attack, 10),
             new Rule(@"secure the area|cannot take place while enemies|keep the area secure|engage any hostile|eliminate|destroy all (enemy|klingon)|defeat enemy force|destroy (klingon|romulan) attacking force|destroy enemy forces", GoalKind.Attack, 10, "note_secure"),
             new Rule(@"protect (ally|your ship)|defend the|keep hull of all convoy|hull above \d+|survive until", GoalKind.Defend, 6),
 

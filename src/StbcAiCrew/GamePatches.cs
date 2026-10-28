@@ -134,9 +134,17 @@ namespace StbcAiCrew
         public static Action<string, KFLPAPJAAGO> OnGameVoice;
 
         // VOManager.Play(string ereignis, KFLPAPJAAGO sprecher, ...): jede Sprachausgabe des Spiels
+        /// <summary>Zeitpunkt der letzten Sprachausgabe des Spiels (Echtzeit), auch Briefing und Logbuch.</summary>
+        public static float LastGameVoice = -999f;
+
         static void VoPlayPrefix(string MKMCDCLOPCH, KFLPAPJAAGO DIDHMLCOFMH)
         {
-            try { if (OnGameVoice != null) OnGameVoice(MKMCDCLOPCH, DIDHMLCOFMH); }
+            try
+            {
+                if (DIDHMLCOFMH != KFLPAPJAAGO.Crewbot_Eng_Tnar && DIDHMLCOFMH != KFLPAPJAAGO.Crewbot_Helm_Rao && DIDHMLCOFMH != KFLPAPJAAGO.Crewbot_Tac_Hoyle)
+                    LastGameVoice = UnityEngine.Time.realtimeSinceStartup;
+                if (OnGameVoice != null) OnGameVoice(MKMCDCLOPCH, DIDHMLCOFMH);
+            }
             catch (Exception e) { Plugin.Log.LogDebug("VO-Hook: " + e.Message); }
         }
 

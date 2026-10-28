@@ -126,7 +126,7 @@ namespace StbcAiCrew.Captain
                     Say(OfficerLines.Say("take_command", OfficerLines.Title(seat ?? PlayerStation)), null);
                 }
 
-                if (!_bridgeGreeted && Time.time - _missionStart > 6f && !Speaking())
+                if (!_bridgeGreeted && Settled && !Speaking())
                 {
                     _bridgeGreeted = true;
                     Say(OfficerLines.Say("bridge_ready"), Station.Captain);
@@ -141,7 +141,7 @@ namespace StbcAiCrew.Captain
         void ResetMission()
         {
             if (_missionStart < 0) return;
-            _missionStart = -1f; _bridgeGreeted = false; _hailSince = -1f; _announceTake = false; _connGivenAt = -999f; Current = Mode.Lobby;
+            _missionStart = -1f; _firstGoalAt = -1f; _bridgeGreeted = false; _hailSince = -1f; _announceTake = false; _connGivenAt = -999f; Current = Mode.Lobby;
             _orders.Clear(); _advised.Clear(); _trackKey = null; _goalAnnounced = null; _arrivedAt = null; _selected = null; _trackCount = -1;
         }
 
@@ -170,7 +170,7 @@ namespace StbcAiCrew.Captain
 
         void Joke(bool threat)
         {
-            if (!Jokes || threat || _orders.Count > 0 || Time.time - _lastJoke < JokeMinutes * 60f || Time.time - _lastSpoke < 40f || Speaking()) return;
+            if (!Jokes || threat || !Settled || _orders.Count > 0 || Time.time - _lastJoke < JokeMinutes * 60f || Time.time - _lastSpoke < 40f || Speaking()) return;
             _lastJoke = Time.time;
             if (Rng.NextDouble() < 0.5) Say(OfficerLines.Joke(), null);
         }
@@ -193,7 +193,7 @@ namespace StbcAiCrew.Captain
             }
 
             // 2. Gefahr
-            Contact enemy = Nearest(contacts, c => c.Category == HHHDDNLEDBN.Enemy && c.DistanceKm >= 0 && c.DistanceKm < 25);
+            Contact enemy = Nearest(contacts, c => c.Category == HHHDDNLEDBN.Enemy && !Hazard(c.Name) && c.DistanceKm >= 0 && c.DistanceKm < 25);
             bool threat = EventLog.UnderThreat(20f) || enemy != null;
             if (threat)
             {
@@ -425,7 +425,7 @@ namespace StbcAiCrew.Captain
         bool Advise(ShipStatus st)
         {
             var contacts = _crew.ContactsNow ?? new List<Contact>();
-            Contact enemy = Nearest(contacts, c => c.Category == HHHDDNLEDBN.Enemy && c.DistanceKm >= 0 && c.DistanceKm < 25);
+            Contact enemy = Nearest(contacts, c => c.Category == HHHDDNLEDBN.Enemy && !Hazard(c.Name) && c.DistanceKm >= 0 && c.DistanceKm < 25);
             bool hit = Time.time - EventLog.LastHitTime < 12f;
             bool threat = EventLog.UnderThreat(20f) || enemy != null;
             if (threat) _lastThreat = Time.time;
@@ -496,6 +496,7 @@ namespace StbcAiCrew.Captain
         bool Advice(string key, float cooldown, bool urgent, string lineKey, string arg)
         {
             float t;
+            if (!Settled && !urgent) return false;   // Briefing läuft noch
             if (_advised.TryGetValue(key, out t) && Time.time - t < cooldown) return false;
             if (Time.time - _lastSpoke < (urgent ? 8f : 25f) || Speaking()) return false;
             string line = OfficerLines.Say(lineKey, arg ?? "");
@@ -538,6 +539,7 @@ namespace StbcAiCrew.Captain
             else if (_trackCount >= 0 && count != _trackCount) _moved = true;
             _trackKey = key;
             _trackCount = count;
+            if (goals.Count > 0 && _firstGoalAt < 0) _firstGoalAt = Time.time;
             if (_moved) _goalSince = Time.time;
             else if (goals.Count > 0 && Time.time - _goalSince > 240f && Time.time - _stallLogged > 240f)
             {
@@ -547,7 +549,10 @@ namespace StbcAiCrew.Captain
                                       " | System " + CaptainSense.NameOf(CaptainSense.CurrentSystem) + " | Warpziel " + CaptainSense.NameOf(CaptainSense.WarpTarget));
             }
         }
-        float _stallLogged = -999f;
+        float _stallLogged = -999f, _firstGoalAt = -1f;
+
+        /// <summary>Briefing vorbei: das erste Missionsziel steht seit ein paar Sekunden auf der Konsole.</summary>
+        bool Settled => _firstGoalAt >= 0 && Time.time - _firstGoalAt > 8f;
 
         // ---------------- Befehle ----------------
 
@@ -561,6 +566,13 @@ namespace StbcAiCrew.Captain
             if (_orders.TryGetValue(s.Id, out o))
             {
                 if (s.Done != null && s.Done()) { Complete(o); return; }
+                // Die Station hat das befohlene Ziel erfasst: Befehl angekommen, nicht nachbohren
+                if (o.Human && !string.IsNullOrEmpty(s.Arg) && Contacts.TargetOf(o.St) == s.Arg)
+                {
+                    o.Acked = true;
+                    o.NextRemind = Math.Max(o.NextRemind, Time.time + 60f);
+                    return;
+                }
                 if (Time.time < o.NextRemind || Speaking()) return;
                 if (!o.Human) { s.Bot(); o.NextRemind = Time.time + s.Remind; return; }   // Bot: einfach erneut
                 if (o.Reminders >= 3) { Say(OfficerLines.Say("give_up"), o.St); o.NextRemind = Time.time + 120f; o.Reminders = 0; return; }
@@ -598,6 +610,8 @@ namespace StbcAiCrew.Captain
             string s = " " + (text ?? "").ToLowerInvariant() + " ";
             bool addressed = OfficerLines.IsAddressed(s);
             var cmd = OfficerLines.Command(s, addressed);
+            // "Number One, acknowledged": Bestätigung, keine Frage
+            if (cmd == "hint" && Current == Mode.Commanding && OfficerLines.IsAcknowledgement(text)) cmd = null;
             if (cmd != null && cmd != "off" && !Enabled) cmd = addressed ? "on" : null;   // aus: nur die Anrede weckt ihn
             if (cmd != null)
             {
@@ -610,7 +624,8 @@ namespace StbcAiCrew.Captain
                     case "take_conn": TakeConn(); break;
                     case "hint":
                         if (!Enabled) break;
-                        if (Current == Mode.Commanding) Say(OfficerLines.Say("status", Status), speaker);
+                        if (!GameBridge.InMission) Say(OfficerLines.Say(Rng.NextDouble() < 0.5 ? "lobby_idle" : "greet"), null);   // Lobby: kurz antworten
+                        else if (Current == Mode.Commanding) Say(OfficerLines.Say("status", Status), speaker);
                         else _askedHint = true;
                         break;
                 }
@@ -624,7 +639,7 @@ namespace StbcAiCrew.Captain
                     o.NextRemind = Time.time + 40f;   // bestätigt: länger Zeit lassen
                     if (Rng.NextDouble() < 0.35) Say(OfficerLines.Say("ack"), speaker);
                 }
-            return false;
+            return addressed;   // "Number One, aye" ist an ihn gerichtet, kein Crew-Befehl
         }
 
         /// <summary>Ein-/ausschalten (Overlay, Taste, Sprache). announce = mit kurzer Antwort.</summary>
@@ -687,6 +702,10 @@ namespace StbcAiCrew.Captain
             foreach (var c in contacts) if (c.Transform == t) return c;
             return null;
         }
+
+        /// <summary>Feindlich markiert, aber kein Schiff: explosive Objekte, Minen, Anomalien. Darauf feuert man nicht nebenbei.</summary>
+        static bool Hazard(string name) =>
+            System.Text.RegularExpressions.Regex.IsMatch(name ?? "", @"volatile|mine\b|mines|anomal|debris|barrel|asteroid|explosive|core", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         static Contact Nearest(List<Contact> contacts, Func<Contact, bool> pred)
         {

@@ -500,6 +500,7 @@ namespace StbcAiCrew
                 Speak = CaptainSpeak,
                 // Nur reden, wenn sonst niemand spricht: er selbst, die Crew, das Spiel (Funk, Briefing), der Spieler, Mitspieler
                 Speaking = () => _captainPending > 0 || _captainAudio.Count > 0 || (_player != null && _player.Playing) || GameBridge.GameVoicePlaying() ||
+                                 Time.realtimeSinceStartup - GamePatches.LastGameVoice < 8f ||
                                  (_voice != null && _voice.Speaking) || (_remoteTap != null && Time.realtimeSinceStartup - _remoteTap.LastRemoteSpeech < 1.5f),
                 Toggled = on =>
                 {
