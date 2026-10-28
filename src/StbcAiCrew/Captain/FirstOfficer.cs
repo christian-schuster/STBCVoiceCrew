@@ -873,6 +873,9 @@ namespace StbcAiCrew.Captain
             if (!marked) points = CaptainSense.SystemBodies();
             // Orte, die Ziel oder Teilziel beim Namen nennen ("Travel to the RM-101 Orbit Region", "Ryburn I"), haben Vorrang
             string said = g == null ? "" : (g.English + " | " + string.Join(" | ", g.SubTexts.ToArray())).ToLowerInvariant();
+            // Der Systemname passt auf alles im System ("Location: SARZA / SARZA, Anomaly"): nicht mitzählen
+            string sysName = (CaptainSense.NameOf(CaptainSense.CurrentSystem) ?? "").ToLowerInvariant();
+            if (sysName.Length >= 3) said = said.Replace(sysName, " ");
             Sector.HOLJLCLENCA best = null;
             int bestScore = int.MinValue;
             double bestDist = double.MaxValue;
@@ -881,7 +884,8 @@ namespace StbcAiCrew.Captain
                 int id = CaptainSense.IdOf(b);
                 if (_visitedPoints.Contains(id)) continue;
                 string name = GameBridge.StripLocId(b.AKDKEDEMFDJ) ?? "";
-                if (!marked && (Hazard(name) || name.StartsWith("Prop", StringComparison.OrdinalIgnoreCase))) continue;   // keine Minen, Trümmer, Deko
+                if (!marked && (Hazard(name) || name.StartsWith("Prop", StringComparison.OrdinalIgnoreCase) || name.Contains("_") ||
+                                System.Text.RegularExpressions.Regex.IsMatch(name, @"\bstar\b|sun|nolight", System.Text.RegularExpressions.RegexOptions.IgnoreCase))) continue;   // keine Minen, Trümmer, Deko, Sterne, interne Objekte
                 double d = DistanceKm(b);
                 if (d >= 0 && d < 8) { _visitedPoints.Add(id); continue; }   // schon da
                 int score = (marked ? 10 : 0) + (CaptainSense.IsObjectivePoint(b) ? 5 : 0);
