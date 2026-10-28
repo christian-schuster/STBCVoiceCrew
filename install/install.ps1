@@ -1,5 +1,5 @@
 <#
-  STBC Voice Crew – installer / updater for Star Trek: Bridge Crew (Windows)
+  STBC Voice Crew - installer / updater for Star Trek: Bridge Crew (Windows)
 
   One-line install (PowerShell or the Windows "Run" box via powershell):
     powershell -ExecutionPolicy Bypass -c "irm https://github.com/christian-schuster/STBCVoiceCrew/releases/latest/download/install.ps1 | iex"

@@ -79,9 +79,11 @@ Copy-Item (Join-Path $repoDir "docs\release\THIRD-PARTY-NOTICES.txt") $pluginDir
 Copy-Item (Join-Path $repoDir "docs\release\CHANGELOG.txt") $pluginDir
 Copy-Item (Join-Path $repoDir "LICENSE") (Join-Path $pluginDir "LICENSE.txt")
 
-# Installer files with the GitHub repository filled in
+# Installer files with the GitHub repository filled in. install.ps1 stays plain ASCII without BOM: "irm … | iex" in
+# Windows PowerShell 5.1 decodes the download as Latin-1, a BOM or any umlaut/dash would break the script.
 $install = (Get-Content (Join-Path $repoDir "install\install.ps1") -Raw).Replace("__REPO__", $Repo)
-[IO.File]::WriteAllText((Join-Path $dist "install.ps1"), $install, [Text.UTF8Encoding]::new($true))
+if ($install -match '[^\x00-\x7F]') { throw "install.ps1 must be plain ASCII (irm | iex in Windows PowerShell 5.1)." }
+[IO.File]::WriteAllText((Join-Path $dist "install.ps1"), $install, [Text.ASCIIEncoding]::new())
 Copy-Item $setup.FullName (Join-Path $dist "STBC-Voice-Crew-Setup.exe") -Force
 
 # Privacy: no local paths or personal data in our own files (DLL, setup, texts)
