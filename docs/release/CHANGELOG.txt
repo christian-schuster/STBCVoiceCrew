@@ -12,8 +12,8 @@ STBC Voice Crew – Changelog
   - Speaks only when nobody else is talking (crew, game voices, briefing, players).
   - Rare Star Trek puns on the bridge and in the lobby.
   - Voice commands: "Number One / Commander, suggestions?", "You have the bridge", "I have the bridge",
-    "Number One, dismissed" / "Number One, to the bridge". German: "Nummer Eins / Commander, Vorschlag?",
-    "Sie haben die Brücke", "Ich habe die Brücke", "Nummer Eins, wegtreten".
+    "Number One, dismissed" / "Number One, to the bridge", "Number One, tell me a joke". German: "Nummer Eins / Commander, Vorschlag?",
+    "Sie haben die Brücke", "Ich habe die Brücke", "Nummer Eins, wegtreten", "Nummer Eins, erzähl einen Witz".
   - English, German and French lines; voices by Piper TTS (included).
   - On/off: overlay button, F6, voice command, or [FirstOfficer] Aktiv in the config.
 - Multiplayer: runs on the host only, speaks through the game's voice chat; players without the mod are unaffected.

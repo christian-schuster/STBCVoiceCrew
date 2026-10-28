@@ -54,6 +54,7 @@ An AI first officer who is always with you – in the lobby and on the bridge. N
     "You have the bridge"           – you move to the helm, he takes command (single player)
     "I have the bridge"             – you are the captain again
     "Number One, dismissed"         – he stays quiet; "Number One, to the bridge" brings him back
+    "Number One, tell me a joke"    – a Star Trek pun on request (not during combat)
   Acknowledge his orders with "Aye", "Acknowledged", "Understood" …
 - On/off also with F6 or the button in the overlay. Languages: English, German, French (game language).
 
@@ -139,6 +140,7 @@ Ein KI-Erster-Offizier, der immer dabei ist – in der Lobby und auf der Brücke
     „Sie haben die Brücke“          – du wechselst an die Steuer, er führt (Einzelspieler)
     „Ich habe die Brücke“           – du bist wieder Captain
     „Nummer Eins, wegtreten“        – er schweigt; „Nummer Eins, auf die Brücke“ holt ihn zurück
+    „Nummer Eins, erzähl einen Witz“ – ein Kalauer auf Zuruf (nicht im Gefecht)
   Seine Befehle bestätigst du mit „Aye“, „Jawohl“, „Verstanden“ …
 - Ein/aus auch mit F6 oder dem Knopf im Overlay. Sprachen: Deutsch, Englisch, Französisch (wie das Spiel).
 

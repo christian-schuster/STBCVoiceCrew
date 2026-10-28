@@ -24,6 +24,7 @@ namespace StbcAiCrew.Captain
             ["off"] = new[] { "Aye, Captain. Ich halte mich zurück.", "Verstanden. Ich bin still." },
             ["status"] = new[] { "Wir sind dabei, Captain: {0}.", "Lage: {0}." },
             ["no_hint"] = new[] { "Keine Einwände, Captain. Wir sind auf Kurs.", "Nichts hinzuzufügen, Captain. Weiter so." },
+            ["joke_later"] = new[] { "Später, Captain. Erst überleben wir das hier.", "Jetzt nicht, Captain. Wir werden beschossen." },
             ["lobby_idle"] = new[] { "Die Brücke wartet, Captain. Der Replikator übrigens auch.", "Bereit, wenn Sie es sind, Captain.", "Die Crew scharrt schon mit den Füßen, Captain." },
 
             // Kommando
@@ -156,6 +157,7 @@ namespace StbcAiCrew.Captain
             ["off"] = new[] { "Aye, Captain. I'll keep quiet.", "Understood. Standing down." },
             ["status"] = new[] { "We're on it, Captain: {0}.", "Status: {0}." },
             ["no_hint"] = new[] { "Nothing to add, Captain. We're on track.", "No objections, Captain. Carry on." },
+            ["joke_later"] = new[] { "Later, Captain. Let's survive this first.", "Not now, Captain. We're under fire." },
             ["lobby_idle"] = new[] { "The bridge is waiting, Captain. So is the replicator.", "Ready when you are, Captain.", "The crew is getting restless, Captain." },
 
             ["new_goal"] = new[] { "New orders: {0}.", "Our mission: {0}.", "We have a new objective: {0}." },
@@ -282,6 +284,7 @@ namespace StbcAiCrew.Captain
             ["off"] = new[] { "Bien, capitaine. Je reste en retrait.", "Compris. Je me tais." },
             ["status"] = new[] { "Nous y travaillons, capitaine : {0}.", "Situation : {0}." },
             ["no_hint"] = new[] { "Rien à ajouter, capitaine. Nous sommes sur la bonne voie.", "Aucune objection, capitaine. Continuez." },
+            ["joke_later"] = new[] { "Plus tard, capitaine. Survivons d'abord.", "Pas maintenant, capitaine. On nous tire dessus." },
             ["lobby_idle"] = new[] { "La passerelle vous attend, capitaine. Le réplicateur aussi.", "Prêt quand vous l'êtes, capitaine.", "L'équipage s'impatiente, capitaine." },
 
             ["new_goal"] = new[] { "Nouveaux ordres : {0}.", "Notre mission : {0}.", "Nouvel objectif : {0}." },
@@ -547,6 +550,7 @@ namespace StbcAiCrew.Captain
                     " dismissed ", " stand down ", " be quiet ", " silence ", "officer off ", " shut up ", " that will be all ",
                     " rompez ", " repos ", " taisez-vous ", " silence "))
                 return "off";
+            if (Has(s, " joke", " pun", " witz", " kalauer", " blague")) return "joke";
             // Ist er aus, schaltet ihn jede andere Anrede wieder ein ("Nummer Eins, auf die Brücke"), sonst: Empfehlung zur Lage
             return "hint";
         }

@@ -620,6 +620,9 @@ namespace StbcAiCrew.Captain
                 {
                     case "off": SetEnabled(false, true); break;
                     case "on": SetEnabled(true, true); break;
+                    case "joke":   // auf Zuruf, außer im Gefecht
+                        if (Enabled) Say(EventLog.UnderThreat(20f) && GameBridge.InMission ? OfficerLines.Say("joke_later") : OfficerLines.Joke(), null);
+                        break;
                     case "give_conn": GiveConn(); break;
                     case "take_conn": TakeConn(); break;
                     case "hint":
