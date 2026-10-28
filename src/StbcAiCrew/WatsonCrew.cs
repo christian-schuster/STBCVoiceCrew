@@ -543,18 +543,29 @@ namespace StbcAiCrew
             Vector3d start = Contacts.OwnPosition;
             float t0 = Time.time, lastEngage = 0f;
             bool seenPreparing = false;
-            int engages = 0;
+            int engages = 0, recharges = 0;
+            float chargedAt = -1f;
             Repeat(0.5f, 60f, 0.5f, what, () =>   // 60 s: Warp wartet ggf. bis zu 40 s auf die Ausrichtung
             {
                 if (Jumped(start)) { Note(what + Loc.T(": Sprung ausgeführt", ": jump done")); return true; }
                 bool preparing = Flag(prepareFlag);
                 if (preparing) seenPreparing = true;
                 bool ready = (seenPreparing && !preparing) || Time.time - t0 > fallback + (seenPreparing ? 8f : 0f);
-                // Warp: erst auslösen, wenn die Steuer auf den Warpkurs zeigt (eine Kehrtwende dauert), höchstens 40 s warten
+                // Warp: erst auslösen, wenn die Steuer auf den Warpkurs zeigt (eine Kehrtwende dauert), höchstens 40 s warten.
+                // Die Warpspulen bleiben nur kurz geladen: war das Laden beim Erreichen der Ausrichtung schon > 6 s her, neu laden.
                 if (ready && what == "Warp")
                 {
+                    if (chargedAt < 0) chargedAt = Time.time;
                     var align = Captain.CaptainSense.WarpAlignment;
                     if (align.HasValue && align.Value < 0.97f && Time.time - t0 < 40f) return false;
+                    if (engages == 0 && Time.time - chargedAt > 6f && recharges < 2)
+                    {
+                        recharges++;
+                        Exec(Station.Engineering, "PrepareWarp", force: true);
+                        Note(Loc.T("Warpspulen neu laden", "Recharging warp coils"));
+                        seenPreparing = false; chargedAt = -1f; t0 = Time.time;   // Ladung abwarten (Flag oder Ersatzfrist), Ausrichtung steht schon
+                        return false;
+                    }
                 }
                 if (!ready) return false;
                 if (engages < 2 && (engages == 0 || Time.time - lastEngage > 8f))
