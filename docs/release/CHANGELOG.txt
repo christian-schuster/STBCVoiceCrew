@@ -9,6 +9,7 @@ Highlights: the First Officer and the open source release on GitHub.
 - Readme, changelog and licenses now come in BepInEx\plugins\STBC Voice Crew; in the game folder the changelog
   overwrote BepInEx's changelog.txt.
 - Package: includes BepInEx.cfg with the entry point the game needs (fresh installs started with a black screen).
+  The mod also repairs this setting itself if it is missing (when started via Steam already before the game window opens).
 - New: First Officer ("Number One") – an AI first officer without a language model, always on the bridge and in the lobby.
   - Advises a human captain: warnings when shields are down under fire, the hull is critical, a friendly ship is
     targeted or the warp destination leads away from the mission; hints when the mission stalls or nothing happens.

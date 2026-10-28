@@ -200,6 +200,7 @@ namespace StbcAiCrew
         {
             Instance = this;
             Log = Logger;
+            EnsureEntrypoint();
             MigrateOldConfig();
             BindConfig();
 
@@ -398,6 +399,29 @@ namespace StbcAiCrew
         }
 
         // ================= Watson-Modus =================
+
+        /// <summary>
+        /// BepInEx muss im Spiel über Camera statt Application starten ([Preloader.Entrypoint] Type), sonst bleibt das Bild
+        /// schwarz. Das Paket bringt die Einstellung mit; fehlt sie trotzdem (BepInEx selbst installiert, alte Version), hier
+        /// nachtragen. Beim Start über Steam läuft die Mod schon in der kurzen Startinstanz, das eigentliche Spiel danach
+        /// startet dann bereits richtig.
+        /// </summary>
+        static void EnsureEntrypoint()
+        {
+            try
+            {
+                string path = Paths.BepInExConfigPath;
+                if (!File.Exists(path)) return;
+                string text = File.ReadAllText(path);
+                var fixedText = System.Text.RegularExpressions.Regex.Replace(text,
+                    @"(\[Preloader\.Entrypoint\][^\[]*?\r?\nType\s*=\s*)Application\b", "${1}Camera");
+                if (fixedText == text) return;
+                File.WriteAllText(path, fixedText);
+                Log.LogWarning("BepInEx.cfg: [Preloader.Entrypoint] Type = Camera gesetzt (mit Application bleibt das Spiel schwarz). " +
+                               "Falls das Bild jetzt schwarz ist: Spiel einmal neu starten.");
+            }
+            catch (Exception e) { Log.LogWarning("BepInEx.cfg nicht geprüft: " + e.Message); }
+        }
 
         /// <summary>
         /// Vor 1.1 hieß die Kennung "de.phuntasyproductions.stbc.voicecrew" und damit auch die Einstellungsdatei: übernehmen,
