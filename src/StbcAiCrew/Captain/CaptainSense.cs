@@ -304,6 +304,51 @@ namespace StbcAiCrew.Captain
             catch (Exception e) { Plugin.Log.LogWarning("Impulsziel nicht gesetzt: " + e.Message); return false; }
         }
 
+        // ---------------- Scanner der Taktik ----------------
+
+        static Scanner TacticalScanner
+        {
+            get { try { var c = UnityEngine.Object.FindObjectOfType<ConsoleTactical>(); return c != null ? c.DNPFNFOPEFJ : null; } catch { return null; } }
+        }
+
+        /// <summary>Ist das Ziel in Scanreichweite der Taktik? null = unbekannt.</summary>
+        public static bool? InScanRange(object detectable)
+        {
+            try { var s = TacticalScanner; var t = detectable as Sector.DIENHALJFIO; return s != null && t != null ? s.IsTargetInScanningRange(t) : (bool?)null; }
+            catch { return null; }
+        }
+
+        /// <summary>Scanreichweite der Taktik für dieses Ziel in km, 0 = unbekannt.</summary>
+        public static double ScanRangeKm(object detectable)
+        {
+            try
+            {
+                var s = TacticalScanner; var t = detectable as Sector.DIENHALJFIO;
+                if (s == null || t == null) return 0;
+                double r = s.GetScanRangeForTarget(t);
+                return r > 200 ? r / 1000.0 : r;   // Spiel rechnet in Metern
+            }
+            catch { return 0; }
+        }
+
+        /// <summary>Fortschritt der laufenden Scans dieses Ziels (0–1, höchster Wert), null = kein Scan läuft.</summary>
+        public static float? ScanProgress(object detectable)
+        {
+            try
+            {
+                var s = TacticalScanner; var t = detectable as Sector.DIENHALJFIO;
+                if (s == null || t == null) return null;
+                _scanInfos2.Clear();
+                s.GetScanInfosForTarget(t, ref _scanInfos2);
+                if (_scanInfos2 == null || _scanInfos2.Count == 0) return null;
+                float best = 0f;
+                foreach (var i in _scanInfos2) if (i != null) best = Math.Max(best, i.GetNormalizedProgress());
+                return best;
+            }
+            catch { return null; }
+        }
+        static List<Scanner.AEPKAMAMPHF> _scanInfos2 = new List<Scanner.AEPKAMAMPHF>();
+
         public static SystemRoot WarpTarget
         {
             get

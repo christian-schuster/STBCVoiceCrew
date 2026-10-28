@@ -426,7 +426,12 @@ namespace StbcAiCrew.Captain
             Action select = () => { if (_selected != key) { _crew.Select(c); _selected = key; } };   // nur bei neuem Ziel, sonst überschreibt er die Auswahl des Spielers
 
             double reach = g.Reach > 0 ? g.Reach : Reach(kind);
-            if (kind == GoalKind.Scan) reach = Math.Min(reach, _scanReach);   // nach "out of range" näher heran
+            if (kind == GoalKind.Scan)
+            {
+                double sr = CaptainSense.ScanRangeKm(c.Detectable);
+                reach = Math.Min(reach, sr > 0 ? sr * 0.85 : _scanReach);    // echte Scanreichweite der Taktik, mit Reserve
+                if (CaptainSense.InScanRange(c.Detectable) == true) reach = Math.Max(reach, d);   // schon in Reichweite: nicht weiter ran
+            }
             // Mindestabstand (Protomaterie): nicht näher heran, aus der Ferne mit Torpedos
             if (g.MinDistance > 0)
             {
@@ -466,7 +471,9 @@ namespace StbcAiCrew.Captain
                     {
                         // Gescannt ist es, wenn das Ziel weiterkommt (Zähler, Teilziel) oder nach 30 s Scan; dann das nächste Objekt
                         var scanned = c.Transform;
+                        var det = c.Detectable;
                         float since = Time.time;
+                        bool seenProgress = false;
                         steps.Add(new Step { Id = "scan:" + name, St = Station.Tactical, LineKey = "scan", Arg = name, Prep = select, Bot = () => { since = Time.time; _crew.Run(Intent.Scan, name); },
                                              Done = () =>
                                              {
@@ -474,7 +481,12 @@ namespace StbcAiCrew.Captain
                                                  bool already = GamePatches.ConsoleSaid("already scanned", since);
                                                  if (GamePatches.ConsoleSaid("out of (scan\\w* )?range", since)) { _scanReach = Math.Max(2.0, _scanReach - 2.0); since = Time.time; Plugin.Log.LogInfo("First Officer: Scan außer Reichweite – näher heran (" + _scanReach + " km)"); return true; }
                                                  if (GamePatches.ConsoleSaid("scanner is down|scanners? (offline|damaged)", since)) { _crew.Run(Intent.Repair, null, "sensors"); since = Time.time; }
-                                                 bool done = GoalMoved() || already || Time.time - since > 75f;
+                                                 // Direkt vom Scanner der Taktik: Fortschritt 100 % oder Scan beendet (nicht mehr in der Liste)
+                                                 var prog = CaptainSense.ScanProgress(det);
+                                                 bool finished = prog.HasValue ? prog.Value >= 0.99f : seenProgress;
+                                                 if (prog.HasValue) seenProgress = true;
+                                                 bool done = GoalMoved() || already || finished || Time.time - since > 75f;
+                                                 if (done) Plugin.Log.LogInfo("First Officer: Scan " + name + " fertig (" + (finished ? "Scanner" : already ? "schon gescannt" : GoalMoved() ? "Ziel weiter" : "Zeit") + ")");
                                                  if (done && scanned != null) _scanned.Add(scanned);
                                                  return done;
                                              }, Remind = 60f });   // Scan nicht neu starten, solange er läuft

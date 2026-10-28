@@ -16,6 +16,8 @@ namespace StbcAiCrew
     {
         /// <summary>Zur Fehlersuche abschaltbar (Konfiguration [Diagnose]).</summary>
         public static bool VoipHooks = true, MicSelectHook = true;
+        /// <summary>Testlauf: Sprachereignisse der Bots ins Log schreiben (zum Zuordnen von Rückmeldungen).</summary>
+        public static bool LogVoiceEvents;
 
         public static void Apply(Harmony harmony)
         {
@@ -184,10 +186,13 @@ namespace StbcAiCrew
 
         // USSAegisCrew.CrewbotPlayVO(string wwiseEvent, KFLPAPJAAGO sprecher, float verzögerung)
         // false unterdrückt die vorgefertigte Sprachausgabe der Bots (die KI-Offiziere sprechen selbst).
-        static bool CrewbotVoPrefix(KFLPAPJAAGO KFLGELOFJDK)
+        static bool CrewbotVoPrefix(KFLPAPJAAGO KFLGELOFJDK, object[] __args)
         {
             try
             {
+                // Sprachmeldungen der Bots merken ("Scan abgeschlossen", "außer Reichweite" …), Ereignisname als Text
+                string ev = __args != null && __args.Length > 0 ? __args[0] as string : null;
+                if (!string.IsNullOrEmpty(ev)) { Remember("VO:" + ev); if (LogVoiceEvents) Plugin.Log.LogInfo("Spielstimme: " + ev + " (" + KFLGELOFJDK + ")"); }
                 var p = Plugin.Instance;
                 if (p != null && !p.WatsonMode && p.MuteBotVoiceLines.Value && !GameBridge.Injecting &&
                     (KFLGELOFJDK == KFLPAPJAAGO.Crewbot_Helm_Rao || KFLGELOFJDK == KFLPAPJAAGO.Crewbot_Tac_Hoyle || KFLGELOFJDK == KFLPAPJAAGO.Crewbot_Eng_Tnar))

@@ -522,6 +522,7 @@ namespace StbcAiCrew
                 _testPilot = new TestPilot { MissionType = TestAutoStart.Value.Trim().ToLowerInvariant(), Ship = TestShip.Value, MaxMissions = Math.Max(1, TestMaxMissions.Value), ShotDir = Path.Combine(pluginDir, "test") };
                 _captain.Enabled = true;
                 _captain.AutoCommand = true;   // Testlauf: der First Officer führt
+                GamePatches.LogVoiceEvents = true;
                 Log.LogInfo("Testpilot aktiv: " + _testPilot.MissionType + ", Schiff " + _testPilot.Ship + ", bis zu " + _testPilot.MaxMissions + " Missionen.");
             }
             if (_captain.Enabled) SetupCaptainVoice(pluginDir);
