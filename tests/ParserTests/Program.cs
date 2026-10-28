@@ -193,6 +193,67 @@ foreach (var (text, intents, name) in casesEn)
     else { fail++; Console.WriteLine($"FEHLER  EN \"{text}\"\n        erwartet: {intents}{(name != null ? " (" + name + ")" : "")}\n        bekommen: {r}"); }
 }
 
+var casesFr = new (string text, string intents, string name)[]
+{
+    ("En avant toute.", "SpeedFull", null),
+    ("Pleine impulsion !", "SpeedFull", null),
+    ("Demi-vitesse.", "SpeedHalf", null),
+    ("Arrêt complet.", "SpeedStop", null),
+    ("Stop.", "SpeedStop", null),
+    ("Marche arrière.", "SpeedReverse", null),
+    ("Arrêt complet, scannez la cible.", "SpeedStop,Scan", null),
+    ("Levez les boucliers !", "ShieldsUp", null),
+    ("Alerte rouge.", "ShieldsUp", null),
+    ("Baissez les boucliers.", "ShieldsDown", null),
+    ("Feu à volonté.", "FirePhasers", null),
+    ("Tirez les phasers.", "FirePhasers", null),
+    ("Lancez les torpilles !", "FireTorpedoes", null),
+    ("Torpilles.", "FireTorpedoes", null),
+    ("Armez les torpilles à photons.", "ArmTorpedoes", null),
+    ("Cessez le feu.", "CeaseFire", null),
+    ("Ne tirez pas, c'est un cargo.", "HoldFire", null),
+    ("Ciblez leurs moteurs.", "TargetEngines", null),
+    ("Ciblez leurs armes.", "TargetWeapons", null),
+    ("Brouillez leurs moteurs.", "Hack", null),
+    ("Attaquez l'oiseau de proie.", "Attack", null),
+    ("Énergie.", "Transport", null),
+    ("Téléportez les survivants à bord.", "Transport", null),
+    ("Énergie aux boucliers.", "PowerShields", null),
+    ("Toute l'énergie aux moteurs !", "PowerEngines", null),
+    ("Armes au maximum.", "PowerWeapons", null),
+    ("Réparez les boucliers.", "Repair", null),
+    ("Passez en distorsion.", "Warp", null),
+    ("Préparez la distorsion.", "PrepareWarp", null),
+    ("Engagez.", "WarpEngage", null),
+    ("Saut d'impulsion vers la Ragusa.", "Impulse", "Ragusa"),
+    ("Cap sur la Ragusa.", "MoveToTarget", "Ragusa"),
+    ("Emmène-nous vers la Tallinn.", "MoveToTarget", "Tallinn"),
+    ("Scannez la Tallinn.", "Scan", "Tallinn"),
+    ("Contournez le champ de mines.", "AvoidHazard", null),
+    ("Évitez les mines.", "AvoidHazard", null),
+    ("Mode furtif, ils ne doivent pas nous détecter.", "StealthOn", null),
+    ("Restez hors de portée de leurs capteurs.", "StayOutOfSensors", null),
+    ("Gardez dix kilomètres de distance.", "KeepDistance", null),
+    ("Tournez autour de la station.", "CircleTarget", null),
+    ("Sortez-nous d'ici !", "Flee", null),
+    ("Tirez seulement sur mon ordre.", "FireOnOrder", null),
+    ("Retour à la normale.", "ReleaseOrders", null),
+    ("Barre, cap sur la Ragusa et scannez-la.", "MoveToTarget,Scan", "Ragusa"),
+    ("Répondez à l'appel.", "AnswerHail", null),
+    ("Oui.", "Confirm", null),
+    ("Je crois qu'on devrait manger une pizza ce soir.", "", null),
+    ("Tu as vu le match hier ?", "", null),
+};
+foreach (var (text, intents, name) in casesFr)
+{
+    var r = CommandParser.Parse(text, names, Lang.Fr);
+    var got = r.Commands.Select(c => c.Intent.ToString()).OrderBy(x => x).ToArray();
+    var want = intents.Split(',', StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x).ToArray();
+    bool nameOk = name == null || r.Commands.Any(c => c.Resolved == name);
+    if (got.SequenceEqual(want) && nameOk) ok++;
+    else { fail++; Console.WriteLine($"FEHLER  FR \"{text}\"\n        erwartet: {intents}{(name != null ? " (" + name + ")" : "")}\n        bekommen: {r}"); }
+}
+
 // Dieselben Sätze so, wie Vosk sie liefert: klein, ohne Satzzeichen (nur Bericht, zählt nicht als Fehler)
 int vOk = 0;
 foreach (var (text, intents, name) in cases)

@@ -11,7 +11,7 @@ offline speech recognizer (Vosk). The bot crew – Rao, Hoyle and T'nar – foll
 
 [b]Features[/b]
 [list]
-[*]Voice command languages: English and German (French is planned)
+[*]Voice command languages: English, German and French
 [*]CPU only, no graphics card, no account, no cloud
 [*]Every human on the bridge can give orders (multiplayer: install on the host)
 [*]Targets by name ("Scan the Ragusa") or the target marked on your console
@@ -41,7 +41,7 @@ F4 = push to talk, F5 = mute microphone, F6 = First Officer on/off, F7 = overlay
 [list]
 [*]Short orders work without addressing anyone ("Shields up"). For longer ones say "Helm, …", "Tactical, …", "Engineering, …" or hold F4.
 [*]If your microphone name contains umlauts (ä, ö, ü), rename it in Windows – the game cannot use it otherwise.
-[*]Settings: BepInEx\config\de.phuntasyproductions.stbcvoicecrew.cfg (language: spiel/de/en/auto).
+[*]Settings: BepInEx\config\de.phuntasyproductions.stbcvoicecrew.cfg (language: spiel/de/en/fr/auto).
 [/list]
 
 [b]Known limitations[/b]

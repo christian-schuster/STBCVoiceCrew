@@ -65,7 +65,7 @@ namespace StbcAiCrew.Voice
         public bool Ready => _model != IntPtr.Zero;
         public string Error { get; private set; }
 
-        /// <summary>Sprachkürzel ("de", "en") für Log und Auswahl.</summary>
+        /// <summary>Sprachkürzel ("de", "en", "fr") für Log und Auswahl.</summary>
         public readonly string Tag;
 
         public VoskEngine(ManualLogSource log, string libDir, string modelDir, string tag = "de")
@@ -199,6 +199,9 @@ namespace StbcAiCrew.Voice
             if (_model != IntPtr.Zero) { vosk_model_free(_model); _model = IntPtr.Zero; }
         }
 
+        /// <summary>Befehlswortschatz einer Sprache ("de", "en", "fr").</summary>
+        public static string[] WordsFor(string tag) => tag == "en" ? CommandWordsEn : tag == "fr" ? CommandWordsFr : CommandWords;
+
         /// <summary>Befehlswortschatz für die Grammatik (aus den Regeln des Parsers und den Sprechweisen der Tests).</summary>
         public static readonly string[] CommandWords =
         {
@@ -246,6 +249,27 @@ namespace StbcAiCrew.Voice
             "stealth", "mode", "silent", "running", "dark", "detected", "detect", "seen", "see", "noticed", "notice", "spotted", "undetected", "sneak", "end", "sensor", "sensors", "range", "detection", "outside",
             "percent", "zero", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "twenty", "thirty", "forty", "fifty", "hundred",
             "as", "were", "normal", "operations", "orders", "standing", "resume", "answer", "hail", "screen", "channel", "probe"
+        };
+
+        /// <summary>Französischer Befehlswortschatz (Regeln aus CommandParserFr, Schreibweise des Vosk-Modells mit Akzenten).</summary>
+        public static readonly string[] CommandWordsFr =
+        {
+            "numéro", "un", "premier", "officier", "commandant", "commander", "suggestion", "suggestions", "rompez", "repos", "blague", "vous", "avez", "ai", "prenez", "prends", "reprends", "commandement",   // First Officer
+            "barre", "timonier", "navigation", "navigateur", "pilote", "enseigne", "monsieur", "rao", "tactique", "lieutenant", "hoyle", "ingénierie", "ingénieur", "machines", "salle", "chef", "équipage", "passerelle", "tout", "le", "monde", "toutes", "stations", "ordinateur",
+            "s'il", "il", "plaît", "te", "ok", "d'accord", "bon", "alors", "et", "puis", "ensuite", "donc", "maintenant", "vite", "oui", "non", "affirmatif", "négatif", "exact", "correct", "confirmé", "annule", "annulez", "ne", "pas", "jamais", "seulement", "uniquement", "mon", "ma", "nos", "notre", "leur", "leurs", "ses", "son", "nous", "on", "ils", "je",
+            "en", "avant", "toute", "pleine", "vitesse", "puissance", "impulsion", "maximale", "maximum", "max", "plus", "moins", "accélère", "accélérez", "fond", "demi", "mi", "moitié", "quart", "ralentis", "ralentissez", "lentement",
+            "stop", "stoppe", "stoppez", "arrêt", "complet", "total", "arrête", "arrêtez", "halte", "marche", "arrière", "recule", "reculez", "moteurs", "vaisseau",
+            "distorsion", "engagez", "engage", "enclenchez", "exécution", "allez", "y", "passez", "passe", "passons", "saut", "sautez", "prépare", "préparez", "charge", "chargez", "bobines", "noyau", "réacteur", "prêt", "prêtes", "lance", "lancez",
+            "va", "vas", "allons", "vole", "volez", "dirige", "dirigez", "emmène", "emmenez", "conduis", "conduisez", "amène", "amenez", "vers", "à", "au", "aux", "jusqu'à", "direction", "de", "du", "des", "d'", "la", "les", "l'", "une", "ce", "cette", "cap", "route", "sur", "mets", "mettez", "approche", "approchez", "rapproche", "rapprochez", "intercepte", "interceptez",
+            "éloigne", "éloignez", "manœuvre", "évasive", "évitement", "dégage", "dégagez",
+            "boucliers", "bouclier", "levez", "lève", "levés", "activez", "active", "activés", "baissez", "baisse", "abaissez", "baissés", "désactivez", "désactive", "coupez", "coupe", "haut", "bas", "module", "modulez", "modulation", "fréquence", "alerte", "rouge", "fin",
+            "feu", "volonté", "ouvrez", "faites", "tirez", "tire", "tirer", "tirons", "cessez", "cesse", "phaser", "phasers", "torpille", "torpilles", "photons", "armez", "arme", "désarmez", "retenez", "ordre", "signal", "attendez", "sans", "personne",
+            "ciblez", "cible", "visez", "vise", "armes", "armement", "propulsion", "ciblage", "nouvelle", "est", "sélectionnez", "marquez", "verrouillez", "analysez", "analyse", "scannez", "scanne", "scanner", "balayez", "signes", "vie", "attaquez", "attaque", "détruisez", "détruis", "combat", "ennemi",
+            "énergie", "équilibrez", "répartissez", "réparez", "répare", "réparation", "tous", "systèmes", "téléportez", "téléporte", "téléporter", "transportez", "survivants", "bord", "ramenez", "piratez", "pirate", "brouillez", "brouille", "perturbez", "contrôle", "communications", "intrusion",
+            "évitez", "évite", "contournez", "contourne", "autour", "champ", "mines", "mine", "anomalie", "nébuleuse", "astéroïdes", "gardez", "garde", "restez", "reste", "restons", "distance", "sécurité", "kilomètres", "tournez", "tourne", "orbite", "position", "ici", "place", "sortez", "sors", "sortons", "retraite", "repli",
+            "mode", "furtif", "furtivité", "minimum", "détecter", "détectés", "repérés", "vus", "être", "signature", "réduisez", "hors", "portée", "capteurs", "détection", "laissez", "laisse",
+            "pour", "cent", "zéro", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix", "vingt", "trente", "quarante", "cinquante", "cent",
+            "retour", "normale", "ordres", "répondez", "appel", "écran", "canal", "sonde"
         };
     }
 }

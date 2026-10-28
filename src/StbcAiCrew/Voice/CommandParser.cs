@@ -28,7 +28,7 @@ namespace StbcAiCrew.Voice
     }
 
     /// <summary>Befehlssprache.</summary>
-    public enum Lang { De, En }
+    public enum Lang { De, En, Fr }
 
     public sealed class ParsedCommand
     {
@@ -73,6 +73,7 @@ namespace StbcAiCrew.Voice
 
         static readonly List<Rule> Rules = new List<Rule>();
         static readonly List<Rule> RulesEn = new List<Rule>();
+        static readonly List<Rule> RulesFr = new List<Rule>();
         static List<Rule> _adding = Rules;
         const RegexOptions O = RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant;
 
@@ -161,6 +162,8 @@ namespace StbcAiCrew.Voice
 
             _adding = RulesEn;
             InitEnglish();
+            _adding = RulesFr;
+            InitFrench();
         }
 
         // ---------------- Ansprache ----------------
@@ -180,27 +183,28 @@ namespace StbcAiCrew.Voice
 
         // ---------------- Zerlegen ----------------
 
-        static readonly Regex Splitter = new Regex(@"[,.;!?]+|\s+und\s+(dann\s+)?|\s+dann\s+|\s+danach\s+|\s+anschließend\s+|\s+and\s+(then\s+)?|\s+then\s+", O);
+        static readonly Regex Splitter = new Regex(@"[,.;!?]+|\s+und\s+(dann\s+)?|\s+dann\s+|\s+danach\s+|\s+anschließend\s+|\s+and\s+(then\s+)?|\s+then\s+|\s+et\s+(puis\s+|ensuite\s+)?|\s+puis\s+|\s+ensuite\s+", O);
         static readonly Regex Negation = new Regex(@"\b(nicht|kein\w*|nie|niemals|bloß\s+nicht|don'?t|never)\b", O);
         static readonly Regex Filler = new Regex(@"^(bitte|so|okay|ok|gut|also|ja|äh|ähm|hm|und|doch|mal|danach|dann|anschließend|anschliessend)\s+", O);
         static readonly Regex Purpose = new Regex(@"\s+(damit|so\s+dass|sodass|weil)\s+.*$", O);
 
         public static ParseResult Parse(string text, IList<string> knownNames = null, Lang lang = Lang.De)
         {
-            bool en = lang == Lang.En;
+            bool en = lang == Lang.En, fr = lang == Lang.Fr;
             var result = new ParseResult();
             if (string.IsNullOrEmpty(text)) return result;
             string t = " " + text.Trim() + " ";
+            if (fr) t = NormalizeFr(t);
             t = t.Replace("ß", "ss").Replace('-', ' ');   // Schreibweisen vereinheitlichen ("Warp-Spulen" = "Warp Spulen")
             if (en) t = Regex.Replace(t, @"\b(fly|head|go|move|course|warp|impulse|power)\s+two\b", "$1 to", RegexOptions.IgnoreCase);   // "to" klingt wie "two"
             t = t.Trim();
 
             // Ansprache am Anfang ("Steuer, …", "Rao bitte …", "Crew: …")
-            var am = (en ? AddressRxEn : AddressRx).Match(t);
+            var am = (en ? AddressRxEn : fr ? AddressRxFr : AddressRx).Match(t);
             if (am.Success)
             {
                 bool all;
-                result.Addressed = en ? StationOfEn(am.Groups["who"].Value, out all) : StationOf(am.Groups["who"].Value, out all);
+                result.Addressed = en ? StationOfEn(am.Groups["who"].Value, out all) : fr ? StationOfFr(am.Groups["who"].Value, out all) : StationOf(am.Groups["who"].Value, out all);
                 result.AddressedAll = all;
                 t = t.Substring(am.Length);
             }
@@ -210,7 +214,7 @@ namespace StbcAiCrew.Voice
             {
                 if (raw == null) continue;
                 string clause = raw.Trim();
-                while (true) { var f = (en ? FillerEn : Filler).Match(clause); if (!f.Success) break; clause = clause.Substring(f.Length).Trim(); }
+                while (true) { var f = (en ? FillerEn : fr ? FillerFr : Filler).Match(clause); if (!f.Success) break; clause = clause.Substring(f.Length).Trim(); }
                 if (clause.Length == 0) continue;
                 ParseClause(clause, result, knownNames, lang);
             }
@@ -234,11 +238,11 @@ namespace StbcAiCrew.Voice
 
         static void ParseClause(string clause, ParseResult result, IList<string> knownNames, Lang lang)
         {
-            bool en = lang == Lang.En;
-            bool negated = (en ? NegationEn : Negation).IsMatch(clause);
+            bool en = lang == Lang.En, fr = lang == Lang.Fr;
+            bool negated = (en ? NegationEn : fr ? NegationFr : Negation).IsMatch(clause);
             bool matched = false;
             var seen = new HashSet<Intent>();
-            foreach (var r in en ? RulesEn : Rules)
+            foreach (var r in en ? RulesEn : fr ? RulesFr : Rules)
             {
                 var m = r.Pattern.Match(clause);
                 if (!m.Success) continue;
@@ -275,7 +279,7 @@ namespace StbcAiCrew.Voice
                 if (prev.Name != null && knownNames != null) { float sc; prev.Resolved = Phonetics.BestMatch(prev.Name, knownNames, out sc); }
                 if (prev.Name != null) return;
             }
-            if ((en ? OrderWordsEn : OrderWords).IsMatch(clause)) result.NotUnderstood.Add(clause);
+            if ((en ? OrderWordsEn : fr ? OrderWordsFr : OrderWords).IsMatch(clause)) result.NotUnderstood.Add(clause);
         }
 
         static bool TakesName(Intent i) =>
@@ -316,9 +320,10 @@ namespace StbcAiCrew.Voice
         static string CleanName(string s, Lang lang = Lang.De)
         {
             string n = s.Trim();
-            var noise = lang == Lang.En ? NameNoiseEn : NameNoise;
+            var noise = lang == Lang.En ? NameNoiseEn : lang == Lang.Fr ? NameNoiseFr : NameNoise;
             for (int i = 0; i < 3; i++) { string m = noise.Replace(n, "").Trim(); if (m == n) break; n = m; }
             if (lang == Lang.En) return PronounEn.IsMatch(n) || n.Length == 0 ? null : n;
+            if (lang == Lang.Fr) return PronounFr.IsMatch(n) || n.Length == 0 ? null : n;
             if (Regex.IsMatch(n, @"^(es|sie|ihn|ihm|das|die|der|den|dem|uns|euch|da|dort|hin|leben|anvisieren|erfassen|auswählen|wählen|markieren|aufschalten)$", O)) return null;   // Fürwörter und Verben sind keine Namen
             return n.Length > 0 ? n : null;
         }
@@ -337,11 +342,11 @@ namespace StbcAiCrew.Voice
         public static float Number(string s, Lang lang = Lang.De)
         {
             if (string.IsNullOrEmpty(s)) return -1f;
-            string t = s.Trim().TrimEnd('%').Replace("prozent", "").Trim().Replace(',', '.');
+            string t = s.Trim().TrimEnd('%').Replace("prozent", "").Replace("pour cent", "").Replace("pourcent", "").Trim().Replace(',', '.');
             float f;
             if (float.TryParse(t, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out f)) return f;
             int v;
-            return (lang == Lang.En ? WordsEn : Words).TryGetValue(t, out v) ? v : -1f;
+            return (lang == Lang.En ? WordsEn : lang == Lang.Fr ? WordsFr : Words).TryGetValue(t, out v) ? v : -1f;
         }
     }
 }

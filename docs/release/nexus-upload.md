@@ -8,10 +8,10 @@ Everything the nexusmods.com upload form asks for, ready to copy.
 - **Author:** Phuntasy Productions
 - **Version:** 1.1.0
 - **Category (suggestion):** Utilities (alternative: Gameplay)
-- **Language:** English (voice commands: English, German; the First Officer also speaks French)
+- **Language:** English (voice commands: English, German, French)
 - **Summary:**
   Voice commands are back! Fully local speech recognition replaces the defunct IBM Watson: Rao, Hoyle and T'nar follow
-  spoken orders in English or German within a third of a second – no internet service, no GPU, works in multiplayer.
+  spoken orders in English, German or French within a third of a second – no internet service, no GPU, works in multiplayer.
   New in 1.1: an AI First Officer who advises you, knows the missions and takes command when the chair is empty.
 - **Description:** paste `nexus-description.txt` (BBCode).
 - **Requirements:** none (BepInEx 5 is included). Nothing under "Off-site requirements".
@@ -49,6 +49,6 @@ Title image 16:9 (at least 1280×720) and 3–5 screenshots, e.g.:
 
 - [ ] Fresh test install: run the setup on a clean game copy (without BepInEx), start the game, check the overlay
       shows "Vosk: … ready" after the speech model download, try a few orders in German and English.
-- [ ] Switch the game to English once and check `BefehlsSprache = spiel` follows it.
+- [ ] Switch the game to English and to French once and check `BefehlsSprache = spiel` follows it (French model download, commands).
 - [ ] Multiplayer: host with the mod, a player without the mod gives orders.
 - [ ] Git tag `v1.1.0`, GitHub release with the three files (see `github-release.md`).

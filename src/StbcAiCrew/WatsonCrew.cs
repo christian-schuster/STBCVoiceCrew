@@ -98,8 +98,7 @@ namespace StbcAiCrew
                 if (forOfficer) { LastHeard = free.Length > 0 ? free : grammar; LastResult = "First Officer"; Beep(true); return; }
             }
             if (!GameBridge.InMission) { LastHeard = free.Length > 0 ? free : grammar; LastResult = Loc.T("kein Einsatz", "no mission"); return; }
-            bool en = lang == Lang.En;
-            string onMarker = en ? " at " : " auf ";
+            string onMarker = lang == Lang.En ? " at " : lang == Lang.Fr ? " sur " : " auf ";
 
             var rG = CommandParser.Parse(grammar, names, lang);
             var rF = CommandParser.Parse(free, names, lang);
@@ -114,7 +113,7 @@ namespace StbcAiCrew
                 // Feuerbefehle nur mit ausdrücklichem Ziel ("Feuer auf …"), sonst bleibt das gewählte Ziel
                 string tail = fire ? After(free, onMarker) : free;
                 string said = After(matched, onMarker) ?? "";
-                if (fire && System.Text.RegularExpressions.Regex.IsMatch(said, @"^(das\s+|dem\s+|den\s+|the\s+|my\s+)?(markierte\w*\s+|aktuelle\w*\s+|marked\s+|current\s+|selected\s+)?(ziel\w*|target)$")) continue;
+                if (fire && System.Text.RegularExpressions.Regex.IsMatch(said, @"^(das\s+|dem\s+|den\s+|the\s+|my\s+|la\s+|ma\s+)?(markierte\w*\s+|aktuelle\w*\s+|marked\s+|current\s+|selected\s+)?(ziel\w*|target|cible)(\s+(marquée|actuelle|sélectionnée))?$")) continue;
                 if (c.Resolved != null || (!NeedsName(c.Intent) && !(fire && (c.Name != null || tail != null)))) continue;
                 float s;
                 c.Resolved = (tail != null ? Phonetics.BestMatch(tail, names, out s) : null) ??
@@ -170,8 +169,10 @@ namespace StbcAiCrew
             Execute(r);
         }
 
-        /// <summary>Gelernte Befehlssprache je Sprecher (Zähler: + Deutsch, − Englisch).</summary>
+        /// <summary>Gelernte Befehlssprache je Sprecher und Sprache (Schlüssel "sprecher|sprache", Zähler 0–5).</summary>
         readonly Dictionary<string, int> _langVotes = new Dictionary<string, int>();
+
+        static Lang LangOf(string tag) => tag == "en" ? Lang.En : tag == "fr" ? Lang.Fr : Lang.De;
 
         /// <summary>
         /// Vosk liefert je Sprache "tag‖grammatik‖frei‖sicherheit", mehrere durch "¦" getrennt. Gewählt wird die Sprache, deren
@@ -181,22 +182,27 @@ namespace StbcAiCrew
         {
             lang = Lang.De; grammar = ""; free = "";
             float best = float.MinValue;
-            int votes; _langVotes.TryGetValue(speaker ?? "", out votes);
             var understood = new List<Lang>();
             foreach (var entry in (recognized ?? "").Split('¦'))
             {
                 var p = entry.Split('‖');
                 Lang l = Lang.De; string g, f; float conf = 0f;
-                if (p.Length >= 4) { l = p[0].Trim() == "en" ? Lang.En : Lang.De; g = p[1].Trim(); f = p[2].Trim(); float.TryParse(p[3], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out conf); }
+                if (p.Length >= 4) { l = LangOf(p[0].Trim()); g = p[1].Trim(); f = p[2].Trim(); float.TryParse(p[3], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out conf); }
                 else { g = p[0].Trim(); f = p.Length > 1 ? p[1].Trim() : g; }
                 bool ok = CommandParser.Parse(g, names, l).Understood || CommandParser.Parse(f, names, l).Understood;
                 if (ok) understood.Add(l);
-                float score = (ok ? 2f : 0f) + conf + (l == Lang.De ? votes : -votes) * 0.1f;
+                int votes; _langVotes.TryGetValue((speaker ?? "") + "|" + l, out votes);
+                float score = (ok ? 2f : 0f) + conf + votes * 0.1f;
                 if (score > best) { best = score; lang = l; grammar = g; free = f; }
             }
             // Eindeutig nur eine Sprache verstanden: für diesen Sprecher merken (begrenzt, damit ein Wechsel möglich bleibt)
             if (understood.Count == 1 && speaker != null)
-                _langVotes[speaker] = Math.Max(-5, Math.Min(5, votes + (understood[0] == Lang.De ? 1 : -1)));
+                foreach (Lang l in new[] { Lang.De, Lang.En, Lang.Fr })
+                {
+                    string key = speaker + "|" + l;
+                    int v; _langVotes.TryGetValue(key, out v);
+                    _langVotes[key] = Math.Max(0, Math.Min(5, v + (l == understood[0] ? 1 : -1)));
+                }
         }
         static int WordCount(string s) => (s ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
 

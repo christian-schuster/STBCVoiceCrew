@@ -8,7 +8,7 @@ recognition. The bot crew – Rao (helm), Hoyle (tactical) and T'nar (engineerin
 orders and answers with their original voices. No internet, no account, no graphics card needed.
 
 FEATURES
-- Commands in English or German, recognised in about 0.3 seconds on the CPU (Vosk).
+- Commands in English, German or French, recognised in about 0.3 seconds on the CPU (Vosk).
 - Every human on the bridge can give orders (multiplayer: the host runs the mod and hears the others
   through the game's voice chat).
 - Targets by name: "Scan the Ragusa", "Take us to the Nicholson". The target you marked on your own
@@ -72,7 +72,8 @@ Engineering: power to shields / all power to the engines / weapons to maximum / 
              beam the survivors aboard / energize / prepare for warp
 
 SETTINGS (BepInEx\config\de.phuntasyproductions.stbcvoicecrew.cfg, created on first start)
-- [Sprache] BefehlsSprache = spiel | de | en | auto   (spiel = same as the game language, auto = both at once)
+- [Sprache] BefehlsSprache = spiel | de | en | fr | auto   (spiel = same as the game language, auto = German and English
+  at once, or a list such as de,fr)
 - [Sprache] ZuhoerModus = beides | ansprache | ptt | dauernd
 - [Tasten] PushToTalk = F4
 - [Watson] Bestaetigungstoene = true
@@ -162,7 +163,8 @@ Technik: Energie auf die Schilde / alles in den Antrieb / Waffen auf Maximum / r
          beam die Überlebenden an Bord / Warpkern laden
 
 EINSTELLUNGEN (BepInEx\config\de.phuntasyproductions.stbcvoicecrew.cfg, entsteht beim ersten Start)
-- [Sprache] BefehlsSprache = spiel | de | en | auto   (spiel = wie das Spiel, auto = beide gleichzeitig)
+- [Sprache] BefehlsSprache = spiel | de | en | fr | auto   (spiel = wie das Spiel, auto = Deutsch und Englisch gleichzeitig,
+  oder eine Liste wie de,fr)
 - [Sprache] ZuhoerModus = beides | ansprache | ptt | dauernd
 - [Tasten] PushToTalk = F4
 - [Watson] Bestaetigungstoene = true

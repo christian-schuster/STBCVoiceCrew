@@ -20,7 +20,7 @@ don't have it can still join you.
 ## Features
 
 **Voice commands**
-- Supported languages: **English** and **German** (French is planned). The command language follows the game's
+- Supported languages: **English**, **German** and **French**. The command language follows the game's
   language by default and can be set in the config.
 - Recognised on the CPU in ~0.3 s (Vosk). No graphics card, no account, no cloud.
 - Every human on the bridge may give orders; in multiplayer the host runs the mod and understands the other players

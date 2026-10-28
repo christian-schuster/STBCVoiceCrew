@@ -129,6 +129,7 @@ namespace StbcAiCrew
         public ConfigEntry<bool> WatsonBeeps;
         public ConfigEntry<string> VoskModel;
         public ConfigEntry<string> VoskModelEn;
+        public ConfigEntry<string> VoskModelFr;
         public ConfigEntry<string> CommandLanguage;
         bool _watson;
         WatsonCrew _crew;
@@ -485,19 +486,21 @@ namespace StbcAiCrew
             _crew.Player = _player;
             SetupCaptain(pluginDir);
 
-            // Befehlssprache: spiel = Sprache des Spiels, de, en, auto = beide gleichzeitig (Sprache je Sprecher gelernt)
+            // Befehlssprache: spiel = Sprache des Spiels, de, en, fr, auto = Deutsch und Englisch gleichzeitig, oder eine Liste
+            // wie "de,fr" (Sprache je Sprecher gelernt)
             string lang = (CommandLanguage.Value ?? "spiel").Trim().ToLowerInvariant();
             _followGameLanguage = lang == "spiel" || lang == "game";
             _pluginDir = pluginDir;
             if (_followGameLanguage)
             {
                 string gl = GameBridge.GameLanguage() ?? GameBridge.VoiceLanguage() ?? "German";
-                lang = gl.StartsWith("German", StringComparison.OrdinalIgnoreCase) ? "de" : "en";
+                lang = gl.StartsWith("German", StringComparison.OrdinalIgnoreCase) ? "de" : gl.StartsWith("French", StringComparison.OrdinalIgnoreCase) ? "fr" : "en";
             }
             string libDir = Path.Combine(pluginDir, "vosk");
             _voskLibDir = libDir;
-            if (lang == "de" || lang == "auto") AddVosk("de");
-            if (lang == "en" || lang == "auto") AddVosk("en");
+            if (lang == "auto") lang = "de,en";
+            foreach (var tag in lang.Split(new[] { ',', ' ', '+' }, StringSplitOptions.RemoveEmptyEntries))
+                if (tag == "de" || tag == "en" || tag == "fr") AddVosk(tag);
             // Je Äußerung alle Sprachen parallel; Ergebnis "de‖grammatik‖frei‖sicherheit¦en‖…", die Auswahl trifft WatsonCrew
             _transcribe = pcm =>
             {
@@ -534,7 +537,7 @@ namespace StbcAiCrew
         void AddVosk(string tag)
         {
             if (_vosk.Exists(v => v.Tag == tag)) return;
-            string model = ResolvePath(_pluginDir, tag == "en" ? VoskModelEn.Value : VoskModel.Value);
+            string model = VoskModelFor(tag);
             if (!Directory.Exists(model))
             {
                 bool started = Downloads.Start(Downloads.VoskModel(Path.GetDirectoryName(model), Path.GetFileName(model), ok =>
@@ -548,10 +551,13 @@ namespace StbcAiCrew
             }
             var e = new VoskEngine(Log, _voskLibDir, model, tag);
             if (!e.Ready) return;
-            e.SetVocabulary(tag == "en" ? VoskEngine.CommandWordsEn : VoskEngine.CommandWords);
+            e.SetVocabulary(VoskEngine.WordsFor(tag));
             _vosk.Add(e);
             _vocabKey = null;   // Kontaktnamen beim nächsten Abfragen ergänzen
         }
+
+        string VoskModelFor(string tag) =>
+            ResolvePath(_pluginDir, tag == "en" ? VoskModelEn.Value : tag == "fr" ? VoskModelFr.Value : VoskModel.Value);
 
         /// <summary>Mikrofon und Mithören der Mitspieler starten, sobald ein Sprachmodell bereit ist.</summary>
         void SetupVoiceInput()
@@ -579,17 +585,17 @@ namespace StbcAiCrew
         {
             if (!_followGameLanguage || Time.realtimeSinceStartup < _nextLangCheck) return;
             _nextLangCheck = Time.realtimeSinceStartup + 5f;
-            string want = Loc.German ? "de" : "en";
+            string want = Loc.Lang;
             if (_vosk.Exists(v => v.Tag == want)) return;
-            string modelDir = ResolvePath(_pluginDir, want == "en" ? VoskModelEn.Value : VoskModel.Value);
+            string modelDir = VoskModelFor(want);
             if (!Directory.Exists(modelDir)) { AddVosk(want); return; }   // erst laden; danach wechselt die nächste Prüfung
             var e = new VoskEngine(Log, _voskLibDir, modelDir, want);
             if (!e.Ready) { _followGameLanguage = false; return; }
-            e.SetVocabulary(want == "en" ? VoskEngine.CommandWordsEn : VoskEngine.CommandWords);
+            e.SetVocabulary(VoskEngine.WordsFor(want));
             _retiredVosk.AddRange(_vosk);
             _vosk = new System.Collections.Generic.List<VoskEngine> { e };
             _vocabKey = null;   // Kontaktnamen beim nächsten Abfragen ergänzen
-            Toast(Loc.T("Befehlssprache: Deutsch", "Command language: English"));
+            Toast(want == "fr" ? "Langue des commandes : français" : Loc.T("Befehlssprache: Deutsch", "Command language: English"));
         }
 
         /// <summary>First Officer einrichten: Entscheidungsbaum, Piper-Stimme (falls vorhanden), Sprachchat im Mehrspieler.</summary>
@@ -759,7 +765,7 @@ namespace StbcAiCrew
                         _vocabKey = key;
                         foreach (var v in _vosk)
                         {
-                            var words = new System.Collections.Generic.List<string>(v.Tag == "en" ? VoskEngine.CommandWordsEn : VoskEngine.CommandWords);
+                            var words = new System.Collections.Generic.List<string>(VoskEngine.WordsFor(v.Tag));
                             words.AddRange(names);
                             v.SetVocabulary(words);
                         }
@@ -939,7 +945,8 @@ namespace StbcAiCrew
             WatsonBeeps = Config.Bind("Watson", "Bestaetigungstoene", true, "Kurzer Ton: verstanden (zwei hohe) / nicht verstanden (ein tiefer).");
             VoskModel = Config.Bind("Watson", "VoskModell", "vosk/vosk-model-small-de-0.15", "Deutsches Vosk-Modell (relativ zum Plugin-Ordner oder absolut). Die Vosk-DLLs liegen im Ordner vosk.");
             VoskModelEn = Config.Bind("Watson", "VoskModellEnglisch", "vosk/vosk-model-small-en-us-0.15", "Englisches Vosk-Modell (relativ zum Plugin-Ordner oder absolut).");
-            CommandLanguage = Config.Bind("Sprache", "BefehlsSprache", "spiel", "Sprache der Sprachbefehle: spiel = wie das Spiel eingestellt ist, de, en, auto = Deutsch und Englisch gleichzeitig (doppelte CPU-Last, Sprache wird je Sprecher gelernt).");
+            VoskModelFr = Config.Bind("Watson", "VoskModellFranzoesisch", "vosk/vosk-model-small-fr-0.22", "Französisches Vosk-Modell (relativ zum Plugin-Ordner oder absolut).");
+            CommandLanguage = Config.Bind("Sprache", "BefehlsSprache", "spiel", "Sprache der Sprachbefehle: spiel = wie das Spiel eingestellt ist, de, en, fr, auto = Deutsch und Englisch gleichzeitig, oder eine Liste wie de,fr (mehrfache CPU-Last, Sprache wird je Sprecher gelernt).");
             CaptainEnabled = Config.Bind("FirstOfficer", "Aktiv", true, "First Officer (ohne Sprachmodell): in der Lobby und auf der Brücke dabei. Ein/aus auch per Overlay, Taste oder Sprache (\"Nummer Eins, wegtreten\" / \"Nummer Eins, auf die Brücke\").");
             CaptainCommand = Config.Bind("FirstOfficer", "Kommando", true, "Führt das Schiff, wenn niemand auf dem Captain-Stuhl sitzt (gibt Befehle, erwartet Bestätigung).");
             CaptainHints = Config.Bind("FirstOfficer", "Hinweise", true, "Berät einen menschlichen Captain: Warnungen bei Gefahr oder Fehlern, Hinweise, wenn es beim Missionsziel nicht weitergeht.");
