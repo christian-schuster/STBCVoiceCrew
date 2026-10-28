@@ -46,9 +46,11 @@
   </ItemGroup>
 
   <Target Name="DeployPlugin" AfterTargets="Build" Condition="'$(DeployToGame)' == 'true' And Exists('$(GameDir)\BepInEx')">
-    <MakeDir Directories="$(GameDir)\BepInEx\plugins\StbcAiCrew" />
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins\StbcAiCrew" />
-    <Message Importance="high" Text="StbcAiCrew -> $(GameDir)\BepInEx\plugins\StbcAiCrew" />
+    <!-- Alte DLL im früheren Ordner entfernen, sonst lädt BepInEx womöglich die alte; den Rest räumt die Mod beim Start auf -->
+    <Delete Files="$(GameDir)\BepInEx\plugins\StbcAiCrew\StbcAiCrew.dll" ContinueOnError="true" />
+    <MakeDir Directories="$(GameDir)\BepInEx\plugins\STBC Voice Crew" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins\STBC Voice Crew" />
+    <Message Importance="high" Text="STBC Voice Crew -> $(GameDir)\BepInEx\plugins\STBC Voice Crew" />
   </Target>
 
 </Project>

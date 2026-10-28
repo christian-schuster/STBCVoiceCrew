@@ -215,6 +215,7 @@ namespace StbcAiCrew
             _active = true;
 
             string pluginDir = Path.GetDirectoryName(Info.Location);
+            MigrateOldPluginFolder(pluginDir);
             _dataDir = Path.Combine(Paths.ConfigPath, "StbcAiCrew");
             JobObject.Enabled = UseJobObject.Value;
             KillLeftovers(pluginDir);
@@ -395,6 +396,50 @@ namespace StbcAiCrew
 
         // ================= Watson-Modus =================
 
+        /// <summary>
+        /// Früher hieß der Plugin-Ordner "StbcAiCrew", jetzt "STBC Voice Crew". Liegt der alte noch daneben: Modelle, Stimmen,
+        /// Piper usw. übernehmen (spart Downloads), die alte DLL nicht, dann den alten Ordner löschen. Klappt das Löschen
+        /// nicht (Datei gesperrt), beim nächsten Start erneut.
+        /// </summary>
+        static void MigrateOldPluginFolder(string pluginDir)
+        {
+            try
+            {
+                string old = Path.Combine(Path.GetDirectoryName(pluginDir), "StbcAiCrew");
+                if (!Directory.Exists(old) || string.Equals(Path.GetFullPath(old).TrimEnd('\\'), Path.GetFullPath(pluginDir).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)) return;
+                int moved = 0;
+                foreach (var d in Directory.GetDirectories(old))
+                {
+                    string dst = Path.Combine(pluginDir, Path.GetFileName(d));
+                    if (Directory.Exists(dst)) MergeInto(d, dst, ref moved); else { Directory.Move(d, dst); moved++; }
+                }
+                foreach (var f in Directory.GetFiles(old))
+                {
+                    string name = Path.GetFileName(f);
+                    if (name.StartsWith("StbcAiCrew.", StringComparison.OrdinalIgnoreCase)) continue;   // alte Mod-DLL nicht übernehmen
+                    string dst = Path.Combine(pluginDir, name);
+                    if (!File.Exists(dst)) { File.Move(f, dst); moved++; }
+                }
+                Directory.Delete(old, true);
+                Log.LogInfo("Alter Plugin-Ordner StbcAiCrew aufgeräumt (" + moved + " Einträge übernommen).");
+            }
+            catch (Exception e) { Log.LogWarning("Alter Plugin-Ordner StbcAiCrew nicht vollständig aufgeräumt: " + e.Message); }
+        }
+
+        static void MergeInto(string src, string dst, ref int moved)
+        {
+            foreach (var d in Directory.GetDirectories(src))
+            {
+                string to = Path.Combine(dst, Path.GetFileName(d));
+                if (Directory.Exists(to)) MergeInto(d, to, ref moved); else { Directory.Move(d, to); moved++; }
+            }
+            foreach (var f in Directory.GetFiles(src))
+            {
+                string to = Path.Combine(dst, Path.GetFileName(f));
+                if (!File.Exists(to)) { File.Move(f, to); moved++; }
+            }
+        }
+
         void AwakeWatson(string pluginDir)
         {
             Loc.Refresh();
@@ -432,12 +477,10 @@ namespace StbcAiCrew
             }
             string libDir = Path.Combine(pluginDir, "vosk");
             _voskLibDir = libDir;
-            if (lang == "de" || lang == "auto") _vosk.Add(new VoskEngine(Log, libDir, ResolvePath(pluginDir, VoskModel.Value), "de"));
-            if (lang == "en" || lang == "auto") _vosk.Add(new VoskEngine(Log, libDir, ResolvePath(pluginDir, VoskModelEn.Value), "en"));
-            if (_vosk.Exists(v => v.Ready)) _vosk.RemoveAll(v => !v.Ready);
-            foreach (var v in _vosk) v.SetVocabulary(v.Tag == "en" ? VoskEngine.CommandWordsEn : VoskEngine.CommandWords);
+            if (lang == "de" || lang == "auto") AddVosk("de");
+            if (lang == "en" || lang == "auto") AddVosk("en");
             // Je Äußerung alle Sprachen parallel; Ergebnis "de‖grammatik‖frei‖sicherheit¦en‖…", die Auswahl trifft WatsonCrew
-            Func<short[], string> transcribe = pcm =>
+            _transcribe = pcm =>
             {
                 var engines = _vosk;
                 var res = new VoskEngine.Result[engines.Count];
@@ -457,7 +500,44 @@ namespace StbcAiCrew
                 return string.Join("¦", parts);
             };
 
-            if (VoiceEnabled.Value && VoskReady)
+            SetupVoiceInput();
+            Log.LogInfo("STBC Voice Crew im Watson-Modus geladen (Vosk " + VoskState +
+                        ", Zuhören: " + _crew.Listen + ", Push-to-talk: " + KeyPushToTalk.Value + ").");
+        }
+
+        Func<short[], string> _transcribe;
+
+        /// <summary>
+        /// Vosk-Modell einer Sprache laden; fehlt es, erst herunterladen (alphacephei.com) und danach laden. Das Paket bleibt so
+        /// klein, und es kommt nur die Sprache, die gebraucht wird.
+        /// </summary>
+        void AddVosk(string tag)
+        {
+            if (_vosk.Exists(v => v.Tag == tag)) return;
+            string model = ResolvePath(_pluginDir, tag == "en" ? VoskModelEn.Value : VoskModel.Value);
+            if (!Directory.Exists(model))
+            {
+                bool started = Downloads.Start(Downloads.VoskModel(Path.GetDirectoryName(model), Path.GetFileName(model), ok =>
+                {
+                    if (!ok) { Toast(Loc.T("Sprachmodell konnte nicht geladen werden (siehe Log)", "Speech model download failed (see log)")); return; }
+                    AddVosk(tag);
+                    SetupVoiceInput();
+                }));
+                if (started) Toast(Loc.T("Lade Sprachmodell (" + tag + ") – einmalig, ca. 45 MB …", "Downloading speech model (" + tag + ") – once, about 45 MB …"));
+                return;
+            }
+            var e = new VoskEngine(Log, _voskLibDir, model, tag);
+            if (!e.Ready) return;
+            e.SetVocabulary(tag == "en" ? VoskEngine.CommandWordsEn : VoskEngine.CommandWords);
+            _vosk.Add(e);
+            _vocabKey = null;   // Kontaktnamen beim nächsten Abfragen ergänzen
+        }
+
+        /// <summary>Mikrofon und Mithören der Mitspieler starten, sobald ein Sprachmodell bereit ist.</summary>
+        void SetupVoiceInput()
+        {
+            var transcribe = _transcribe;
+            if (_voice != null || !VoiceEnabled.Value || !VoskReady) return;
             {
                 var vs = new VoiceSettings
                 {
@@ -469,8 +549,6 @@ namespace StbcAiCrew
                 if (Multiplayer.Value)
                     _remoteTap = new RemoteVoiceTap(Log, "http://127.0.0.1:0", MicLanguage.Value, () => true, OnRemoteHeardWatson) { Transcriber = transcribe };
             }
-            Log.LogInfo("STBC AI Crew im Watson-Modus geladen (Vosk " + VoskState +
-                        ", Zuhören: " + _crew.Listen + ", Push-to-talk: " + KeyPushToTalk.Value + ").");
         }
 
         /// <summary>
@@ -483,7 +561,9 @@ namespace StbcAiCrew
             _nextLangCheck = Time.realtimeSinceStartup + 5f;
             string want = Loc.German ? "de" : "en";
             if (_vosk.Exists(v => v.Tag == want)) return;
-            var e = new VoskEngine(Log, _voskLibDir, ResolvePath(_pluginDir, want == "en" ? VoskModelEn.Value : VoskModel.Value), want);
+            string modelDir = ResolvePath(_pluginDir, want == "en" ? VoskModelEn.Value : VoskModel.Value);
+            if (!Directory.Exists(modelDir)) { AddVosk(want); return; }   // erst laden; danach wechselt die nächste Prüfung
+            var e = new VoskEngine(Log, _voskLibDir, modelDir, want);
             if (!e.Ready) { _followGameLanguage = false; return; }
             e.SetVocabulary(want == "en" ? VoskEngine.CommandWordsEn : VoskEngine.CommandWords);
             _retiredVosk.AddRange(_vosk);
@@ -530,12 +610,39 @@ namespace StbcAiCrew
 
         void SetupCaptainVoice(string pluginDir)
         {
-            var tts = new PiperTts(Log, ResolvePath(pluginDir, PiperExe.Value), ResolvePath(pluginDir, PiperVoiceDir.Value),
+            // Piper und die Stimme der Spielsprache bei Bedarf laden (github.com/rhasspy/piper, huggingface.co/rhasspy/piper-voices)
+            string exe = ResolvePath(pluginDir, PiperExe.Value);
+            if (!File.Exists(exe))
+            {
+                // "piper/piper/piper.exe": das Archiv enthält den Ordner "piper", also in den Ordner darüber entpacken
+                string into = Path.GetDirectoryName(Path.GetDirectoryName(exe));
+                if (Downloads.Start(Downloads.PiperRuntime(into, ok => { if (ok) SetupCaptainVoice(pluginDir); })))
+                    Toast(Loc.T("Lade Piper (Stimme des First Officers) – einmalig …", "Downloading Piper (First Officer's voice) – once …"));
+                return;
+            }
+            if (!EnsureCaptainVoice(pluginDir, CurrentCaptainVoice())) return;   // kommt nach dem Download wieder
+            if (_captainTts != null) return;
+            var tts = new PiperTts(Log, exe, ResolvePath(pluginDir, PiperVoiceDir.Value),
                                    Path.Combine(Path.GetTempPath(), "StbcAiCrew_captain"));
             if (tts.Available) { tts.Start(); _captainTts = tts; }
             else Log.LogWarning("First Officer: Piper nicht gefunden (" + PiperExe.Value + ") – er spricht nur als Text auf den Konsolen.");
             Log.LogInfo("First Officer aktiv: Kommando " + (_captain.Command ? "an" : "aus") + ", Hinweise " + (_captain.Hints ? "an" : "aus") +
                         ", Stimme " + (_captainTts != null ? "Piper" : "aus") + ".");
+        }
+
+        string CurrentCaptainVoice() => Loc.Lang == "de" ? CaptainVoiceDe.Value : Loc.Lang == "fr" ? CaptainVoiceFr.Value : CaptainVoiceEn.Value;
+
+        /// <summary>Stimme vorhanden? Sonst herunterladen (.onnx und .onnx.json) und danach die Stimme neu einrichten.</summary>
+        bool EnsureCaptainVoice(string pluginDir, string voice)
+        {
+            string dir = ResolvePath(pluginDir, PiperVoiceDir.Value);
+            bool model = File.Exists(Path.Combine(dir, voice + ".onnx")), json = File.Exists(Path.Combine(dir, voice + ".onnx.json"));
+            if (model && json) return true;
+            bool started = false;
+            if (!json) started |= Downloads.Start(Downloads.PiperVoiceFile(dir, voice, ".onnx.json", ok => { if (ok) SetupCaptainVoice(pluginDir); }));
+            if (!model) started |= Downloads.Start(Downloads.PiperVoiceFile(dir, voice, ".onnx", ok => { if (ok) SetupCaptainVoice(pluginDir); }));
+            if (started) Toast(Loc.T("Lade Stimme " + voice + " – einmalig, ca. 60 MB …", "Downloading voice " + voice + " – once, about 60 MB …"));
+            return false;
         }
 
         /// <summary>Der First Officer spricht: Text auf der Konsole (in VR lesbar), Stimme über Piper, im Mehrspieler über den Sprachchat.</summary>
@@ -545,9 +652,11 @@ namespace StbcAiCrew
             if (GameBridge.InMission) { if (to.HasValue) GameBridge.ShowConsoleMessage(to.Value, shown, 8f); else GameBridge.ShowOnAllConsoles(shown, 8f); }
             _crew.Note(shown);
             if (_captainTts == null) { AfterSpeech(text.Length * 0.06f, done); return; }   // nur Text: Lesezeit abwarten
-            string voice = Loc.Lang == "de" ? CaptainVoiceDe.Value : Loc.Lang == "fr" ? CaptainVoiceFr.Value : CaptainVoiceEn.Value;
-            if (!File.Exists(Path.Combine(ResolvePath(Path.GetDirectoryName(Info.Location), PiperVoiceDir.Value), voice + ".onnx")))
-                voice = Loc.Lang == "de" ? CaptainVoiceDe.Value : CaptainVoiceEn.Value;   // Stimme fehlt: Ersatz statt stumm
+            string voice = CurrentCaptainVoice();
+            string pdir = Path.GetDirectoryName(Info.Location);
+            if (!EnsureCaptainVoice(pdir, voice))   // Spielsprache gewechselt: Stimme nachladen, bis dahin eine vorhandene nehmen
+                foreach (var alt in new[] { CaptainVoiceEn.Value, CaptainVoiceDe.Value, CaptainVoiceFr.Value })
+                    if (File.Exists(Path.Combine(ResolvePath(pdir, PiperVoiceDir.Value), alt + ".onnx"))) { voice = alt; break; }
             _captainPending++;
             _captainTts.Speak(VoiceSpec.Parse(voice, CaptainSpeed.Value, 0.97f), PiperTts.CleanForSpeech(text), (pcm, rate) =>
             {
@@ -638,6 +747,7 @@ namespace StbcAiCrew
                 }
             }
             if (host) _crew.Tick(inMission ? _status : null);
+            Downloads.Poll();
             if (host && _captain != null) _captain.Tick(inMission ? _status : null);
             if (_testPilot != null) _testPilot.Tick();
             PlayCaptainAudio();
@@ -983,6 +1093,7 @@ namespace StbcAiCrew
             }
 
             foreach (var n in _brain.Notices) GUILayout.Label("<i>" + n + "</i>");
+            if (Downloads.Status != null) GUILayout.Label(Downloads.Status);
             if (_toast != null && Time.realtimeSinceStartup < _toastUntil) GUILayout.Label(_toast);
 
             GUILayout.EndVertical();

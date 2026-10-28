@@ -1,6 +1,11 @@
 # Backlog
 
 ## Release & Verteilung
+- **In Arbeit (Stand 28.10.):** erledigt: Plugin-Ordner "STBC Voice Crew" + Aufräumen des alten "StbcAiCrew" beim Start,
+  Vosk-Modelle, Piper und Stimmen bei Bedarf laden (curl/tar). Offen: Package.ps1 verkleinern (ohne Modelle/Piper/Stimmen,
+  neuer Ordnername), Installer-EXE (Steam-Bibliotheken über libraryfolders.vdf, Ubisoft-Registry, Auswahldialog),
+  Update-Hinweis in der Mod, GitHub-README, Lizenz, Privatsphäre-Check der Repo-Historie. Alles selbst geschrieben,
+  nichts von anderen STBC-Mods übernehmen.
 - **Open-Source-Release auf GitHub** mit **One-Click-Installer (EXE)** zum Download und **Auto-Update über GitHub Releases**.
   - Installer findet den Spielordner selbst (Steam-Bibliotheken), entpackt BepInEx + Mod, legt Konfiguration an.
   - Auto-Update: beim Spielstart (oder im Installer) neueste GitHub-Release-Version prüfen, nur mit Zustimmung laden.
