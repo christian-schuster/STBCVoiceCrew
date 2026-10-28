@@ -207,6 +207,9 @@ namespace StbcAiCrew.Captain
 
             // 2. Gefahr
             Contact enemy = Nearest(contacts, c => c.Category == HHHDDNLEDBN.Enemy && !Hazard(c.Name) && c.DistanceKm >= 0 && c.DistanceKm < 25);
+            // Unter Beschuss: auch weiter entfernte Angreifer bekämpfen (Torpedos/Phaser reichen weiter als 25 km Ortung)
+            if (enemy == null && Time.time - EventLog.LastHitTime < 15f)
+                enemy = Nearest(contacts, c => c.Category == HHHDDNLEDBN.Enemy && !Hazard(c.Name) && c.DistanceKm >= 0 && c.DistanceKm < 60);
             bool threat = EventLog.UnderThreat(20f) || enemy != null;
             if (threat)
             {
@@ -645,7 +648,12 @@ namespace StbcAiCrew.Captain
                                        (g.Note != null ? " Hinweis " + g.Note : "") + (g.Optional ? " optional" : "") + (g.HasTimer ? " Timer" : ""));
                 }
             }
-            else if (_trackCount >= 0 && count != _trackCount) _moved = true;
+            else if (_trackCount >= 0 && count != _trackCount)
+            {
+                _moved = true;
+                var g0 = goals[0];
+                Plugin.Log.LogInfo("First Officer Fortschritt: " + (g0.Total > 0 ? g0.Count + "/" + g0.Total : "") + " offene Teilziele " + g0.OpenSubGoals + (g0.SubTexts.Count > 0 ? " – " + g0.SubTexts[0] : ""));
+            }
             _trackKey = key;
             _trackCount = count;
             if (goals.Count > 0 && _firstGoalAt < 0) _firstGoalAt = Time.time;

@@ -109,7 +109,12 @@ namespace StbcAiCrew.Captain
         {
             g.Optional = Regex.IsMatch(g.English ?? "", @"^\s*optional\b", RegexOptions.IgnoreCase);
             // Erst das erste offene Teilziel (konkrete Anweisung), dann das Ziel selbst
-            foreach (var sub in g.SubTexts) if (ApplyText(g, sub)) return;
+            foreach (var sub in g.SubTexts)
+            {
+                // Statuszeilen ("Status: 25% complete") sagen nichts über den nächsten Schritt – außer sie warten auf uns
+                if (Regex.IsMatch(sub, @"^\s*status:", RegexOptions.IgnoreCase) && !Regex.IsMatch(sub, @"waiting for", RegexOptions.IgnoreCase)) continue;
+                if (ApplyText(g, sub)) return;
+            }
             ApplyText(g, g.English ?? "");
         }
 
