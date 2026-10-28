@@ -322,12 +322,12 @@ namespace StbcAiCrew.Captain
                     return steps;
                 }
                 // Feind dicht dran: erst Schub und Abstand gewinnen, sonst richtet sich die Steuer nie sauber auf den Warpkurs aus
-                if (enemy != null && enemy.DistanceKm < 12)
+                if (enemy != null && enemy.DistanceKm < 20)
                 {
                     Status = Loc.T("Abstand gewinnen vor dem Warp", "gaining distance before warp");
                     var foe = enemy.Transform;
                     steps.Add(new Step { Id = "breakaway:" + sys, St = Station.Helm, LineKey = "flee", Bot = () => _crew.Run(Intent.Flee),
-                                         Done = () => { var x = Find(_crew.ContactsNow, foe); return x == null || x.DistanceKm >= 12; }, Remind = 20f });
+                                         Done = () => { var x = Find(_crew.ContactsNow, foe); return x == null || x.DistanceKm >= 20; }, Remind = 20f });
                     return steps;
                 }
                 Done("breakaway:" + sys);
@@ -337,7 +337,16 @@ namespace StbcAiCrew.Captain
                     Id = "warp:" + sys, St = Station.Helm, LineKey = "warp", Arg = sys, Prep = () => CaptainSense.SetWarpTarget(target),
                     Bot = () =>
                     {
-                        if (CaptainSense.CanWarp == false || ++_warpTries > 2)
+                        _warpTries++;
+                        // Zweiter Versuch: erst Schub, weg von dem, was im Weg ist (Würfel, Planet, Trümmer), dann erneut Warp
+                        if (_warpTries == 2 && CaptainSense.CanWarp != false)
+                        {
+                            Plugin.Log.LogInfo("First Officer: Warp nach " + sys + " klappt nicht – erst Schub, dann neuer Versuch");
+                            Say(OfficerLines.Say("warp_clear"), null);
+                            _crew.Run(Intent.Flee);
+                            return;
+                        }
+                        if (CaptainSense.CanWarp == false || _warpTries > 3)
                         {
                             _warpTries = 0;
                             _warpBlockedUntil = Time.time + 180f;
@@ -346,6 +355,7 @@ namespace StbcAiCrew.Captain
                             Say(OfficerLines.Say("warp_blocked"), null);
                             return;
                         }
+                        _crew.Nav.Stop("Warp");   // Ausweichmanöver beenden, die Steuer richtet sich selbst auf den Warpkurs aus
                         _crew.Run(Intent.Warp);
                     },
                     Done = () => { bool there = CaptainSense.CurrentSystem == target; if (there) _warpTries = 0; return there; }, Remind = 60f
