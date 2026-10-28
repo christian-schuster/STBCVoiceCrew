@@ -382,6 +382,12 @@ namespace StbcAiCrew.Captain
                 var next = NextUnscanned(contacts, g);
                 if (next != null) g.Target = next.Transform;
             }
+            // Angriff/Gebiet sichern ohne festes Ziel ("Eliminate Hostile Vessels"): der nächste echte Feind, egal wie weit
+            if (g.Target == null && (kind == GoalKind.Attack || kind == GoalKind.Defend))
+            {
+                var foe = Nearest(contacts, x => x.Category == HHHDDNLEDBN.Enemy && !Hazard(x.Name) && x.DistanceKm >= 0);
+                if (foe != null) g.Target = foe.Transform;
+            }
             Contact c = Find(contacts, g.Target);
             if (c == null)
             {

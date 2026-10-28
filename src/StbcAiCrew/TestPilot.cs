@@ -191,7 +191,7 @@ namespace StbcAiCrew
         /// <summary>Name der laufenden Mission (Kampagne) bzw. Missionsart (Zufallsmission).</summary>
         static string MissionName()
         {
-            try { var m = Loader.EJLNDBGLIFL; return m == null ? "?" : (m.GetMissionDisplayName() ?? m.GetMissionTableDisplayName() ?? "?"); }
+            try { var m = Loader.EJLNDBGLIFL; if (m == null) return "?"; string table = m.GetMissionTableDisplayName(); return !string.IsNullOrEmpty(table) ? "Zufallsmission " + table : (m.GetMissionDisplayName() ?? "?"); }
             catch { return "?"; }
         }
 
