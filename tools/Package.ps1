@@ -13,7 +13,7 @@ param(
 )
 $ErrorActionPreference = "Stop"
 $repoDir = Split-Path $PSScriptRoot -Parent
-$src = Join-Path $repoDir "src\StbcAiCrew"
+$src = Join-Path $repoDir "src\STBCVoiceCrew"
 $PluginFolder = "STBCVoiceCrew"
 
 if (-not $GameDir) {
@@ -35,7 +35,7 @@ if ($plugin -notmatch 'BepInPlugin\(Guid, "[^"]*", "(?<v>[\d.]+)"\)') { throw "V
 $version = $Matches.v
 
 Write-Host "Building $Name $version ..."
-dotnet build (Join-Path $src "StbcAiCrew.csproj") -c Release -p:GameDir="$GameDir" -p:DeployToGame=false | Out-Null
+dotnet build (Join-Path $src "STBCVoiceCrew.csproj") -c Release -p:GameDir="$GameDir" -p:DeployToGame=false | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Mod build failed" }
 dotnet build (Join-Path $repoDir "install\Installer\Installer.csproj") -c Release | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Installer build failed" }

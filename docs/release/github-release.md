@@ -2,7 +2,7 @@
 
 1. Create the repository on GitHub (public, no README/license – both are in this repo), e.g. `owner/stbc-voice-crew`.
 2. Fill in the repository name: replace `__REPO__` in `install/install.ps1`, `install/Installer/Program.cs`,
-   `src/StbcAiCrew/UpdateCheck.cs` and `README.md` (or pass `-Repo owner/name` to the package script, which fills it
+   `src/STBCVoiceCrew/UpdateCheck.cs` and `README.md` (or pass `-Repo owner/name` to the package script, which fills it
    into the published `install.ps1`; the setup and the mod need it at build time).
 3. Build the release files:
    ```powershell

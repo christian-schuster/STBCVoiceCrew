@@ -128,7 +128,7 @@ with selectable targets, not with free points.
 
 ## 4. The First Officer
 
-An AI first officer without a language model (`src/StbcAiCrew/Captain`):
+An AI first officer without a language model (`src/STBCVoiceCrew/Captain`):
 
 - **Perception** (`CaptainSense`): the captain's objectives and their sub-objectives (the step instructions the
   mission scripts show), star systems and the warp/impulse destinations of the helm, the active map points of the

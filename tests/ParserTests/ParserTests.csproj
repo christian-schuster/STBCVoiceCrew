@@ -8,7 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Parser ohne Spielabhängigkeiten direkt einbinden -->
-    <Compile Include="..\..\src\StbcAiCrew\Station.cs" Link="Mod\Station.cs" />
-    <Compile Include="..\..\src\StbcAiCrew\Voice\*.cs" Link="Mod\Voice\%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\STBCVoiceCrew\Station.cs" Link="Mod\Station.cs" />
+    <Compile Include="..\..\src\STBCVoiceCrew\Voice\*.cs" Link="Mod\Voice\%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

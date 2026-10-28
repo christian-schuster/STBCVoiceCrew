@@ -89,7 +89,7 @@ When a newer version is available, the overlay tells you; close the game and run
 - .NET SDK 8 or newer (the mod targets .NET 3.5 for the game's Mono, the setup targets .NET Framework 4.8).
 - The game's own DLLs are referenced from your installation: copy `GameDir.props.example` to `GameDir.props` and set the
   game folder (or set `STBC_GAME_DIR`). BepInEx 5 must be installed in the game folder.
-- `dotnet build src/StbcAiCrew -c Release` builds the mod and copies it into the game.
+- `dotnet build src/STBCVoiceCrew -c Release` builds the mod and copies it into the game.
 - `dotnet run --project tests/ParserTests` runs the command parser tests.
 - `pwsh tools/Package.ps1 -Repo owner/name` builds the release files (ZIP, setup EXE, install.ps1) in `dist/`.
 
