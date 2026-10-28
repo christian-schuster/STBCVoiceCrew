@@ -12,7 +12,7 @@ namespace STBCVoiceCrew
     /// </summary>
     public static class UpdateCheck
     {
-        public const string Repo = "__REPO__";   // GitHub owner/repository
+        public const string Repo = "christian-schuster/STBCVoiceCrew";   // GitHub owner/repository
         public static volatile string Available;  // neuere Version, sonst null
 
         public static void Start(string current)

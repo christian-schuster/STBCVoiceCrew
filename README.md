@@ -65,7 +65,7 @@ Choose one:
    for `stbc.exe`), installs the latest version, and updates it when you run it again. "Remove" uninstalls.
 2. **One command:** in PowerShell
    ```powershell
-   powershell -ExecutionPolicy Bypass -c "irm https://github.com/__REPO__/releases/latest/download/install.ps1 | iex"
+   powershell -ExecutionPolicy Bypass -c "irm https://github.com/christian-schuster/STBCVoiceCrew/releases/latest/download/install.ps1 | iex"
    ```
 3. **ZIP:** download `STBC-Voice-Crew-<version>.zip` from the [latest release](../../releases/latest) and unpack it into
    the game folder (the folder with `stbc.exe`). It contains BepInEx 5 (mod loader) and the mod.
@@ -91,7 +91,7 @@ When a newer version is available, the overlay tells you; close the game and run
   game folder (or set `STBC_GAME_DIR`). BepInEx 5 must be installed in the game folder.
 - `dotnet build src/STBCVoiceCrew -c Release` builds the mod and copies it into the game.
 - `dotnet run --project tests/ParserTests` runs the command parser tests.
-- `pwsh tools/Package.ps1 -Repo owner/name` builds the release files (ZIP, setup EXE, install.ps1) in `dist/`.
+- `pwsh tools/Package.ps1` builds the release files (ZIP, setup EXE, install.ps1) in `dist/`.
 
 How it works, in short: Harmony patches hook into the game (console messages, crew commands, voice chat); commands go
 through the game's own `CommandManager.TriggerCommand`, like Watson did. The First Officer reads the captain's

@@ -7,7 +7,7 @@
 # The game folder is only needed to copy BepInEx and the Vosk libraries; it is found via Steam if not given.
 param(
     [string]$GameDir = $env:STBC_GAME_DIR,
-    [string]$Repo = "__REPO__",
+    [string]$Repo = "christian-schuster/STBCVoiceCrew",
     [string]$Name = "STBC-Voice-Crew",
     [switch]$NoBepInEx
 )

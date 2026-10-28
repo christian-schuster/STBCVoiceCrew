@@ -24,7 +24,7 @@ Everything the nexusmods.com upload form asks for, ready to copy.
 - **File name on Nexus:** STBC Voice Crew
 - **Version:** 1.1.0
 - **Category:** Main Files
-- **Archive:** `dist/STBC-Voice-Crew-1.1.0.zip` (built with `pwsh tools/Package.ps1 -Repo owner/name`)
+- **Archive:** `dist/STBC-Voice-Crew-1.1.0.zip` (built with `pwsh tools/Package.ps1`)
 - **File description:** Mod + BepInEx 5.4.23. Unpack into the game folder. Speech models and voices are downloaded on
   first use. Alternatively use the setup or the one-line install command from GitHub.
 

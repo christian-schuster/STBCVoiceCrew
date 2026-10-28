@@ -2,7 +2,7 @@
   STBC Voice Crew – installer / updater for Star Trek: Bridge Crew (Windows)
 
   One-line install (PowerShell or the Windows "Run" box via powershell):
-    powershell -ExecutionPolicy Bypass -c "irm https://github.com/__REPO__/releases/latest/download/install.ps1 | iex"
+    powershell -ExecutionPolicy Bypass -c "irm https://github.com/christian-schuster/STBCVoiceCrew/releases/latest/download/install.ps1 | iex"
 
   What it does:
     1. Finds the game (Steam libraries, Ubisoft Connect, or asks for stbc.exe).
@@ -13,7 +13,7 @@
 #>
 param([string]$GameDir, [switch]$Uninstall)
 $ErrorActionPreference = "Stop"
-$Repo = "__REPO__"                      # GitHub owner/repository
+$Repo = "christian-schuster/STBCVoiceCrew"                      # GitHub owner/repository
 $AppId = "527100"                       # Steam app id of Star Trek: Bridge Crew
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 

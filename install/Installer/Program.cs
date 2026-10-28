@@ -21,7 +21,7 @@ namespace StbcVoiceCrewSetup
     /// </summary>
     static class Program
     {
-        public const string Repo = "__REPO__";   // GitHub owner/repository
+        public const string Repo = "christian-schuster/STBCVoiceCrew";   // GitHub owner/repository
         const string SteamAppId = "527100";
 
         [STAThread]
