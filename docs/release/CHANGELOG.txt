@@ -13,6 +13,8 @@ STBC Voice Crew – Changelog
     Before warping near an enemy he gives full thrust for a few seconds and holds fire, then jumps while moving.
   - Speaks only when nobody else is talking (crew, game voices, briefing, players).
   - Rare Star Trek puns on the bridge and in the lobby.
+  - "Number One, take the bridge" / "You are in command": you stay in the captain's chair and watch, he runs the ship.
+    [FirstOfficer] AutoKommando = true does this at every mission start.
   - Voice commands: "Number One / Commander, suggestions?", "You have the bridge", "I have the bridge",
     "Number One, dismissed" / "Number One, to the bridge", "Number One, tell me a joke". German: "Nummer Eins / Commander, Vorschlag?",
     "Sie haben die Brücke", "Ich habe die Brücke", "Nummer Eins, wegtreten", "Nummer Eins, erzähl einen Witz".

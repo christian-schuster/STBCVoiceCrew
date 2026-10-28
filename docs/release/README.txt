@@ -51,8 +51,9 @@ An AI first officer who is always with you – in the lobby and on the bridge. N
 - He only speaks when nobody else does, and only briefly. Now and then, in quiet moments, a Star Trek pun.
 - Talk to him with "Number One", "Commander" or "First Officer":
     "Number One, suggestions?"      – his recommendation for the current situation
-    "You have the bridge"           – you move to the helm, he takes command (single player)
-    "I have the bridge"             – you are the captain again
+    "You have the bridge"           – you stay in the captain's chair and watch, he runs the whole ship
+                                      (also "Number One, take the bridge", "You are in command")
+    "I have the bridge"             – you are in command again
     "Number One, dismissed"         – he stays quiet; "Number One, to the bridge" brings him back
     "Number One, tell me a joke"    – a Star Trek pun on request (not during combat)
   Acknowledge his orders with "Aye", "Acknowledged", "Understood" …
@@ -137,8 +138,9 @@ Ein KI-Erster-Offizier, der immer dabei ist – in der Lobby und auf der Brücke
 - Er spricht nur, wenn sonst niemand spricht, und kurz. Ab und zu, in ruhigen Momenten, ein Star-Trek-Kalauer.
 - Ansprache mit „Nummer Eins“, „Commander“ oder „Erster Offizier“:
     „Nummer Eins, Vorschlag?“       – seine Empfehlung zur Lage
-    „Sie haben die Brücke“          – du wechselst an die Steuer, er führt (Einzelspieler)
-    „Ich habe die Brücke“           – du bist wieder Captain
+    „Sie haben die Brücke“          – du bleibst auf dem Captain-Stuhl und schaust zu, er führt das ganze Schiff
+                                      (auch „Nummer Eins, übernehmen Sie“)
+    „Ich habe die Brücke“           – du hast wieder das Kommando
     „Nummer Eins, wegtreten“        – er schweigt; „Nummer Eins, auf die Brücke“ holt ihn zurück
     „Nummer Eins, erzähl einen Witz“ – ein Kalauer auf Zuruf (nicht im Gefecht)
   Seine Befehle bestätigst du mit „Aye“, „Jawohl“, „Verstanden“ …
