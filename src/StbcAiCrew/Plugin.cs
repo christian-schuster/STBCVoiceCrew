@@ -139,7 +139,8 @@ namespace StbcAiCrew
         bool _followGameLanguage;
 
         // ---- First Officer ----
-        public ConfigEntry<bool> CaptainEnabled, CaptainCommand, CaptainHints, CaptainAutoCommand, CheckUpdates;
+        public ConfigEntry<bool> CaptainEnabled, CaptainCommand, CaptainHints, CaptainAutoCommand, CheckUpdates, ShowLogo;
+        readonly SplashLogo _splash = new SplashLogo();
         public ConfigEntry<string> CaptainPlayerStation;
         public ConfigEntry<bool> CaptainJokes;
         public ConfigEntry<float> CaptainJokeMinutes;
@@ -1020,6 +1021,7 @@ namespace StbcAiCrew
             CaptainCommand = Config.Bind("FirstOfficer", "Kommando", true, "Führt das Schiff, wenn niemand auf dem Captain-Stuhl sitzt (gibt Befehle, erwartet Bestätigung).");
             CaptainHints = Config.Bind("FirstOfficer", "Hinweise", true, "Berät einen menschlichen Captain: Warnungen bei Gefahr oder Fehlern, Hinweise, wenn es beim Missionsziel nicht weitergeht.");
             CheckUpdates = Config.Bind("Allgemein", "UpdatePruefen", true, "Check GitHub for a newer version at startup and show a hint in the overlay. / Beim Start auf GitHub nach einer neueren Version sehen.");
+            ShowLogo = Config.Bind("Allgemein", "LogoBeimStart", true, "Show the Phuntasy Productions logo briefly at game start. / Phuntasy-Productions-Logo beim Spielstart kurz einblenden.");
             TestAutoStart = Config.Bind("Test", "AutoTest", "", "Unbeaufsichtigter Testlauf: leer = aus, zufall = Zufallsmissionen, kampagne = Kampagne. Wählt Maus/Tastatur, startet Solo-Spiele, der First Officer übernimmt die Brücke.");
             TestShip = Config.Bind("Test", "Schiff", "aegis", "Schiff im Testlauf: aegis, enterprise, tng.");
             TestMaxMissions = Config.Bind("Test", "MaxMissionen", 10, "So viele Missionen startet der Testlauf nacheinander.");
@@ -1127,6 +1129,7 @@ namespace StbcAiCrew
         void OnGUI()
         {
             if (!_active) return;
+            if (ShowLogo.Value) _splash.Draw();
             if (_watson) { DrawWatson(); return; }
             _panel.Draw(_brain.InMission);
             if (!_showOverlay) return;
