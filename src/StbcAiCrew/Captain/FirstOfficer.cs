@@ -691,9 +691,6 @@ namespace StbcAiCrew.Captain
                         if (Enabled) Say(EventLog.UnderThreat(20f) && GameBridge.InMission ? OfficerLines.Say("joke_later") : OfficerLines.Joke(), null);
                         break;
                     case "give_conn": TakeBridge(); break;
-                    case "helm": GiveConn(Station.Helm); break;
-                    case "tactical": GiveConn(Station.Tactical); break;
-                    case "engineering": GiveConn(Station.Engineering); break;
                     case "take_conn": TakeConn(); break;
                     case "hint":
                         if (!Enabled) break;
@@ -740,20 +737,6 @@ namespace StbcAiCrew.Captain
             _orders.Clear(); _selected = null;
         }
 
-        /// <summary>"I'll take the helm": der Spieler wechselt an eine Station, der First Officer führt.</summary>
-        public void GiveConn(Station st)
-        {
-            if (!Enabled || !GameBridge.InMission) return;
-            if (CaptainSense.LocalSeat() != Station.Captain) return;
-            PlayerStation = st;
-            Say(OfficerLines.Say("conn_ack"), null);
-            _bridgeGreeted = true;
-            _connGivenAt = Time.time;
-            Current = Mode.Commanding;   // keine zweite Ansage beim nächsten Takt
-            _orders.Clear(); _selected = null;
-            CaptainSense.MoveLocalPlayerTo(PlayerStation);
-        }
-
         /// <summary>"Ich übernehme": der Spieler kehrt auf den Captain-Stuhl zurück.</summary>
         public void TakeConn()
         {
@@ -766,9 +749,7 @@ namespace StbcAiCrew.Captain
                 _orders.Clear();
                 Say(OfficerLines.Say("hand_back"), Station.Captain);
             }
-            if (CaptainSense.LocalSeat() == Station.Captain) return;
-            _connGivenAt = -999f;
-            CaptainSense.MoveLocalPlayerTo(Station.Captain);
+            // Den Platz wechselt der Spieler selbst (Stationswahl des Spiels)
         }
 
         // ---------------- Hilfen ----------------

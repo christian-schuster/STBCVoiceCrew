@@ -550,14 +550,6 @@ namespace StbcAiCrew.Captain
         /// </summary>
         public static string Command(string s, bool addressed)
         {
-            // Der Spieler wechselt selbst an eine Station ("I'll take the helm", "Ich übernehme die Steuer")
-            var seat = System.Text.RegularExpressions.Regex.Match(s, @"\b(i'll|i will|let me|i'm taking|ich übernehme|ich nehme|je prends)\s+(the |die |das |den |la |l')?(helm|conn station|tactical|weapons|engineering|steuer|taktik|waffen|technik|barre|tactique|ingénierie)\b");
-            if (seat.Success)
-            {
-                string w = seat.Groups[3].Value;
-                return w == "tactical" || w == "weapons" || w == "taktik" || w == "waffen" || w == "tactique" ? "tactical" :
-                       w == "engineering" || w == "technik" || w == "ingénierie" ? "engineering" : "helm";
-            }
             if (Has(s, "sie haben die brücke", "sie haben das kommando", "sie haben die brücke", "übernehmen sie das kommando", "übernehmen sie die brücke",
                     "you have the bridge", "you have the conn", "take the conn", "take the bridge", "take command", "you are in command", "you're in command", "you have command", "you have the helm of the ship",
                     "vous avez la passerelle", "vous avez le commandement", "prenez le commandement", "prenez la passerelle",
