@@ -180,6 +180,16 @@ namespace StbcAiCrew.Captain
             }
         }
 
+        /// <summary>Ausrichtung auf das Warpziel (1 = genau, wie die Steuerkonsole sie misst), null = unbekannt.</summary>
+        public static float? WarpAlignment
+        {
+            get
+            {
+                try { var ship = GameBridge.PlayerShip; var helm = ship != null ? ship.GetComponent<Crew.ConsoleHelmShipInterface>() : null; return helm != null && helm.LLGKIKMABOJ != null ? helm.DNBAEBBOIDI() : (float?)null; }
+                catch { return null; }
+            }
+        }
+
         public static SystemRoot WarpTarget
         {
             get

@@ -144,6 +144,9 @@ namespace StbcAiCrew
         public ConfigEntry<string> CaptainVoiceDe, CaptainVoiceEn, CaptainVoiceFr;
         public ConfigEntry<float> CaptainSpeed;
         Captain.FirstOfficer _captain;
+        public ConfigEntry<string> TestAutoStart, TestShip;
+        public ConfigEntry<int> TestMaxMissions;
+        TestPilot _testPilot;
         PiperTts _captainTts;
         /// <summary>Ein gesprochener Satz des First Officers; Done läuft, sobald er zu Ende gesprochen ist.</summary>
         sealed class OfficerAudio { public short[] Pcm; public int Rate; public Action Done; }
@@ -514,7 +517,14 @@ namespace StbcAiCrew
                 }
             };
             if (Multiplayer.Value && _crewSender == null) _crewSender = new CrewVoiceSender();
-            if (CaptainEnabled.Value) SetupCaptainVoice(pluginDir);
+            if (!string.IsNullOrEmpty((TestAutoStart.Value ?? "").Trim()))
+            {
+                _testPilot = new TestPilot { MissionType = TestAutoStart.Value.Trim().ToLowerInvariant(), Ship = TestShip.Value, MaxMissions = Math.Max(1, TestMaxMissions.Value), ShotDir = Path.Combine(pluginDir, "test") };
+                _captain.Enabled = true;
+                _captain.AutoCommand = true;   // Testlauf: der First Officer führt
+                Log.LogInfo("Testpilot aktiv: " + _testPilot.MissionType + ", Schiff " + _testPilot.Ship + ", bis zu " + _testPilot.MaxMissions + " Missionen.");
+            }
+            if (_captain.Enabled) SetupCaptainVoice(pluginDir);
         }
 
         void SetupCaptainVoice(string pluginDir)
@@ -628,6 +638,7 @@ namespace StbcAiCrew
             }
             if (host) _crew.Tick(inMission ? _status : null);
             if (host && _captain != null) _captain.Tick(inMission ? _status : null);
+            if (_testPilot != null) _testPilot.Tick();
             PlayCaptainAudio();
             if (_crewSender != null) _crewSender.Tick();
             FollowGameLanguage();
@@ -801,6 +812,9 @@ namespace StbcAiCrew
             CaptainEnabled = Config.Bind("FirstOfficer", "Aktiv", true, "First Officer (ohne Sprachmodell): in der Lobby und auf der Brücke dabei. Ein/aus auch per Overlay, Taste oder Sprache (\"Nummer Eins, wegtreten\" / \"Nummer Eins, auf die Brücke\").");
             CaptainCommand = Config.Bind("FirstOfficer", "Kommando", true, "Führt das Schiff, wenn niemand auf dem Captain-Stuhl sitzt (gibt Befehle, erwartet Bestätigung).");
             CaptainHints = Config.Bind("FirstOfficer", "Hinweise", true, "Berät einen menschlichen Captain: Warnungen bei Gefahr oder Fehlern, Hinweise, wenn es beim Missionsziel nicht weitergeht.");
+            TestAutoStart = Config.Bind("Test", "AutoTest", "", "Unbeaufsichtigter Testlauf: leer = aus, zufall = Zufallsmissionen, kampagne = Kampagne. Wählt Maus/Tastatur, startet Solo-Spiele, der First Officer übernimmt die Brücke.");
+            TestShip = Config.Bind("Test", "Schiff", "aegis", "Schiff im Testlauf: aegis, enterprise, tng.");
+            TestMaxMissions = Config.Bind("Test", "MaxMissionen", 10, "So viele Missionen startet der Testlauf nacheinander.");
             CaptainAutoCommand = Config.Bind("FirstOfficer", "AutoKommando", false, "Übernimmt zu jedem Missionsbeginn selbst die Brücke; du bleibst auf dem Captain-Stuhl und schaust zu (wie \"Number One, take the bridge\"). Zum Zuschauen und für automatische Tests.");
             CaptainPlayerStation = Config.Bind("FirstOfficer", "SpielerStation", "steuer", "\"Sie haben die Brücke\": An diese Station wechselst du (steuer, taktik, technik).");
             CaptainJokes = Config.Bind("FirstOfficer", "Kalauer", true, "In ruhigen Momenten, auch in der Lobby, ab und zu ein Star-Trek-Kalauer.");

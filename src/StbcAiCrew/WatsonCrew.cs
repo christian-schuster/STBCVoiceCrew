@@ -641,7 +641,9 @@ namespace StbcAiCrew
             bool threat = EventLog.UnderThreat(20f);
             bool recentHit = Time.time - EventLog.LastHitTime < 10f;
             if (threat && st.ShieldState == "PoweredOff" && !_shieldsHeldDown && Time.time >= _shieldReflexPausedUntil) Reflex(Station.Tactical, "RaiseShields", 15f);
-            if (recentHit && st.Shields >= 0f && st.Shields < 50f) Reflex(Station.Engineering, "PowerToShields", 30f);
+            // Während eines Sprungs (Warp/Impuls) braucht der Antrieb die Energie: keine Umverteilung auf die Schilde
+            bool jumping = _steps.Exists(x => x.What == "Warp" || x.What == Loc.T("Impuls", "Impulse"));
+            if (recentHit && !jumping && st.Shields >= 0f && st.Shields < 50f) Reflex(Station.Engineering, "PowerToShields", 30f);
             string worst = null; float min = 75f;
             if (st.Engines >= 0 && st.Engines < min) { min = st.Engines; worst = "RepairEngines"; }
             if (st.Phasers >= 0 && st.Phasers < min) { min = st.Phasers; worst = "RepairPhasers"; }

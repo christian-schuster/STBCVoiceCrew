@@ -60,7 +60,8 @@ namespace StbcAiCrew.Captain
         float _redAlertAt = -999f, _warpBlockedUntil = -999f;
         int _warpTries;
         bool _alertAnnounced;
-        float _breakawayAt = -1f;   // Freifliegen vor dem Warp: höchstens 8 s, sonst ist man ein leichtes Ziel
+        float _breakawayAt = -1f;
+        bool _leaving;   // Warp oder Flucht steht an (letzter Takt)   // Freifliegen vor dem Warp: höchstens 8 s, sonst ist man ein leichtes Ziel
         bool _greeted, _bridgeGreeted, _askedHint, _announceTake;
         string _trackKey, _goalAnnounced, _arrivedAt, _selected;
         int _trackCount = -1;
@@ -221,7 +222,7 @@ namespace StbcAiCrew.Captain
                 if (st != null && st.ShieldState == "PoweredOff")
                     Issue(new Step { Id = "shields", St = Station.Tactical, LineKey = "shields", Bot = () => _crew.Run(Intent.ShieldsUp),
                                      Done = () => GameBridge.PlayerShip == null || ShieldsUp() });
-                if (st != null && st.Shields >= 0 && st.Shields < 40 && Time.time - EventLog.LastHitTime < 10f)
+                if (st != null && st.Shields >= 0 && st.Shields < 40 && Time.time - EventLog.LastHitTime < 10f && !_leaving)   // beim Warp braucht der Antrieb die Energie
                     Issue(new Step { Id = "power_shields", St = Station.Engineering, LineKey = "power_shields", Bot = () => _crew.Run(Intent.PowerShields), Remind = 20f });
             }
             else if ((EventLog.RedAlert || CaptainSense.RedAlert || _alertAnnounced) && Time.time - _lastThreat > 45f && _lastThreat > 0)
@@ -248,6 +249,7 @@ namespace StbcAiCrew.Captain
                 // oder wir gehen gerade auf Warp (ein neues Ziel auf allen Konsolen würde die Steuer vom Warpkurs abbringen)
                 bool leaving = plan.Exists(s => s.Id.StartsWith("warp:") || s.Id.StartsWith("escape:") || s.Id.StartsWith("breakaway:") || s.Id.StartsWith("flee:"));
                 bool peaceful = g.Note == "note_stealth" || g.Note == "note_scan_only" || g.Kind == GoalKind.Escape || leaving;
+                _leaving = leaving;
                 if (g.Kind != GoalKind.Attack && g.Kind != GoalKind.Defend && enemy != null && !peaceful) Issue(FightStep(enemy, true));
             }
             else if (enemy != null) Issue(FightStep(enemy, true));
@@ -345,6 +347,8 @@ namespace StbcAiCrew.Captain
                     Bot = () =>
                     {
                         _warpTries++;
+                        var ws = ShipStatus.Read();
+                        Plugin.Log.LogInfo("First Officer Warp-Diagnose: Versuch " + _warpTries + ", möglich " + CaptainSense.CanWarp + ", Ausrichtung " + CaptainSense.WarpAlignment + ", Warpkern " + (ws != null ? ws.WarpCore.ToString("0") : "?") + " %, Ziel " + CaptainSense.NameOf(CaptainSense.WarpTarget));
                         // Zweiter Versuch: erst Schub, weg von dem, was im Weg ist (Würfel, Planet, Trümmer), dann erneut Warp
                         if (_warpTries == 2 && CaptainSense.CanWarp != false)
                         {
