@@ -11,5 +11,4 @@
 - Refine the mission rules from more test runs (log lines "First Officer Ziel/Suche/Fortschritt").
 
 ## Languages
-- French voice commands: test in the game and refine the rules from real recognitions.
 - Code comments are still German; translate if contributors need it.

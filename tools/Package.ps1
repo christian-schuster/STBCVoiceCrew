@@ -69,11 +69,11 @@ if (-not $NoBepInEx) {
     Get-ChildItem (Join-Path $GameDir "BepInEx\core") -File | Copy-Item -Destination $core
 }
 
-# Documentation and licenses
-Copy-Item (Join-Path $repoDir "docs\release\README.txt") $stage
-Copy-Item (Join-Path $repoDir "docs\release\THIRD-PARTY-NOTICES.txt") $stage
-Copy-Item (Join-Path $repoDir "docs\release\CHANGELOG.txt") $stage
-Copy-Item (Join-Path $repoDir "LICENSE") (Join-Path $stage "LICENSE.txt")
+# Documentation and licenses in the plugin folder: in the game folder, CHANGELOG.txt would overwrite BepInEx's changelog.txt
+Copy-Item (Join-Path $repoDir "docs\release\README.txt") $pluginDir
+Copy-Item (Join-Path $repoDir "docs\release\THIRD-PARTY-NOTICES.txt") $pluginDir
+Copy-Item (Join-Path $repoDir "docs\release\CHANGELOG.txt") $pluginDir
+Copy-Item (Join-Path $repoDir "LICENSE") (Join-Path $pluginDir "LICENSE.txt")
 
 # Installer files with the GitHub repository filled in
 $install = (Get-Content (Join-Path $repoDir "install\install.ps1") -Raw).Replace("__REPO__", $Repo)
@@ -86,7 +86,7 @@ $private = @('[A-Za-z]:\\(Users|SteamLibrary|source)\\', '\\Users\\', '\.pdb')
 $own_patterns = Join-Path $PSScriptRoot 'private-patterns.txt'
 if (Test-Path $own_patterns) { $private += Get-Content $own_patterns | Where-Object { $_ -and -not $_.StartsWith('#') } }
 $own = @(Get-Item (Join-Path $pluginDir "de.phuntasyproductions.stbcvoicecrew.dll")) + @(Get-Item (Join-Path $dist "STBC-Voice-Crew-Setup.exe")) + @(Get-Item (Join-Path $dist "install.ps1")) +
-       (Get-ChildItem $stage -File -Filter *.txt) + (Get-ChildItem $stage -File -Filter *.ini)
+       (Get-ChildItem $pluginDir -File -Filter *.txt) + (Get-ChildItem $stage -File -Filter *.ini)
 foreach ($f in $own) {
     $b = [IO.File]::ReadAllBytes($f.FullName)
     foreach ($t in [Text.Encoding]::ASCII.GetString($b), [Text.Encoding]::Unicode.GetString($b)) {

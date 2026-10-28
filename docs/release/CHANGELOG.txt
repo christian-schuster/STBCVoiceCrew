@@ -6,6 +6,8 @@ Highlights: the First Officer and the open source release on GitHub.
   follows the game language).
 - Multiplayer: a banner at the top of the desktop screen shows who hosts and whether the mod is active there (green: you
   host, yellow: the host has the mod, red: the host has no mod – no voice commands).
+- Readme, changelog and licenses now come in BepInEx\plugins\STBC Voice Crew; in the game folder the changelog
+  overwrote BepInEx's changelog.txt.
 - New: First Officer ("Number One") – an AI first officer without a language model, always on the bridge and in the lobby.
   - Advises a human captain: warnings when shields are down under fire, the hull is critical, a friendly ship is
     targeted or the warp destination leads away from the mission; hints when the mission stalls or nothing happens.
