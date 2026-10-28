@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Fragt beim Start einmal im Hintergrund die neueste Version auf GitHub ab (über curl.exe, das Spiel-Mono kann kein

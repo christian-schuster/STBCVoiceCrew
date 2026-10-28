@@ -4,7 +4,7 @@ using Sector.Spacecraft;
 using UI;
 using UnityEngine;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Einzige Stelle, die obfuskierte Spiel-Member anfasst. Die Namen stammen aus der dekompilierten

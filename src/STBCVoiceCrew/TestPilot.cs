@@ -3,7 +3,7 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Testpilot für unbeaufsichtigte Testläufe (nur mit [Test] AutoTest): wählt Maus/Tastatur, überspringt die

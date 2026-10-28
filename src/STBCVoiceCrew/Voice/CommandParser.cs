@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-namespace StbcAiCrew.Voice
+namespace STBCVoiceCrew.Voice
 {
     /// <summary>Was der Sprecher will (Watson-Befehlssatz + Daueranweisungen + Manöver).</summary>
     public enum Intent

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace StbcAiCrew.Voice
+namespace STBCVoiceCrew.Voice
 {
     /// <summary>
     /// Französischer Regelsatz: dieselben Absichten, mit den Wendungen der französischen Fassung ("distorsion" = Warp,

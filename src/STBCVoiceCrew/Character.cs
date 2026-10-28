@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>Rangleiter der Sternenflotte (Offizierslaufbahn bis Commander).</summary>
     public static class Ranks
@@ -242,7 +242,7 @@ namespace StbcAiCrew
             }
         }
 
-        public VoiceSpec VoiceSpec => StbcAiCrew.VoiceSpec.Parse(Voice, VoiceSpeed, VoicePitch);
+        public VoiceSpec VoiceSpec => STBCVoiceCrew.VoiceSpec.Parse(Voice, VoiceSpeed, VoicePitch);
 
         static float Float(object o, string key, float fallback)
         {

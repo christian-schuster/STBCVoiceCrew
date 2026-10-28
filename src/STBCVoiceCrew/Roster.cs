@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Alle KI-Crewmitglieder (ein JSON je Charakter in BepInEx\config\StbcAiCrew\crew\).

@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading;
 using BepInEx.Logging;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>Stimme eines Charakters: Piper-Modell, Sprecher, Tempo und Tonhöhe.</summary>
     public sealed class VoiceSpec
@@ -82,7 +82,7 @@ namespace StbcAiCrew
         {
             Directory.CreateDirectory(_tmpDir);
             _running = true;
-            _thread = new Thread(Loop) { IsBackground = true, Name = "StbcAiCrew.Tts" };
+            _thread = new Thread(Loop) { IsBackground = true, Name = "STBCVoiceCrew.Tts" };
             _thread.Start();
         }
 

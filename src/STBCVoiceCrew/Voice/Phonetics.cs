@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace StbcAiCrew.Voice
+namespace STBCVoiceCrew.Voice
 {
     /// <summary>
     /// Klangabgleich für Eigennamen, die die Spracherkennung nicht kennt ("Rekusa" → "Ragusa", "Typus" → "Typos").

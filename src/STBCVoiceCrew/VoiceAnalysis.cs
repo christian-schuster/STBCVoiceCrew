@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>Einfache Stimmanalyse, damit entworfene Stimmen nicht piepsig ausfallen.</summary>
     public static class VoiceAnalysis

@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Text;
 using UnityEngine;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Diagnosewerkzeug für das Reverse Engineering: schreibt alle einfachen Felder (Zahlen, Bools, Strings)

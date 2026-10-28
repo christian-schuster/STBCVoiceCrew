@@ -4,7 +4,7 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Findet die Aufnahme zu einer Sprachausgabe des Spiels und liefert sie als 16-kHz-Mono-PCM (für Whisper).

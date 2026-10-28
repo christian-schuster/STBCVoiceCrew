@@ -1,6 +1,6 @@
 using System;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Sprechtempo ändern, ohne die Tonhöhe zu verschieben (WSOLA: überlappende Blöcke, jeweils an der

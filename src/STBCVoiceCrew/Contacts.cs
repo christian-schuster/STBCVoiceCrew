@@ -6,7 +6,7 @@ using Sector;
 using Sector.Spacecraft;
 using UnityEngine;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>Ein Kontakt, so wie ihn die Konsolen zeigen.</summary>
     public sealed class Contact

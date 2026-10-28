@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-namespace StbcAiCrew.Voice
+namespace STBCVoiceCrew.Voice
 {
     /// <summary>
     /// Englischer Regelsatz: dieselben Absichten wie auf Deutsch, mit den Wendungen aus Star Trek

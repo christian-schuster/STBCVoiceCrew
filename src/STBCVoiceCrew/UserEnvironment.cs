@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using BepInEx.Logging;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Liefert die Standard-Umgebung des angemeldeten Benutzers (wie bei einem normal gestarteten Programm),

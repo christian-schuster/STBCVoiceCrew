@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading;
 using BepInEx.Logging;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>Sprachausgabe für Charaktere (Qwen3-TTS oder Piper).</summary>
     public interface ISpeechEngine : IDisposable
@@ -73,7 +73,7 @@ namespace StbcAiCrew
             Directory.CreateDirectory(_voiceDir);
             _running = true;
             _server.Start();
-            _thread = new Thread(Loop) { IsBackground = true, Name = "StbcAiCrew.Qwen" };
+            _thread = new Thread(Loop) { IsBackground = true, Name = "STBCVoiceCrew.Qwen" };
             _thread.Start();
         }
 
@@ -182,7 +182,7 @@ namespace StbcAiCrew
                     catch (Exception e) { Error = e.Message; _log.LogWarning("Stimmentwurf für " + c.Name + " fehlgeschlagen: " + e.Message); }
                     finally { lock (_designing) _designing.Remove(c.Id); }
                 }
-            }) { IsBackground = true, Name = "StbcAiCrew.VoiceDesign" };
+            }) { IsBackground = true, Name = "STBCVoiceCrew.VoiceDesign" };
             t.Start();
         }
 

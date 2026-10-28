@@ -5,7 +5,7 @@ using HarmonyLib;
 using Sector.Spacecraft;
 using UI;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Harmony-Hooks: liefern den Offizieren ihre Wahrnehmung. Jede Information geht nur an die

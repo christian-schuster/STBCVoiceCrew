@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace StbcAiCrew.Captain
+namespace STBCVoiceCrew.Captain
 {
     /// <summary>
     /// Missionswissen des First Officers, gewonnen aus den Missionsskripten des Spiels (Kampagne M0–M5 und alle prozeduralen

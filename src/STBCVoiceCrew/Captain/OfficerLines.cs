@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace StbcAiCrew.Captain
+namespace STBCVoiceCrew.Captain
 {
     /// <summary>
     /// Was der First Officer sagt, in allen Sprachen des Spiels (Deutsch, Englisch, Französisch), je Anlass mehrere Fassungen

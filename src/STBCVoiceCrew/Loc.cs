@@ -1,6 +1,6 @@
 using System;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Sprache der Anzeige (Overlay, Meldungen): Deutsch, wenn das Spiel auf Deutsch eingestellt ist, sonst Englisch.
@@ -44,9 +44,9 @@ namespace StbcAiCrew
         {
             switch (s)
             {
-                case StbcAiCrew.Station.Helm: return T("Steuer", "Helm");
-                case StbcAiCrew.Station.Tactical: return T("Taktik", "Tactical");
-                case StbcAiCrew.Station.Engineering: return T("Technik", "Engineering");
+                case STBCVoiceCrew.Station.Helm: return T("Steuer", "Helm");
+                case STBCVoiceCrew.Station.Tactical: return T("Taktik", "Tactical");
+                case STBCVoiceCrew.Station.Engineering: return T("Technik", "Engineering");
                 default: return "Captain";
             }
         }

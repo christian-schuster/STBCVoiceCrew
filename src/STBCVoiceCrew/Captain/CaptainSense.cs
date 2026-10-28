@@ -4,7 +4,7 @@ using Map;
 using Mission.Scripting.Framework;
 using UnityEngine;
 
-namespace StbcAiCrew.Captain
+namespace STBCVoiceCrew.Captain
 {
     /// <summary>Art eines Missionsziels (aus dem englischen Originaltext erkannt, gilt so in jeder Spielsprache).</summary>
     public enum GoalKind { Travel, Scan, Attack, Disable, Rescue, Defend, Hail, Wait, Escape, Gather, Stealth }

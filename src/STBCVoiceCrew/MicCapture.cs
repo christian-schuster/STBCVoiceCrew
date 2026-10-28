@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using BepInEx.Logging;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Nimmt das Mikrofon direkt über die Windows-Audio-API (winmm) auf, mit 16 kHz, Mono und 16 Bit.
@@ -72,7 +72,7 @@ namespace StbcAiCrew
             }
 
             _running = true;
-            _thread = new Thread(Loop) { IsBackground = true, Name = "StbcAiCrew.Mic" };
+            _thread = new Thread(Loop) { IsBackground = true, Name = "STBCVoiceCrew.Mic" };
             _thread.Start();
             _log.LogInfo("Mikrofon aktiv: " + DeviceName);
             return true;

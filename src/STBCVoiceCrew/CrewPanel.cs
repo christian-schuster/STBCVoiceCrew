@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Crew-Quartier (F6, Desktop-Fenster): Stationen besetzen, Charaktere bearbeiten,

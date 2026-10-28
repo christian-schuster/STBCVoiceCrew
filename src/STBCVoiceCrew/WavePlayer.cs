@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Spielt Sprachausgabe direkt über die Windows-Audio-API (winmm waveOut) ab, unabhängig von der

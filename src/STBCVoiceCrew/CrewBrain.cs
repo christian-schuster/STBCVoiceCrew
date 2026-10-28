@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     public sealed class CrewLine
     {

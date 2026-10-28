@@ -4,7 +4,7 @@ using System.IO;
 using System.Text;
 using UnityEngine;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Humor auf der Brücke: In ruhigen Momenten und in der Lobby erzählt, wer Humor hat, gern einen Witz.

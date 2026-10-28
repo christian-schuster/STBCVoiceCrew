@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Übersetzt typische Worte des Captains in Befehlsvorschläge je Station ("Warp!" → Technik: PrepareWarp,

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Minimaler JSON-Parser/-Serializer. Das Spiel bringt nur ein obfuskiertes Newtonsoft mit,

@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using BepInEx.Logging;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     public sealed class ChatMessage
     {
@@ -70,7 +70,7 @@ namespace StbcAiCrew
             }
             string payload = Json.Serialize(body);
 
-            var t = new Thread(() => Worker(payload, onDone)) { IsBackground = true, Name = "StbcAiCrew.Llm" };
+            var t = new Thread(() => Worker(payload, onDone)) { IsBackground = true, Name = "STBCVoiceCrew.Llm" };
             t.Start();
         }
 

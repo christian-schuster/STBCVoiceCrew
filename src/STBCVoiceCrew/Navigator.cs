@@ -4,7 +4,7 @@ using AI;
 using Sector.Spacecraft;
 using UnityEngine;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Fliegt Manöver ohne LLM: Annähern (auch außerhalb gegnerischer Ortung), Gefahren umfliegen, Abstand halten,

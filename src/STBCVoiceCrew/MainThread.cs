@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>Reicht Arbeit von Hintergrund-Threads in den Unity-Hauptthread (Plugin.Update).</summary>
     public static class MainThread

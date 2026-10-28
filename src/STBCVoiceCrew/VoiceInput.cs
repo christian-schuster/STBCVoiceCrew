@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using BepInEx.Logging;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Dauerhaftes Zuhören: Mikrofon → Sprachaktivitätserkennung (Pegel gegen gelernten Grundrauschpegel)
@@ -93,9 +93,9 @@ namespace StbcAiCrew
         public void Start()
         {
             _running = true;
-            _sttThread = new Thread(SttLoop) { IsBackground = true, Name = "StbcAiCrew.Stt" };
+            _sttThread = new Thread(SttLoop) { IsBackground = true, Name = "STBCVoiceCrew.Stt" };
             _sttThread.Start();
-            var watchdog = new Thread(MicWatchdog) { IsBackground = true, Name = "StbcAiCrew.MicWatchdog" };
+            var watchdog = new Thread(MicWatchdog) { IsBackground = true, Name = "STBCVoiceCrew.MicWatchdog" };
             watchdog.Start();
         }
 
@@ -238,7 +238,7 @@ namespace StbcAiCrew
                 catch (Exception e) { _log.LogWarning("Aufwärmen der Spracherkennung fehlgeschlagen: " + e.Message); }
                 SttReady = true;
                 State = Muted ? Loc.T("stumm", "muted") : Loc.T("hört zu", "listening");
-            }) { IsBackground = true, Name = "StbcAiCrew.SttWarmup" };
+            }) { IsBackground = true, Name = "STBCVoiceCrew.SttWarmup" };
             t.Start();
         }
 
@@ -292,7 +292,7 @@ namespace StbcAiCrew
         public static string Transcribe(string sttUrl, short[] pcm, string language)
         {
             byte[] wav = Wav(pcm);
-            string boundary = "----StbcAiCrew" + DateTime.UtcNow.Ticks.ToString("x");
+            string boundary = "----STBCVoiceCrew" + DateTime.UtcNow.Ticks.ToString("x");
             var body = new MemoryStream();
             void Field(string name, string value)
             {

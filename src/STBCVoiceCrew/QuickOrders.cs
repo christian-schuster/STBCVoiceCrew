@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Sofort-Befehle (wie früher mit Watson): Eindeutige Kommandos des Captains werden ohne Sprachmodell

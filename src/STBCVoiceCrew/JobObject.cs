@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Windows-Job-Objekt mit "Kill on close": Alle hier eingehängten Kindprozesse (llama-server,

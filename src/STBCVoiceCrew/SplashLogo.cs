@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using UnityEngine;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Phuntasy-Productions-Logo kurz beim Spielstart einblenden: direkt vor den Logos des Spiels
@@ -52,7 +52,7 @@ namespace StbcAiCrew
         {
             try
             {
-                using (var s = typeof(SplashLogo).Assembly.GetManifestResourceStream("StbcAiCrew.phuntasy-logo.png"))
+                using (var s = typeof(SplashLogo).Assembly.GetManifestResourceStream("STBCVoiceCrew.phuntasy-logo.png"))
                 {
                     if (s == null) return false;
                     var data = new byte[s.Length];

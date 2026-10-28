@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using Sector;
-using StbcAiCrew.Voice;
+using STBCVoiceCrew.Voice;
 using UnityEngine;
 
-namespace StbcAiCrew.Captain
+namespace STBCVoiceCrew.Captain
 {
     /// <summary>
     /// First Officer ohne Sprachmodell: immer dabei, in der Lobby und auf der Brücke.

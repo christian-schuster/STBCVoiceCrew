@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Stimmungen, in denen ein Charakter sprechen kann. Qwen3-TTS kennt keine Befehle wie [lacht],

@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using Sector;
 using Sector.Spacecraft;
-using StbcAiCrew.Voice;
+using STBCVoiceCrew.Voice;
 using UnityEngine;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Watson-Ersatz ohne LLM: Sprachbefehle aller Menschen → Befehlsparser → sofortige Ausführung über die Bot-Crew

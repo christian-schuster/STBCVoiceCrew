@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using AI;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     public sealed class CrewCommand
     {

@@ -5,7 +5,7 @@ using Sector.Spacecraft;
 using Sector.Spacecraft.Subsystems;
 using UnityEngine;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Liest den Zustand des eigenen Schiffs, mit denselben Formeln, die die Captain-Konsole des Spiels

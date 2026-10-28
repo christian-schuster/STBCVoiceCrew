@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using BepInEx.Logging;
 
-namespace StbcAiCrew.Voice
+namespace STBCVoiceCrew.Voice
 {
     /// <summary>
     /// Lokale Spracherkennung mit Vosk (CPU, kein Server). Je Äußerung laufen zwei Erkenner auf derselben Aufnahme:

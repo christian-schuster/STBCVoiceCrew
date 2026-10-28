@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using StbcAiCrew;
-using StbcAiCrew.Voice;
+using STBCVoiceCrew;
+using STBCVoiceCrew.Voice;
 
 // Testkorpus: echte Sätze aus den Spieltests (wie Whisper sie verstanden hat) und die gewünschten komplexen Anweisungen.
 // Format: Satz | erwartete Absichten (Reihenfolge egal) | erwarteter aufgelöster Name (optional)

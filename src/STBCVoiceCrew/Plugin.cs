@@ -4,10 +4,10 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
-using StbcAiCrew.Voice;
+using STBCVoiceCrew.Voice;
 using UnityEngine;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     [BepInPlugin(Guid, "STBC Voice Crew", "1.1.0")]
     [BepInProcess("stbc.exe")]
@@ -305,7 +305,7 @@ namespace StbcAiCrew
         void StartTts(string pluginDir)
         {
             _tts = new PiperTts(Log, ResolvePath(pluginDir, PiperExe.Value), ResolvePath(pluginDir, PiperVoiceDir.Value),
-                                Path.Combine(Path.GetTempPath(), "StbcAiCrew_tts"));
+                                Path.Combine(Path.GetTempPath(), "STBCVoiceCrew_tts"));
             if (_tts.Available) _tts.Start();
             else
             {
@@ -680,7 +680,7 @@ namespace StbcAiCrew
             if (!EnsureCaptainVoice(pluginDir, CurrentCaptainVoice())) return;   // kommt nach dem Download wieder
             if (_captainTts != null) return;
             var tts = new PiperTts(Log, exe, ResolvePath(pluginDir, PiperVoiceDir.Value),
-                                   Path.Combine(Path.GetTempPath(), "StbcAiCrew_captain"));
+                                   Path.Combine(Path.GetTempPath(), "STBCVoiceCrew_captain"));
             if (tts.Available) { tts.Start(); _captainTts = tts; }
             else Log.LogWarning("First Officer: Piper nicht gefunden (" + PiperExe.Value + ") – er spricht nur als Text auf den Konsolen.");
             Log.LogInfo("First Officer aktiv: Kommando " + (_captain.Command ? "an" : "aus") + ", Hinweise " + (_captain.Hints ? "an" : "aus") +
@@ -1183,9 +1183,9 @@ namespace StbcAiCrew
                     e.Use();
                 }
                 GUILayout.Label("Captain an Brücke (Enter senden, Esc abbrechen):");
-                GUI.SetNextControlName("StbcAiCrewInput");
+                GUI.SetNextControlName("STBCVoiceCrewInput");
                 _input = GUILayout.TextField(_input ?? "", 300);
-                GUI.FocusControl("StbcAiCrewInput");
+                GUI.FocusControl("STBCVoiceCrewInput");
             }
             else
             {

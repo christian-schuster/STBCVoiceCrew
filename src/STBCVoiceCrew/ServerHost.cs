@@ -5,7 +5,7 @@ using System.Net;
 using System.Threading;
 using BepInEx.Logging;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     public enum ServerState { Stopped, Starting, Ready, Failed }
 
@@ -54,7 +54,7 @@ namespace StbcAiCrew
         public void Start()
         {
             _state = ServerState.Starting;
-            var t = new Thread(StartWorker) { IsBackground = true, Name = "StbcAiCrew.Start." + _name };
+            var t = new Thread(StartWorker) { IsBackground = true, Name = "STBCVoiceCrew.Start." + _name };
             t.Start();
         }
 
@@ -203,7 +203,7 @@ namespace StbcAiCrew
                     }
                 }
                 catch { }
-            }) { IsBackground = true, Name = "StbcAiCrew." + _name + "." + tag };
+            }) { IsBackground = true, Name = "STBCVoiceCrew." + _name + "." + tag };
             t.Start();
         }
 

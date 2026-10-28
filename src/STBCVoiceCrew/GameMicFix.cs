@@ -2,7 +2,7 @@ using System;
 using System.Reflection;
 using UnityEngine;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Mikrofon des Spiels (Sprachchat, Mikrofontest): Das Spiel nimmt das "VR-Mikrofon" der Oculus-Software

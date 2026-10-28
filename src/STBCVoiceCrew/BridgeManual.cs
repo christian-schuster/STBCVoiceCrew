@@ -1,4 +1,4 @@
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Allgemeines Wissen über die Brücke der U.S.S. Aegis: was jede Station kann und wie man zusammenarbeitet.

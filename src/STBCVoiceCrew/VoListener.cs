@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading;
 using BepInEx.Logging;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Die Crew hört mit wie der Captain: Jede Sprachausgabe des Spiels (Briefing, Funksprüche, Logbuch,
@@ -36,7 +36,7 @@ namespace StbcAiCrew
             _sttUrl = sttBaseUrl.TrimEnd('/') + "/inference";
             _sttReady = sttReady;
             _heard = heard;
-            _worker = new Thread(Work) { IsBackground = true, Name = "StbcAiCrew.VoListener" };
+            _worker = new Thread(Work) { IsBackground = true, Name = "STBCVoiceCrew.VoListener" };
             _worker.Start();
         }
 

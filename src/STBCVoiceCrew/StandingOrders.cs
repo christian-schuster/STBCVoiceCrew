@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Daueranweisungen des Captains ("Schilde unten lassen", "höchstens Viertel Fahrt", "volle Energie auf die

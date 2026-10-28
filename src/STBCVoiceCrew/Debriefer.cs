@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Nachbesprechung je Charakter: Er liest nur SEIN Missionsprotokoll (was er selbst gesehen und gehört hat),

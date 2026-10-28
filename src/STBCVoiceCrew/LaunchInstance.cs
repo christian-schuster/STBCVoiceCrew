@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Erkennt die Startinstanz des Spiels: Steam startet stbc.exe, diese Instanz startet Ubisoft Connect und beendet

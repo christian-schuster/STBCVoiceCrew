@@ -6,7 +6,7 @@ using BepInEx.Logging;
 using DaikonForge.VoIP;
 using UnityEngine;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Mehrspieler: Die KI-Crew läuft nur beim Host (Master Client, steuert die Bots der freien Stationen).
@@ -170,7 +170,7 @@ namespace StbcAiCrew
             _language = language;
             _ready = ready;
             _heard = heard;
-            new Thread(Work) { IsBackground = true, Name = "StbcAiCrew.RemoteVoice" }.Start();
+            new Thread(Work) { IsBackground = true, Name = "STBCVoiceCrew.RemoteVoice" }.Start();
             Instance = this;
         }
 

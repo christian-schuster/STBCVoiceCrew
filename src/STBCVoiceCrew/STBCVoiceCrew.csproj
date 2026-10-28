@@ -13,7 +13,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <AssemblyName>de.phuntasyproductions.stbcvoicecrew</AssemblyName>
-    <RootNamespace>StbcAiCrew</RootNamespace>
+    <RootNamespace>STBCVoiceCrew</RootNamespace>
     <Version>1.1.0</Version>
     <Company>Phuntasy Productions</Company>
     <Authors>Phuntasy Productions</Authors>
@@ -36,7 +36,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Resources\phuntasy-logo.png" LogicalName="StbcAiCrew.phuntasy-logo.png" />
+    <EmbeddedResource Include="Resources\phuntasy-logo.png" LogicalName="STBCVoiceCrew.phuntasy-logo.png" />
   </ItemGroup>
 
   <ItemGroup>

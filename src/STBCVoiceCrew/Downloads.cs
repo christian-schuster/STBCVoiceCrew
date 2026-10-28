@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 
-namespace StbcAiCrew
+namespace STBCVoiceCrew
 {
     /// <summary>
     /// Lädt große Dateien erst bei Bedarf (Sprachmodelle für Vosk, Piper und seine Stimmen), damit das Paket klein bleibt.
