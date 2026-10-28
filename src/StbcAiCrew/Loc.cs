@@ -10,9 +10,19 @@ namespace StbcAiCrew
     public static class Loc
     {
         static volatile bool _german = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de";
+        static volatile string _lang = Code(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
         static DateTime _next;
 
         public static bool German => _german;
+
+        /// <summary>Sprache des Spiels als Kürzel: "de", "en" oder "fr" (Sprachausgabe des First Officers).</summary>
+        public static string Lang => _lang;
+
+        static string Code(string s)
+        {
+            s = (s ?? "").ToLowerInvariant();
+            return s.StartsWith("de") || s.StartsWith("german") ? "de" : s.StartsWith("fr") ? "fr" : "en";
+        }
 
         /// <summary>Aus Update() (Hauptthread): Spielsprache alle paar Sekunden neu lesen.</summary>
         public static void Refresh()
@@ -22,7 +32,7 @@ namespace StbcAiCrew
             try
             {
                 string game = GameBridge.GameLanguage() ?? GameBridge.VoiceLanguage();
-                if (!string.IsNullOrEmpty(game)) _german = game.StartsWith("German", StringComparison.OrdinalIgnoreCase);
+                if (!string.IsNullOrEmpty(game)) { _german = game.StartsWith("German", StringComparison.OrdinalIgnoreCase); _lang = Code(game); }
             }
             catch { }
         }

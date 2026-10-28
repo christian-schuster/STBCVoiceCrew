@@ -182,6 +182,56 @@ namespace StbcAiCrew.Captain
             catch (Exception e) { Plugin.Log.LogWarning("Alarm nicht geschaltet: " + e.Message); }
         }
 
+        // ---------------- Tutorial ----------------
+
+        static System.Reflection.PropertyInfo _tutProp;
+        static Type _tutType;
+        static bool _tutSearched, _tut;
+        static float _tutNext;
+
+        /// <summary>Läuft das Tutorial? Dort führt das Spiel selbst; der First Officer hält sich raus.</summary>
+        public static bool InTutorial
+        {
+            get
+            {
+                if (Time.time < _tutNext) return _tut;
+                _tutNext = Time.time + 5f;
+                try
+                {
+                    if (!_tutSearched)
+                    {
+                        _tutSearched = true;
+                        Type[] types;
+                        try { types = typeof(ConsoleCaptain).Assembly.GetTypes(); }
+                        catch (System.Reflection.ReflectionTypeLoadException e) { types = e.Types; }
+                        const System.Reflection.BindingFlags all = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic |
+                                                                    System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Instance;
+                        foreach (var t in types)
+                        {
+                            var p = t != null ? t.GetProperty("IsTutorialInProgress", all) : null;
+                            if (p == null || p.PropertyType != typeof(bool)) continue;
+                            _tutType = t; _tutProp = p;
+                            Plugin.Log.LogInfo("Tutorial-Erkennung: " + t.FullName + "." + p.Name);
+                            break;
+                        }
+                    }
+                    _tut = false;
+                    if (_tutProp == null) return _tut;
+                    var get = _tutProp.GetGetMethod(true);
+                    object owner = null;
+                    if (!get.IsStatic)
+                    {
+                        if (!typeof(UnityEngine.Object).IsAssignableFrom(_tutType)) return _tut;
+                        owner = UnityEngine.Object.FindObjectOfType(_tutType);
+                        if (owner == null) return _tut;
+                    }
+                    _tut = (bool)get.Invoke(owner, null);
+                }
+                catch { _tut = false; }
+                return _tut;
+            }
+        }
+
         // ---------------- Wer sitzt wo ----------------
 
         /// <summary>Sitzt ein Mensch an der Captain-Konsole? (Sonst führt die KI.)</summary>

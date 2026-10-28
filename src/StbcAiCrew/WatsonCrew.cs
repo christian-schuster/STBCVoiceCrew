@@ -51,8 +51,11 @@ namespace StbcAiCrew
         /// <summary>Erkanntes von Vosk: "mit Grammatik ‖ frei". ptt = Push-to-talk war gedrückt.</summary>
         Station _speaker = Station.Captain;
 
-        /// <summary>KI-Captain: hört jede verstandene Äußerung mit (Bestätigungen wie "Aye"), Sprecherstation und Text.</summary>
-        public Action<Station, string> CaptainHears;
+        /// <summary>
+        /// First Officer: hört jede verstandene Äußerung mit (Anrede, Bestätigungen wie "Aye"), auch in der Lobby.
+        /// true = an ihn gerichtet, dann ist es kein Befehl an die Crew.
+        /// </summary>
+        public Func<Station, string, bool> CaptainHears;
 
         /// <summary>Kontakte der letzten Abfrage (wie die Konsolen sie zeigen).</summary>
         public List<Contact> ContactsNow => _contacts;
@@ -85,8 +88,13 @@ namespace StbcAiCrew
             Lang lang;
             string grammar, free;
             Choose(recognized, speakerName, names, out lang, out grammar, out free);
+            if (CaptainHears != null)
+            {
+                bool forOfficer = false;
+                try { forOfficer = CaptainHears(speaker, grammar + " " + free); } catch (Exception e) { Plugin.Log.LogDebug(e); }
+                if (forOfficer) { LastHeard = free.Length > 0 ? free : grammar; LastResult = "First Officer"; Beep(true); return; }
+            }
             if (!GameBridge.InMission) { LastHeard = free.Length > 0 ? free : grammar; LastResult = Loc.T("kein Einsatz", "no mission"); return; }
-            if (CaptainHears != null) { try { CaptainHears(speaker, grammar + " " + free); } catch (Exception e) { Plugin.Log.LogDebug(e); } }
             bool en = lang == Lang.En;
             string onMarker = en ? " at " : " auf ";
 
