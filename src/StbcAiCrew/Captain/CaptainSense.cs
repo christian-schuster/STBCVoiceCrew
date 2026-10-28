@@ -256,10 +256,14 @@ namespace StbcAiCrew.Captain
             catch (Exception e) { MapDiag = "(Fehler: " + e.Message + ")"; }
             return list;
         }
-        /// <summary>Orte im aktuellen System, die die Steuer per Impuls anfliegen kann (Planeten, Stationen, Monde …), ohne Schiffe.</summary>
+        /// <summary>
+        /// Orte im aktuellen System, die die Steuer per Impuls anfliegen kann (Planeten, Stationen, Monde …), ohne Schiffe.
+        /// Bevorzugt die Orte mit Kartennamen – die zeigt auch die Impulskarte der Steuer.
+        /// </summary>
         public static List<Sector.HOLJLCLENCA> SystemBodies()
         {
             var list = new List<Sector.HOLJLCLENCA>();
+            var named = new List<Sector.HOLJLCLENCA>();
             try
             {
                 var here = CurrentSystem;
@@ -271,11 +275,28 @@ namespace StbcAiCrew.Captain
                     try { if (here != null && st.System != here) continue; } catch { }
                     if (string.IsNullOrEmpty(GameBridge.StripLocId(b.AKDKEDEMFDJ))) continue;
                     list.Add(b);
+                    if (MapName(b) != null) named.Add(b);
                 }
             }
             catch (Exception e) { Plugin.Log.LogDebug("Orte im System nicht lesbar: " + e.Message); }
-            return list;
+            return named.Count > 0 ? named : list;
         }
+
+        /// <summary>Kartenname eines Orts, wie die Steuerkonsole ihn zeigt ("Malkev II"), null ohne Kartennamen.</summary>
+        public static string MapName(Sector.HOLJLCLENCA b)
+        {
+            try
+            {
+                var node = b != null && b.ALPAOOKFIEE != null ? b.ALPAOOKFIEE.SystemNode : null;
+                if (node == null || string.IsNullOrEmpty(node.SystemMapName)) return null;
+                string t = GameBridge.StripLocId(SVR.Localization.GetLocalizedText(node.SystemMapName));
+                return string.IsNullOrEmpty(t) ? GameBridge.StripLocId(node.SystemMapName) : t;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>Anzeigename eines Orts: Kartenname, sonst der interne Objektname ("MoonClassD002").</summary>
+        public static string DisplayName(Sector.HOLJLCLENCA b) => MapName(b) ?? GameBridge.StripLocId(b != null ? b.AKDKEDEMFDJ : null);
 
         public static bool IsObjectivePoint(Sector.HOLJLCLENCA body)
         {

@@ -401,14 +401,14 @@ namespace StbcAiCrew.Captain
                 {
                     _searchLogged = Time.time;
                     var pts = CaptainSense.MapPoints();
-                    var pn2 = new List<string>(); foreach (var b in pts) pn2.Add(GameBridge.StripLocId(b.AKDKEDEMFDJ) + " " + DistanceKm(b).ToString("0") + "km");
+                    var pn2 = new List<string>(); foreach (var b in pts) pn2.Add(CaptainSense.DisplayName(b) + " " + DistanceKm(b).ToString("0") + "km");
                     var cn = new List<string>(); foreach (var x in contacts) cn.Add(x.Name + " " + x.DistanceKm.ToString("0") + "km");
                     Plugin.Log.LogInfo("First Officer Suche: Kartenpunkte " + pts.Count + " [" + string.Join(", ", pn2.ToArray()) + "] Kontakte [" + string.Join(", ", cn.ToArray()) +
-                                       "] Teilziele [" + string.Join(" | ", g.SubTexts.ToArray()) + "] gewählt " + (poi != null ? GameBridge.StripLocId(poi.AKDKEDEMFDJ) : "-") + " " + CaptainSense.MapDiag);
+                                       "] Teilziele [" + string.Join(" | ", g.SubTexts.ToArray()) + "] gewählt " + (poi != null ? CaptainSense.DisplayName(poi) : "-") + " " + CaptainSense.MapDiag);
                 }
                 if (poi != null)
                 {
-                    string pn = GameBridge.StripLocId(poi.AKDKEDEMFDJ) ?? "?";
+                    string pn = CaptainSense.DisplayName(poi) ?? "?";
                     var p = poi;
                     Status = Loc.T("Impuls zum Kartenpunkt ", "impulse to map point ") + pn;
                     steps.Add(new Step { Id = "poi:" + CaptainSense.IdOf(p), St = Station.Helm, LineKey = "impulse", Arg = pn, Prep = () => CaptainSense.SetImpulseTarget(p),
@@ -916,6 +916,7 @@ namespace StbcAiCrew.Captain
             string said = g == null ? "" : (g.English + " | " + string.Join(" | ", g.SubTexts.ToArray())).ToLowerInvariant();
             // Der Systemname passt auf alles im System ("Location: SARZA / SARZA, Anomaly"): nicht mitzählen
             string sysName = (CaptainSense.NameOf(CaptainSense.CurrentSystem) ?? "").ToLowerInvariant();
+            string saidFull = said;   // für ganze Kartennamen, die den Systemnamen enthalten ("Malkev II")
             if (sysName.Length >= 3) said = said.Replace(sysName, " ");
             Sector.HOLJLCLENCA best = null;
             int bestScore = int.MinValue;
@@ -924,13 +925,18 @@ namespace StbcAiCrew.Captain
             {
                 int id = CaptainSense.IdOf(b);
                 if (_visitedPoints.Contains(id)) continue;
-                string name = GameBridge.StripLocId(b.AKDKEDEMFDJ) ?? "";
-                if (!marked && (Hazard(name) || name.StartsWith("Prop", StringComparison.OrdinalIgnoreCase) || name.Contains("_") ||
-                                System.Text.RegularExpressions.Regex.IsMatch(name, @"\bstar\b|sun|nolight", System.Text.RegularExpressions.RegexOptions.IgnoreCase))) continue;   // keine Minen, Trümmer, Deko, Sterne, interne Objekte
+                string name = CaptainSense.DisplayName(b) ?? "";
+                string raw = GameBridge.StripLocId(b.AKDKEDEMFDJ) ?? "";   // interner Objektname ("Star000", "Prop_…")
+                bool junk = false;
+                foreach (var n in new[] { name, raw })
+                    if (Hazard(n) || n.StartsWith("Prop", StringComparison.OrdinalIgnoreCase) || n.Contains("_") ||
+                        System.Text.RegularExpressions.Regex.IsMatch(n, @"\bstar|sun|nolight", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) junk = true;
+                if (!marked && junk) continue;   // keine Minen, Trümmer, Deko, Sterne, interne Objekte
                 double d = DistanceKm(b);
                 if (d >= 0 && d < 8) { _visitedPoints.Add(id); continue; }   // schon da
                 int score = (marked ? 10 : 0) + (CaptainSense.IsObjectivePoint(b) ? 5 : 0);
-                if (name.Length >= 3 && said.Contains(name.ToLowerInvariant())) score += 20;
+                string lower = name.ToLowerInvariant();
+                if (name.Length >= 3 && lower != sysName && saidFull.Contains(lower)) score += 20;
                 else foreach (var w in name.ToLowerInvariant().Split(' ', '-', ','))
                         if (w.Length >= 3 && said.Contains(w)) { score += 8; break; }
                 if (score > bestScore || (score == bestScore && d < bestDist)) { best = b; bestScore = score; bestDist = d; }
