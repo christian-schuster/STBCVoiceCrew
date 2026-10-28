@@ -87,7 +87,7 @@ namespace StbcVoiceCrewSetup
 
         public static string InstalledVersion(string gameDir)
         {
-            string dll = Path.Combine(gameDir, "BepInEx", "plugins", "STBC Voice Crew", "de.phuntasyproductions.stbcvoicecrew.dll");
+            string dll = Path.Combine(gameDir, "BepInEx", "plugins", "STBCVoiceCrew", "de.phuntasyproductions.stbcvoicecrew.dll");
             return File.Exists(dll) ? FileVersionInfo.GetVersionInfo(dll).FileVersion : null;
         }
 
@@ -113,12 +113,13 @@ namespace StbcVoiceCrewSetup
                     using (var dst = File.Create(zip)) await src.CopyToAsync(dst);
                 }
 
-                // Old plugin folder/DLL name: the mod takes over its data on first start; only the old DLL must go
+                // Old plugin folders: the mod takes over their data on first start; only the old DLLs must go
                 foreach (var folder in new[] { "StbcAiCrew", "STBC Voice Crew" })
-                {
-                    string oldDll = Path.Combine(gameDir, "BepInEx", "plugins", folder, "StbcAiCrew.dll");
-                    if (File.Exists(oldDll)) File.Delete(oldDll);
-                }
+                    foreach (var name in new[] { "StbcAiCrew.dll", "de.phuntasyproductions.stbcvoicecrew.dll" })
+                    {
+                        string oldDll = Path.Combine(gameDir, "BepInEx", "plugins", folder, name);
+                        if (File.Exists(oldDll)) File.Delete(oldDll);
+                    }
 
                 status("Installing …");
                 using (var archive = ZipFile.OpenRead(zip))
@@ -138,7 +139,7 @@ namespace StbcVoiceCrewSetup
         public static void Remove(string gameDir)
         {
             if (Process.GetProcessesByName("stbc").Length > 0) throw new Exception("Please close Star Trek: Bridge Crew first.");
-            foreach (var d in new[] { "STBC Voice Crew", "StbcAiCrew" })
+            foreach (var d in new[] { "STBCVoiceCrew", "STBC Voice Crew", "StbcAiCrew" })
             {
                 string p = Path.Combine(gameDir, "BepInEx", "plugins", d);
                 if (Directory.Exists(p)) Directory.Delete(p, true);

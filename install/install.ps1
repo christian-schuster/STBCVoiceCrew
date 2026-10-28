@@ -63,7 +63,7 @@ Write-Host "Game folder: $GameDir"
 
 $plugins = Join-Path $GameDir "BepInEx\plugins"
 if ($Uninstall) {
-    foreach ($d in "STBC Voice Crew", "StbcAiCrew") { $p = Join-Path $plugins $d; if (Test-Path $p) { Remove-Item $p -Recurse -Force; Write-Host "Removed $p" } }
+    foreach ($d in "STBCVoiceCrew", "STBC Voice Crew", "StbcAiCrew") { $p = Join-Path $plugins $d; if (Test-Path $p) { Remove-Item $p -Recurse -Force; Write-Host "Removed $p" } }
     Write-Host "STBC Voice Crew removed. (BepInEx stays; delete winhttp.dll, doorstop_config.ini and the BepInEx folder if no other mod needs it.)"
     return
 }
@@ -77,10 +77,12 @@ $zip = Join-Path $env:TEMP $asset.name
 Write-Host "Downloading $($asset.name) ($([math]::Round($asset.size / 1MB, 1)) MB) ..."
 Invoke-WebRequest $asset.browser_download_url -OutFile $zip -UseBasicParsing
 
-# Old plugin folder/DLL name: the mod takes over its data on first start; only the old DLL must go, or BepInEx might load it
+# Old plugin folders: the mod takes over their data on first start; only the old DLLs must go, or BepInEx might load them
 foreach ($d in "StbcAiCrew", "STBC Voice Crew") {
-    $old = Join-Path $plugins "$d\StbcAiCrew.dll"
-    if (Test-Path $old) { Remove-Item $old -Force }
+    foreach ($n in "StbcAiCrew.dll", "de.phuntasyproductions.stbcvoicecrew.dll") {
+        $old = Join-Path $plugins "$d\$n"
+        if (Test-Path $old) { Remove-Item $old -Force }
+    }
 }
 
 Expand-Archive $zip -DestinationPath $GameDir -Force

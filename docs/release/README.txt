@@ -28,13 +28,13 @@ Easiest: run STBC-Voice-Crew-Setup.exe (from the GitHub release page) - it finds
 Or by hand:
 1. Unpack the archive into the game folder (the folder that contains stbc.exe).
    The archive contains BepInEx 5.4.23 (mod loader). If you already use BepInEx 5, copying the folder
-   BepInEx\plugins\STBC Voice Crew is enough.
+   BepInEx\plugins\STBCVoiceCrew is enough.
 2. Start the game as usual. On first start the mod downloads the speech model for your game language (~45 MB)
    and, for the First Officer, Piper and a voice - once. Then the overlay in the top left corner shows
    "Vosk: en ready" (German game: "de bereit").
    The overlay is shown in German if the game is set to German, otherwise in English. It appears on the desktop
    monitor only, not in the VR headset – in VR you get feedback through the beeps and the crew's answers.
-3. Uninstall: delete BepInEx\plugins\STBC Voice Crew (and, if no other mods use it, winhttp.dll,
+3. Uninstall: delete BepInEx\plugins\STBCVoiceCrew (and, if no other mods use it, winhttp.dll,
    doorstop_config.ini, .doorstop_version and the BepInEx folder).
 
 HOW TO SPEAK TO THE CREW
@@ -120,12 +120,12 @@ Am einfachsten: STBC-Voice-Crew-Setup.exe (von der GitHub-Release-Seite) starten
 und aktualisiert. Oder von Hand:
 1. Archiv in den Spielordner entpacken (der Ordner mit stbc.exe).
    Enthalten ist BepInEx 5.4.23 (Mod-Lader). Wer BepInEx 5 schon nutzt, kopiert nur den Ordner
-   BepInEx\plugins\STBC Voice Crew.
+   BepInEx\plugins\STBCVoiceCrew.
 2. Spiel wie gewohnt starten. Beim ersten Start lädt die Mod einmalig das Sprachmodell für die Spielsprache (ca. 45 MB)
    und für den Ersten Offizier Piper und eine Stimme. Danach zeigt das Overlay oben links „Vosk: de bereit“.
    Das Overlay ist deutsch, wenn das Spiel auf Deutsch steht, sonst englisch. Es erscheint nur auf dem Monitor,
    nicht in der VR-Brille – dort kommt die Rückmeldung über die Töne und die Antworten der Crew.
-3. Entfernen: BepInEx\plugins\STBC Voice Crew löschen (und, falls keine anderen Mods es brauchen, winhttp.dll,
+3. Entfernen: BepInEx\plugins\STBCVoiceCrew löschen (und, falls keine anderen Mods es brauchen, winhttp.dll,
    doorstop_config.ini, .doorstop_version und den Ordner BepInEx).
 
 SO SPRICHST DU MIT DER CREW

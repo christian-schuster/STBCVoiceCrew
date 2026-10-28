@@ -5,7 +5,7 @@
     installation, so the game folder is needed to build. Set it once in GameDir.props (not checked in, see
     GameDir.props.example), via the environment variable STBC_GAME_DIR, or on the command line:
       dotnet build -p:GameDir="D:\Games\Star Trek Bridge Crew"
-    After a successful build the DLL is copied to <game>\BepInEx\plugins\STBC Voice Crew (DeployToGame=false skips it).
+    After a successful build the DLL is copied to <game>\BepInEx\plugins\STBCVoiceCrew (DeployToGame=false skips it).
   -->
   <Import Project="..\..\GameDir.props" Condition="Exists('..\..\GameDir.props')" />
   <PropertyGroup>
@@ -51,10 +51,10 @@
 
   <Target Name="DeployPlugin" AfterTargets="Build" Condition="'$(DeployToGame)' == 'true' And Exists('$(GameDir)\BepInEx')">
     <!-- Remove the DLL under its former name/folder, or BepInEx might load the old one too; the mod cleans up the rest on start -->
-    <Delete Files="$(GameDir)\BepInEx\plugins\StbcAiCrew\StbcAiCrew.dll;$(GameDir)\BepInEx\plugins\STBC Voice Crew\StbcAiCrew.dll" ContinueOnError="true" />
-    <MakeDir Directories="$(GameDir)\BepInEx\plugins\STBC Voice Crew" />
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins\STBC Voice Crew" />
-    <Message Importance="high" Text="STBC Voice Crew -> $(GameDir)\BepInEx\plugins\STBC Voice Crew" />
+    <Delete Files="$(GameDir)\BepInEx\plugins\StbcAiCrew\StbcAiCrew.dll;$(GameDir)\BepInEx\plugins\STBC Voice Crew\StbcAiCrew.dll;$(GameDir)\BepInEx\plugins\STBC Voice Crew\de.phuntasyproductions.stbcvoicecrew.dll" ContinueOnError="true" />
+    <MakeDir Directories="$(GameDir)\BepInEx\plugins\STBCVoiceCrew" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins\STBCVoiceCrew" />
+    <Message Importance="high" Text="STBC Voice Crew -> $(GameDir)\BepInEx\plugins\STBCVoiceCrew" />
   </Target>
 
 </Project>

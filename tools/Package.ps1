@@ -14,7 +14,7 @@ param(
 $ErrorActionPreference = "Stop"
 $repoDir = Split-Path $PSScriptRoot -Parent
 $src = Join-Path $repoDir "src\StbcAiCrew"
-$PluginFolder = "STBC Voice Crew"
+$PluginFolder = "STBCVoiceCrew"
 
 if (-not $GameDir) {
     # Same search as the installer: Steam libraries → appmanifest_527100.acf
@@ -53,7 +53,7 @@ Copy-Item $dll.FullName $pluginDir
 
 # Vosk runtime libraries only; the language models are downloaded by the mod when needed
 $voskSrc = $null
-foreach ($d in $PluginFolder, "StbcAiCrew") { $c = Join-Path $GameDir "BepInEx\plugins\$d\vosk"; if (Test-Path (Join-Path $c "libvosk.dll")) { $voskSrc = $c; break } }
+foreach ($d in $PluginFolder, "STBC Voice Crew", "StbcAiCrew") { $c = Join-Path $GameDir "BepInEx\plugins\$d\vosk"; if (Test-Path (Join-Path $c "libvosk.dll")) { $voskSrc = $c; break } }
 if (-not $voskSrc) { throw "Vosk libraries (libvosk.dll) not found in the game's plugin folder." }
 $voskDst = Join-Path $pluginDir "vosk"
 New-Item -ItemType Directory -Force $voskDst | Out-Null

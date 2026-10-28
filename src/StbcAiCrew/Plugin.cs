@@ -441,15 +441,20 @@ namespace StbcAiCrew
         }
 
         /// <summary>
-        /// Früher hieß der Plugin-Ordner "StbcAiCrew", jetzt "STBC Voice Crew". Liegt der alte noch daneben: Modelle, Stimmen,
-        /// Piper usw. übernehmen (spart Downloads), die alte DLL nicht, dann den alten Ordner löschen. Klappt das Löschen
-        /// nicht (Datei gesperrt), beim nächsten Start erneut.
+        /// Früher hieß der Plugin-Ordner "StbcAiCrew" bzw. "STBC Voice Crew", jetzt "STBCVoiceCrew". Liegt ein alter noch daneben:
+        /// Modelle, Stimmen, Piper usw. übernehmen (spart Downloads), die alten DLLs nicht, dann den alten Ordner löschen.
+        /// Klappt das Löschen nicht (Datei gesperrt), beim nächsten Start erneut.
         /// </summary>
         static void MigrateOldPluginFolder(string pluginDir)
         {
+            foreach (var name in new[] { "StbcAiCrew", "STBC Voice Crew" })
+                MigrateOldPluginFolder(pluginDir, Path.Combine(Path.GetDirectoryName(pluginDir), name));
+        }
+
+        static void MigrateOldPluginFolder(string pluginDir, string old)
+        {
             try
             {
-                string old = Path.Combine(Path.GetDirectoryName(pluginDir), "StbcAiCrew");
                 if (!Directory.Exists(old) || string.Equals(Path.GetFullPath(old).TrimEnd('\\'), Path.GetFullPath(pluginDir).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)) return;
                 int moved = 0;
                 foreach (var d in Directory.GetDirectories(old))
@@ -460,14 +465,14 @@ namespace StbcAiCrew
                 foreach (var f in Directory.GetFiles(old))
                 {
                     string name = Path.GetFileName(f);
-                    if (name.StartsWith("StbcAiCrew.", StringComparison.OrdinalIgnoreCase)) continue;   // alte Mod-DLL nicht übernehmen
+                    if (name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)) continue;   // alte Mod-DLL nicht übernehmen
                     string dst = Path.Combine(pluginDir, name);
                     if (!File.Exists(dst)) { File.Move(f, dst); moved++; }
                 }
                 Directory.Delete(old, true);
-                Log.LogInfo("Alter Plugin-Ordner StbcAiCrew aufgeräumt (" + moved + " Einträge übernommen).");
+                Log.LogInfo("Alter Plugin-Ordner " + Path.GetFileName(old) + " aufgeräumt (" + moved + " Einträge übernommen).");
             }
-            catch (Exception e) { Log.LogWarning("Alter Plugin-Ordner StbcAiCrew nicht vollständig aufgeräumt: " + e.Message); }
+            catch (Exception e) { Log.LogWarning("Alter Plugin-Ordner " + Path.GetFileName(old) + " nicht vollständig aufgeräumt: " + e.Message); }
         }
 
         static void MergeInto(string src, string dst, ref int moved)
