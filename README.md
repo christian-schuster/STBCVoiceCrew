@@ -8,13 +8,21 @@ within about a third of a second and answers with their original voices. On top 
 joins you on the bridge: he advises you as captain, knows the missions, and takes command when the captain's chair is
 empty.
 
+**New in 1.1:** the First Officer – and the mod is now open source.
+
+**Focus: single player.** The mod is made first of all for playing alone with the bot crew. It also works in
+multiplayer (it runs on the host), and the game stays fully compatible with installations without the mod: players who
+don't have it can still join you.
+
 > Unofficial fan mod. Star Trek is a trademark of CBS Studios Inc.; *Star Trek: Bridge Crew* is a game by Red Storm
 > Entertainment / Ubisoft. This project is not affiliated with them and contains no game files.
 
 ## Features
 
 **Voice commands**
-- English and German commands, recognised on the CPU in ~0.3 s (Vosk). No graphics card, no account, no cloud.
+- Supported languages: **English** and **German** (French is planned). The command language follows the game's
+  language by default and can be set in the config.
+- Recognised on the CPU in ~0.3 s (Vosk). No graphics card, no account, no cloud.
 - Every human on the bridge may give orders; in multiplayer the host runs the mod and understands the other players
   through the game's voice chat. Players without the mod can still join.
 - Targets by name ("Scan the Ragusa") or the target marked on your console; friendly ships are only fired upon when named.
@@ -35,7 +43,14 @@ empty.
   and gives orders to the bot crew and to human officers (spoken and on their console), waiting for "Aye".
 - Talk to him with "Number One", "Commander" or "First Officer": "suggestions?", "dismissed", "to the bridge",
   "tell me a joke", "I have the bridge".
-- English, German and French; voices by Piper TTS.
+- Speaks English, German and French; voices by Piper TTS.
+
+**Fully automated testing with Claude Code**
+- A test mode ([Test] AutoTest in the config) starts solo missions on its own – controller selection, main menu,
+  briefing room – lets the First Officer take the bridge and play, and writes log lines and screenshots.
+- Large parts of this mod were developed and tested this way with [Claude Code](https://claude.com/claude-code):
+  it starts the game, watches the runs through the log and the screenshots, fixes what goes wrong and starts the next
+  run – without anyone at the keyboard.
 
 ## Installation
 
@@ -64,7 +79,7 @@ When a newer version is available, the overlay tells you; close the game and run
 - Longer orders: address the station first ("Helm, …", "Tactical, …", "Engineering, …", "Crew, …") or hold **F4**.
 - Two high beeps: understood. One low beep: not understood.
 - Keys: **F4** push to talk, **F5** mute microphone, **F6** First Officer on/off, **F7** overlay (desktop only, not in VR).
-- Settings: `BepInEx\config\de.phuntasyproductions.stbc.voicecrew.cfg` (created on first start).
+- Settings: `BepInEx\config\de.phuntasyproductions.stbcvoicecrew.cfg` (created on first start).
 - More in [docs/release/README.txt](docs/release/README.txt).
 
 ## Building from source
@@ -83,7 +98,9 @@ objectives, the ship's state and the tactical scanner directly from the running 
 
 ## License
 
-MIT – see [LICENSE](LICENSE). Third-party components keep their own licenses: see
+MIT – see [LICENSE](LICENSE). You are explicitly welcome to use this mod or parts of it in your own mods and projects,
+also modified, as long as you credit the origin: keep the copyright notice and the license text, and ideally link back
+to this repository. Third-party components keep their own licenses: see
 [THIRD-PARTY-NOTICES](docs/release/THIRD-PARTY-NOTICES.txt). The Piper voices are for non-commercial use.
 
 Made by Phuntasy Productions – [phuntasyproductions.de](https://phuntasyproductions.de) – info@phuntasyproductions.de

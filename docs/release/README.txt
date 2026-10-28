@@ -71,7 +71,7 @@ Tactical:    shields up / lower the shields / red alert / fire at will / fire to
 Engineering: power to shields / all power to the engines / weapons to maximum / repair the shields /
              beam the survivors aboard / energize / prepare for warp
 
-SETTINGS (BepInEx\config\de.phuntasyproductions.stbc.voicecrew.cfg, created on first start)
+SETTINGS (BepInEx\config\de.phuntasyproductions.stbcvoicecrew.cfg, created on first start)
 - [Sprache] BefehlsSprache = spiel | de | en | auto   (spiel = same as the game language, auto = both at once)
 - [Sprache] ZuhoerModus = beides | ansprache | ptt | dauernd
 - [Tasten] PushToTalk = F4
@@ -161,7 +161,7 @@ Taktik:  Schilde hoch / Schilde runter / roter Alarm / Feuer frei / Torpedos / T
 Technik: Energie auf die Schilde / alles in den Antrieb / Waffen auf Maximum / repariere die Schilde /
          beam die Überlebenden an Bord / Warpkern laden
 
-EINSTELLUNGEN (BepInEx\config\de.phuntasyproductions.stbc.voicecrew.cfg, entsteht beim ersten Start)
+EINSTELLUNGEN (BepInEx\config\de.phuntasyproductions.stbcvoicecrew.cfg, entsteht beim ersten Start)
 - [Sprache] BefehlsSprache = spiel | de | en | auto   (spiel = wie das Spiel, auto = beide gleichzeitig)
 - [Sprache] ZuhoerModus = beides | ansprache | ptt | dauernd
 - [Tasten] PushToTalk = F4

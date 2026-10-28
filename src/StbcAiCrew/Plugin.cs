@@ -399,7 +399,7 @@ namespace StbcAiCrew
         // ================= Watson-Modus =================
 
         /// <summary>
-        /// Bis 1.1 hieß die Kennung "de.phuntasyproductions.stbc.voicecrew" und damit auch die Einstellungsdatei: übernehmen,
+        /// Vor 1.1 hieß die Kennung "de.phuntasyproductions.stbc.voicecrew" und damit auch die Einstellungsdatei: übernehmen,
         /// solange es die neue noch nicht gibt.
         /// </summary>
         void MigrateOldConfig()

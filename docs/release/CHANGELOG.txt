@@ -1,6 +1,7 @@
 STBC Voice Crew – Changelog
 
 1.1.0 (in progress, not yet released)
+Highlights: the First Officer and the open source release on GitHub.
 - New: First Officer ("Number One") – an AI first officer without a language model, always on the bridge and in the lobby.
   - Advises a human captain: warnings when shields are down under fire, the hull is critical, a friendly ship is
     targeted or the warp destination leads away from the mission; hints when the mission stalls or nothing happens.

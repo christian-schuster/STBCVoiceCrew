@@ -5,9 +5,14 @@ Since IBM shut down Watson, Star Trek: Bridge Crew has no voice commands. This m
 offline speech recognizer (Vosk). The bot crew – Rao, Hoyle and T'nar – follows your spoken orders in about
 0.3 seconds and answers with their original voices.
 
+[b]New in 1.1: the First Officer – and the mod is now open source (MIT) on GitHub.[/b]
+
+[b]Focus: single player.[/b] The mod is made first of all for playing alone with the bot crew. It also works in multiplayer (install it on the host), and the game stays fully compatible with installations without the mod – players who don't have it can still play with you.
+
 [b]Features[/b]
 [list]
-[*]English and German commands, CPU only (no graphics card needed)
+[*]Voice command languages: English and German (French is planned)
+[*]CPU only, no graphics card, no account, no cloud
 [*]Every human on the bridge can give orders (multiplayer: install on the host)
 [*]Targets by name ("Scan the Ragusa") or the target marked on your console
 [*]Warp and impulse sequences, "Energize" lowers the shields first
@@ -22,8 +27,11 @@ An AI first officer who is always on the bridge and in the lobby – no language
 [*]Takes command when the captain's chair is empty: sets the warp destination, gives orders to bots and human officers and waits for "Aye"
 [*]Speaks only when nobody else does; now and then a Star Trek pun
 [*]"Number One / Commander, suggestions?", "You have the bridge", "I have the bridge", "Number One, dismissed"
-[*]English, German and French, voiced with Piper TTS (included)
+[*]Speaks English, German and French, voiced with Piper TTS (downloaded on first use)
 [/list]
+
+[b]Fully automated testing with Claude Code[/b]
+A test mode starts solo missions on its own and lets the First Officer play them, with log lines and screenshots. Large parts of the mod were developed this way with Claude Code: it starts the game, watches the runs, fixes what goes wrong and starts the next run – unattended.
 
 [b]Installation[/b]
 Unpack into the game folder (where stbc.exe is). BepInEx 5 is included. Start the game – the overlay in the top left of the desktop monitor shows the status (in English, or German if the game is set to German). In VR you get feedback through beeps and the crew's answers.
@@ -33,11 +41,14 @@ F4 = push to talk, F5 = mute microphone, F6 = First Officer on/off, F7 = overlay
 [list]
 [*]Short orders work without addressing anyone ("Shields up"). For longer ones say "Helm, …", "Tactical, …", "Engineering, …" or hold F4.
 [*]If your microphone name contains umlauts (ä, ö, ü), rename it in Windows – the game cannot use it otherwise.
-[*]Settings: BepInEx\config\de.phuntasyproductions.stbc.voicecrew.cfg (language: spiel/de/en/auto).
+[*]Settings: BepInEx\config\de.phuntasyproductions.stbcvoicecrew.cfg (language: spiel/de/en/auto).
 [/list]
 
 [b]Known limitations[/b]
 Warp/impulse destinations are still picked on the map. Hails, probes and cancelling red alert stay at the captain's console.
+
+[b]Open source[/b]
+Source code on GitHub under the MIT license. You are explicitly welcome to use this mod or parts of it in your own mods, also modified, as long as you credit the origin (keep the copyright notice and license text, ideally with a link to the project).
 
 [b]Credits[/b]
 Made by Phuntasy Productions – [url=https://phuntasyproductions.de]phuntasyproductions.de[/url]
