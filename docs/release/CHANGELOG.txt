@@ -20,6 +20,11 @@ STBC Voice Crew – Changelog
     "Sie haben die Brücke", "Ich habe die Brücke", "Nummer Eins, wegtreten", "Nummer Eins, erzähl einen Witz".
   - English, German and French lines; voices by Piper TTS (included).
   - On/off: overlay button, F6, voice command, or [FirstOfficer] Aktiv in the config.
+  - Mission execution: warp with alignment wait and coil recharge, breaks away from nearby enemies first, impulse to
+    places named in the objectives, scans directly via the tactical scanner (real range and progress), stops on arrival,
+    attacks the nearest enemy for 'eliminate' objectives, picks a system from 'Warp to X, Y, or Z'.
+- Test mode for unattended runs ([Test] AutoTest = zufall/kampagne): selects mouse/keyboard, starts solo games,
+  the First Officer takes the bridge, screenshots in BepInEx\plugins\StbcAiCrew\test.
 - Multiplayer: runs on the host only, speaks through the game's voice chat; players without the mod are unaffected.
 
 1.0.0
