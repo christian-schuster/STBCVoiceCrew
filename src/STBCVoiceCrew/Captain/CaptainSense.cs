@@ -162,6 +162,9 @@ namespace STBCVoiceCrew.Captain
 
         public static string NameOf(SystemRoot s) => s == null ? "?" : GameBridge.StripLocId(s.SystemName);
 
+        /// <summary>Warpziel, das der First Officer gerade anfliegt: der Sprungablauf trägt es erneut ein, falls das Spiel es zwischendurch löscht.</summary>
+        public static SystemRoot DesiredWarpTarget;
+
         /// <summary>Warpziel auf der Karte setzen (wie der Captain auf der Warpkarte).</summary>
         public static bool SetWarpTarget(SystemRoot s)
         {

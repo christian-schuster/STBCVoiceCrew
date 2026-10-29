@@ -60,6 +60,9 @@ namespace STBCVoiceCrew
         /// <summary>Läuft gerade ein Sprung (Warp/Impuls)? Dann keine neuen Flugbefehle.</summary>
         public bool Jumping => _steps.Exists(x => x.What == "Warp" || x.What == Loc.T("Impuls", "Impulse"));
 
+        /// <summary>Zeitpunkt (Time.time) des letzten erkannten Sprungs; die Karte meldet das neue System erst etwas später.</summary>
+        public float LastJumpAt { get; private set; } = -999f;
+
         /// <summary>Kontakte der letzten Abfrage (wie die Konsolen sie zeigen).</summary>
         public List<Contact> ContactsNow => _contacts;
 
@@ -547,14 +550,27 @@ namespace STBCVoiceCrew
         {
             _steps.RemoveAll(x => x.What == what);
             Vector3d start = Contacts.OwnPosition;
+            var startSystem = Captain.CaptainSense.CurrentSystem;   // Warp: Erfolg ist der Systemwechsel (Volle Fahrt allein legt auch > 5 km zurück)
             float t0 = Time.time, lastEngage = 0f;
             bool seenPreparing = false;
             int engages = 0, recharges = 0;
             float chargedAt = -1f;
             Repeat(0.5f, 60f, 0.5f, what, () =>   // 60 s: Warp wartet ggf. bis zu 40 s auf die Ausrichtung
             {
-                if (Jumped(start)) { Note(what + Loc.T(": Sprung ausgeführt", ": jump done")); return true; }
+                bool jumped = what == "Warp" && startSystem != null ? Captain.CaptainSense.CurrentSystem != startSystem : Jumped(start);
+                if (jumped) { LastJumpAt = Time.time; Note(what + Loc.T(": Sprung ausgeführt", ": jump done")); return true; }
                 bool preparing = Flag(prepareFlag);
+                if (what == "Warp" && Captain.CaptainSense.DesiredWarpTarget != null && Captain.CaptainSense.WarpTarget != Captain.CaptainSense.DesiredWarpTarget)
+                {
+                    Plugin.Log.LogInfo("Warpziel war gelöscht – neu gesetzt: " + Captain.CaptainSense.NameOf(Captain.CaptainSense.DesiredWarpTarget));
+                    Captain.CaptainSense.SetWarpTarget(Captain.CaptainSense.DesiredWarpTarget);
+                }
+                if (what == "Warp" && Time.time - _warpDiagAt > 5f)
+                {
+                    _warpDiagAt = Time.time;
+                    var fwd = Contacts.OwnForward;
+                    Plugin.Log.LogInfo("Warp-Ausrichtung: " + Captain.CaptainSense.WarpAlignment + ", Eigenkurs " + Mathf.RoundToInt((Mathf.Atan2((float)fwd.x, (float)fwd.z) * Mathf.Rad2Deg + 360f) % 360f) + "°, " + BlackboardDiag() + ", seit Start " + (Time.time - t0).ToString("0") + " s");
+                }
                 if (preparing) seenPreparing = true;
                 bool ready = (seenPreparing && !preparing) || Time.time - t0 > fallback + (seenPreparing ? 8f : 0f);
                 // Warp: erst auslösen, wenn die Steuer auf den Warpkurs zeigt (eine Kehrtwende dauert), höchstens 40 s warten.
@@ -576,6 +592,7 @@ namespace STBCVoiceCrew
                 if (!ready) return false;
                 if (engages < 2 && (engages == 0 || Time.time - lastEngage > 8f))
                 {
+                    Plugin.Log.LogInfo("Sprungablauf " + what + ": Engage " + (engages + 1) + " nach " + (Time.time - t0).ToString("0.0") + " s, Ausrichtung " + Captain.CaptainSense.WarpAlignment + ", Vorbereitung " + preparing + ", Spulen neu geladen " + recharges + "x");
                     Exec(Station.Helm, engage, force: true);
                     engages++;
                     lastEngage = Time.time;
@@ -584,6 +601,21 @@ namespace STBCVoiceCrew
                 if (Time.time - lastEngage > 8f) { Note(failHint); Beep(false); return true; }
                 return false;
             });
+        }
+
+        float _warpDiagAt;
+
+        static string BlackboardDiag()
+        {
+            try
+            {
+                var bb = AI.CommandManager.JOMJCMPJGEK != null ? AI.CommandManager.JOMJCMPJGEK.AACGBEMCAGH : null;
+                if (bb == null) return "kein Blackboard";
+                AI.OJADMPIBCFG a, b, c;
+                bool ha = bb.TryGetValue(AI.IAHDEGHOPAK.IsManualHeading, out a), hb = bb.TryGetValue(AI.IAHDEGHOPAK.ManualHeading, out b), hc = bb.TryGetValue(AI.IAHDEGHOPAK.CanSetYaw, out c);
+                return "ManualHeading " + (ha ? a.bVal.ToString() : "-") + "/" + (hb ? b.fVal.ToString("0") : "-") + " CanSetYaw " + (hc ? c.bVal.ToString() : "-");
+            }
+            catch (Exception e) { return "Blackboard: " + e.Message; }
         }
 
         static bool Flag(AI.IAHDEGHOPAK key)

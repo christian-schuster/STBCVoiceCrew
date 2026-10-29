@@ -59,6 +59,7 @@ namespace STBCVoiceCrew.Captain
         string _stealthFor;
         float _redAlertAt = -999f, _warpBlockedUntil = -999f;
         int _warpTries;
+        string _warpTriesFor;
         bool _alertAnnounced;
         float _breakawayAt = -1f;
         bool _leaving;   // Warp oder Flucht steht an (letzter Takt)   // Freifliegen vor dem Warp: höchstens 8 s, sonst ist man ein leichtes Ziel
@@ -154,7 +155,7 @@ namespace STBCVoiceCrew.Captain
         {
             if (_missionStart < 0) return;
             _missionStart = -1f; _firstGoalAt = -1f; _bridgeGreeted = false; Autopilot = false; _hailSince = -1f; _announceTake = false; _connGivenAt = -999f; Current = Mode.Lobby;
-            _orders.Clear(); _advised.Clear(); _scanned.Clear(); _visitedPoints.Clear(); _stoppedAt.Clear(); _trackKey = null; _goalAnnounced = null; _arrivedAt = null; _selected = null; _trackCount = -1;
+            _orders.Clear(); _fightSince.Clear(); _warpTries = 0; _warpTriesFor = null; _warpBlockedUntil = -999f; CaptainSense.DesiredWarpTarget = null; _advised.Clear(); _scanned.Clear(); _scanStartAt.Clear(); _visitedPoints.Clear(); _stoppedAt.Clear(); _trackKey = null; _goalAnnounced = null; _arrivedAt = null; _selected = null; _trackCount = -1;
         }
 
         /// <summary>Lobby: einmal melden, danach selten ein Kalauer.</summary>
@@ -247,13 +248,34 @@ namespace STBCVoiceCrew.Captain
                     if (!string.IsNullOrEmpty(g.Text)) { Act(OfficerLines.Say("new_goal", Clean(g.Text)), null, null, 1f); return threat; }
                 }
                 var plan = Plan(g, contacts, threat ? enemy : null);
-                foreach (var s in plan) { if (s.Prep != null) s.Prep(); if (s.Bot != null) Issue(s); }
                 // Feinde in der Nähe bekämpfen – außer der Auftrag verbietet es (Schleichfahrt, nur beobachten), es heißt fliehen,
                 // oder wir gehen gerade auf Warp (ein neues Ziel auf allen Konsolen würde die Steuer vom Warpkurs abbringen)
                 bool leaving = plan.Exists(s => s.Id.StartsWith("warp:") || s.Id.StartsWith("escape:") || s.Id.StartsWith("breakaway:") || s.Id.StartsWith("flee:"));
-                bool peaceful = g.Note == "note_stealth" || g.Note == "note_scan_only" || g.Kind == GoalKind.Escape || leaving;
-                _leaving = leaving;
-                if (g.Kind != GoalKind.Attack && g.Kind != GoalKind.Defend && enemy != null && !peaceful) Issue(FightStep(enemy, true));
+                // Läuft ein Sprung (Plan ist dann leer) oder ist gerade einer angekommen: nichts anwählen, nicht auf Gegner zufliegen
+                bool jumping = _crew.Jumping || Time.time - _crew.LastJumpAt < 20f;
+                bool peaceful = g.Note == "note_stealth" || g.Note == "note_scan_only" || g.Kind == GoalKind.Escape || leaving || jumping;
+                _leaving = leaving || jumping;
+                // Im Gefecht nur kämpfen: Ziel- und Kursschritte des Auftrags wählen sonst im Wechsel ihr eigenes Ziel an und der Gegner bekommt kaum Feuer.
+                // Zeitlimit je Gegner, damit ein unverwundbarer Gegner den Auftrag nicht für immer blockiert.
+                bool fighting = enemy != null && !peaceful && g.Kind != GoalKind.Attack && g.Kind != GoalKind.Defend && FightAllowed(enemy.Name);
+                if (fighting)
+                {
+                    Status = Loc.T("Gefecht: ", "fighting: ") + enemy.Name + " " + enemy.DistanceKm.ToString("0") + " km";
+                    var fight = FightStep(enemy, true);
+                    if (fight.Prep != null) fight.Prep();
+                    Issue(fight);
+                    if (enemy.DistanceKm > 12)
+                    {
+                        var foe = enemy.Name;
+                        Issue(new Step { Id = "close_in:" + foe, St = Station.Helm, LineKey = "course", Arg = foe, Bot = () => _crew.Run(Intent.MoveToTarget, foe),
+                                         Done = () => { var x = Find(_crew.ContactsNow, enemy.Transform); return x == null || x.DistanceKm <= 12; }, Remind = 30f });
+                    }
+                }
+                else
+                {
+                    foreach (var s in plan) { if (s.Prep != null) s.Prep(); if (s.Bot != null) Issue(s); }
+                    if (g.Kind != GoalKind.Attack && g.Kind != GoalKind.Defend && enemy != null && !peaceful) Issue(FightStep(enemy, true));
+                }
             }
             else if (enemy != null) Issue(FightStep(enemy, true));
             else Status = Loc.T("keine offenen Ziele", "no open objectives");
@@ -281,6 +303,8 @@ namespace STBCVoiceCrew.Captain
         {
             var steps = new List<Step>();
             if (_crew.Jumping) { Status = Loc.T("Sprung läuft", "jump in progress"); return steps; }
+            // Nach dem Sprung meldet die Karte das neue System erst nach einigen Sekunden: nicht als gescheiterten Warp werten
+            if (Time.time - _crew.LastJumpAt < 20f) { Status = Loc.T("Ankunft nach dem Sprung", "arriving after the jump"); return steps; }
             var here = CaptainSense.CurrentSystem;
             GoalKind kind = g.Kind;
 
@@ -350,9 +374,12 @@ namespace STBCVoiceCrew.Captain
                     Id = "warp:" + sys, St = Station.Helm, LineKey = "warp", Arg = sys, Prep = () => CaptainSense.SetWarpTarget(target),
                     Bot = () =>
                     {
+                        if (_warpTriesFor != sys) { _warpTriesFor = sys; _warpTries = 0; }   // Zähler gilt je Zielsystem, nicht über Missionen hinweg
                         _warpTries++;
+                        CaptainSense.DesiredWarpTarget = target;
+                        CaptainSense.SetWarpTarget(target);
                         var ws = ShipStatus.Read();
-                        Plugin.Log.LogInfo("First Officer Warp-Diagnose: Versuch " + _warpTries + ", möglich " + CaptainSense.CanWarp + ", Ausrichtung " + CaptainSense.WarpAlignment + ", Warpkern " + (ws != null ? ws.WarpCore.ToString("0") : "?") + " %, Ziel " + CaptainSense.NameOf(CaptainSense.WarpTarget));
+                        Plugin.Log.LogInfo("First Officer Warp-Diagnose: Versuch " + _warpTries + ", System " + CaptainSense.NameOf(CaptainSense.CurrentSystem) + ", möglich " + CaptainSense.CanWarp + ", Ausrichtung " + CaptainSense.WarpAlignment + ", Warpkern " + (ws != null ? ws.WarpCore.ToString("0") : "?") + " %, Ziel " + CaptainSense.NameOf(CaptainSense.WarpTarget));
                         // Zweiter Versuch: erst Schub, weg von dem, was im Weg ist (Würfel, Planet, Trümmer), dann erneut Warp
                         if (_warpTries == 2 && CaptainSense.CanWarp != false)
                         {
@@ -373,7 +400,7 @@ namespace STBCVoiceCrew.Captain
                         _crew.Nav.Stop("Warp");   // Ausweichmanöver beenden, die Steuer richtet sich selbst auf den Warpkurs aus
                         _crew.Run(Intent.Warp);
                     },
-                    Done = () => { bool there = CaptainSense.CurrentSystem == target; if (there) _warpTries = 0; return there; }, Remind = 60f
+                    Done = () => { bool there = CaptainSense.CurrentSystem == target; if (there) { _warpTries = 0; CaptainSense.DesiredWarpTarget = null; } return there; }, Remind = 60f
                 });
                 return steps;
             }
@@ -392,6 +419,8 @@ namespace STBCVoiceCrew.Captain
                 if (foe != null) g.Target = foe.Transform;
             }
             Contact c = Find(contacts, g.Target);
+            // Schon gescannt (Scanner fertig oder Zeit abgelaufen) und das Ziel steht trotzdem noch offen: weitersuchen, nicht denselben Scan wiederholen
+            if (c != null && kind == GoalKind.Scan && c.Transform != null && _scanned.Contains(c.Transform)) c = null;
             if (c == null)
             {
                 Status = Loc.T("Ziel noch nicht in Sensorreichweite: ", "objective not yet on sensors: ") + Clean(g.Text);
@@ -473,6 +502,8 @@ namespace STBCVoiceCrew.Captain
                         var scanned = c.Transform;
                         var det = c.Detectable;
                         float since = Time.time;
+                        // Beginn dieses Scans je Ziel merken: der Schritt wird jeden Takt neu gebaut, ein lokaler Zeitstempel würde nie ablaufen
+                        if (!_scanStartAt.ContainsKey(name)) _scanStartAt[name] = Time.time;
                         bool seenProgress = false;
                         steps.Add(new Step { Id = "scan:" + name, St = Station.Tactical, LineKey = "scan", Arg = name, Prep = select, Bot = () => { since = Time.time; _crew.Run(Intent.Scan, name); },
                                              Done = () =>
@@ -485,9 +516,10 @@ namespace STBCVoiceCrew.Captain
                                                  var prog = CaptainSense.ScanProgress(det);
                                                  bool finished = prog.HasValue ? prog.Value >= 0.99f : seenProgress;
                                                  if (prog.HasValue) seenProgress = true;
-                                                 bool done = GoalMoved() || already || finished || Time.time - since > 75f;
+                                                 bool timedOut = Time.time - _scanStartAt[name] > 90f;
+                                                 bool done = GoalMoved() || already || finished || timedOut;
                                                  if (done) Plugin.Log.LogInfo("First Officer: Scan " + name + " fertig (" + (finished ? "Scanner" : already ? "schon gescannt" : GoalMoved() ? "Ziel weiter" : "Zeit") + ")");
-                                                 if (done && scanned != null) _scanned.Add(scanned);
+                                                 if (done && scanned != null) { _scanned.Add(scanned); _scanStartAt.Remove(name); }
                                                  return done;
                                              }, Remind = 60f });   // Scan nicht neu starten, solange er läuft
                     }
@@ -530,6 +562,19 @@ namespace STBCVoiceCrew.Captain
                     break;
             }
             return steps;
+        }
+
+        readonly Dictionary<string, float> _fightSince = new Dictionary<string, float>();
+
+        /// <summary>Gegner höchstens 150 s lang vorrangig bekämpfen; danach 120 s Pause, damit der Auftrag weiterläuft.</summary>
+        bool FightAllowed(string name)
+        {
+            float t;
+            if (!_fightSince.TryGetValue(name, out t)) { _fightSince[name] = Time.time; return true; }
+            float age = Time.time - t;
+            if (age <= 150f) return true;
+            if (age > 270f) { _fightSince[name] = Time.time; return true; }
+            return false;
         }
 
         Step FightStep(Contact enemy, bool select)
@@ -956,12 +1001,14 @@ namespace STBCVoiceCrew.Captain
 
         /// <summary>Schon gescannte Objekte (je Mission), damit Scan-Ziele ohne festes Objekt weiterwandern.</summary>
         readonly HashSet<SystemTransform> _scanned = new HashSet<SystemTransform>();
+        readonly Dictionary<string, float> _scanStartAt = new Dictionary<string, float>();
 
         static readonly HashSet<string> ScanStopWords = new HashSet<string>
         {
             "scan", "scans", "scanned", "perform", "tactical", "system", "systems", "gather", "data", "this", "these", "status",
             "impulse", "different", "locations", "location", "find", "waiting", "complete", "compiling", "investigate", "nearby",
-            "every", "their", "there", "where", "which", "while", "region", "smuggled", "cargo", "single", "life", "sign", "signs"
+            "every", "their", "there", "where", "which", "while", "region", "smuggled", "cargo", "single", "life", "sign", "signs",
+            "will", "help", "from", "with", "that", "into", "also", "them", "then", "over", "near", "area", "zone", "trace", "source", "signal"
         };
 
         /// <summary>
@@ -973,7 +1020,7 @@ namespace STBCVoiceCrew.Captain
             var stems = new List<string>();
             var words = new List<string>((g.English ?? "").ToLowerInvariant().Split(new[] { ' ', ',', '.', ':', '-' }, StringSplitOptions.RemoveEmptyEntries));
             foreach (var s in g.SubTexts) words.AddRange(s.ToLowerInvariant().Split(new[] { ' ', ',', '.', ':', '-' }, StringSplitOptions.RemoveEmptyEntries));
-            foreach (var w in words) if (w.Length >= 5 && !ScanStopWords.Contains(w)) stems.Add(w.Substring(0, 5));
+            foreach (var w in words) if (w.Length >= 4 && !ScanStopWords.Contains(w)) stems.Add(w.Length > 5 ? w.Substring(0, 5) : w);   // "buoy" (4) zählt mit
             Contact best = null;
             foreach (var c in contacts)
             {
