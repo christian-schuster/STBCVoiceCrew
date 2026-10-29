@@ -1,5 +1,5 @@
 STBC Voice Crew – voice commands for Star Trek: Bridge Crew
-Version 1.1.0 – by Phuntasy Productions – https://phuntasyproductions.de
+Version 1.1.1 – by Phuntasy Productions – https://phuntasyproductions.de
 =============================================================
 (Deutsch weiter unten)
 

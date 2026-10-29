@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace STBCVoiceCrew
 {
-    [BepInPlugin(Guid, "STBC Voice Crew", "1.1.0")]
+    [BepInPlugin(Guid, "STBC Voice Crew", "1.1.1")]
     [BepInProcess("stbc.exe")]
     public sealed class Plugin : BaseUnityPlugin
     {

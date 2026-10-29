@@ -13,7 +13,7 @@
     <Deterministic>true</Deterministic>
     <PathMap>$(MSBuildProjectDirectory)=.</PathMap>
     <DebugType>none</DebugType>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <Product>STBC Voice Crew Setup</Product>
     <Company>Phuntasy Productions</Company>
     <Copyright>Copyright (c) 2026 Phuntasy Productions – MIT License</Copyright>

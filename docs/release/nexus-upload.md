@@ -1,4 +1,4 @@
-# Nexus upload: STBC Voice Crew 1.1.0
+# Nexus upload: STBC Voice Crew 1.1.1
 
 Everything the nexusmods.com upload form asks for, ready to copy.
 
@@ -6,7 +6,7 @@ Everything the nexusmods.com upload form asks for, ready to copy.
 
 - **Name:** STBC Voice Crew
 - **Author:** Phuntasy Productions
-- **Version:** 1.1.0
+- **Version:** 1.1.1
 - **Category (suggestion):** Utilities (alternative: Gameplay)
 - **Language:** English (voice commands: English, German, French)
 - **Summary:**
@@ -22,9 +22,9 @@ Everything the nexusmods.com upload form asks for, ready to copy.
 ## File
 
 - **File name on Nexus:** STBC Voice Crew
-- **Version:** 1.1.0
+- **Version:** 1.1.1
 - **Category:** Main Files
-- **Archive:** `dist/STBC-Voice-Crew-1.1.0.zip` (built with `pwsh tools/Package.ps1`)
+- **Archive:** `dist/STBC-Voice-Crew-1.1.1.zip` (built with `pwsh tools/Package.ps1`)
 - **File description:** Mod + BepInEx 5.4.23. Unpack into the game folder. Speech models and voices are downloaded on
   first use. Alternatively use the setup or the one-line install command from GitHub.
 
@@ -51,4 +51,4 @@ Title image 16:9 (at least 1280×720) and 3–5 screenshots, e.g.:
       shows "Vosk: … ready" after the speech model download, try a few orders in German and English.
 - [ ] Switch the game to English and to French once and check `BefehlsSprache = spiel` follows it (French model download, commands).
 - [ ] Multiplayer: host with the mod, a player without the mod gives orders.
-- [ ] Git tag `v1.1.0`, GitHub release with the three files (see `github-release.md`).
+- [ ] Git tag `v1.1.1`, GitHub release with the three files (see `github-release.md`).

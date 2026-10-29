@@ -14,7 +14,7 @@
     <Nullable>disable</Nullable>
     <AssemblyName>de.phuntasyproductions.stbcvoicecrew</AssemblyName>
     <RootNamespace>STBCVoiceCrew</RootNamespace>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <Company>Phuntasy Productions</Company>
     <Authors>Phuntasy Productions</Authors>
     <Product>STBC Voice Crew</Product>

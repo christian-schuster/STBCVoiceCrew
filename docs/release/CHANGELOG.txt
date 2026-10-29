@@ -1,5 +1,20 @@
 STBC Voice Crew – Changelog
 
+1.1.1 (2026-10-29)
+Highlights: the First Officer sets courses reliably (warp and impulse), found in unattended test runs of the random missions.
+- Fixed: warp and impulse destinations are kept while a jump is prepared – the game cleared them when another target was
+  selected, which ended in "No warp – is a warp destination selected on the map?".
+- Fixed: a warp counted as done as soon as the ship had moved 5 km at full speed, so it was never engaged. Success is now
+  the actual change of the star system.
+- Fixed: warp sequence in cycles (charge, engage when aligned with the course, retry); engines get their power back
+  before a jump (power to the shields in a fight starved the impulse drive).
+- Fixed: the First Officer no longer interrupts a jump in progress, and the retry counter starts fresh in every mission.
+- Fixed: in a fight only the fight is ordered; course and target steps no longer fought over the target.
+- Fixed: scans of the same object no longer repeat endlessly; the scan time limit actually expires.
+- Search: contacts with identical names (e.g. 31 "Anomaly") are selected one by one; objectives that name a station,
+  anomaly or buoy find the matching contact; after a full round without a find the search starts over; stars are no
+  impulse destinations.
+
 1.1.0 (2026-10-28)
 Highlights: the First Officer and the open source release on GitHub.
 - The Phuntasy Productions logo appears briefly at game start, before the game's own logos ([Allgemein] LogoBeimStart = false turns it off).
