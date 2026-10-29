@@ -60,6 +60,7 @@ namespace STBCVoiceCrew.Captain
         float _redAlertAt = -999f, _warpBlockedUntil = -999f;
         int _warpTries;
         string _warpTriesFor;
+        float _visitedResetAt = -999f, _scannedLogAt = -999f;
         bool _alertAnnounced;
         float _breakawayAt = -1f;
         bool _leaving;   // Warp oder Flucht steht an (letzter Takt)   // Freifliegen vor dem Warp: höchstens 8 s, sonst ist man ein leichtes Ziel
@@ -155,7 +156,7 @@ namespace STBCVoiceCrew.Captain
         {
             if (_missionStart < 0) return;
             _missionStart = -1f; _firstGoalAt = -1f; _bridgeGreeted = false; Autopilot = false; _hailSince = -1f; _announceTake = false; _connGivenAt = -999f; Current = Mode.Lobby;
-            _orders.Clear(); _fightSince.Clear(); _warpTries = 0; _warpTriesFor = null; _warpBlockedUntil = -999f; CaptainSense.DesiredWarpTarget = null; _advised.Clear(); _scanned.Clear(); _scanStartAt.Clear(); _visitedPoints.Clear(); _stoppedAt.Clear(); _trackKey = null; _goalAnnounced = null; _arrivedAt = null; _selected = null; _trackCount = -1;
+            _orders.Clear(); _fightSince.Clear(); _warpTries = 0; _warpTriesFor = null; _warpBlockedUntil = -999f; CaptainSense.DesiredWarpTarget = null; CaptainSense.DesiredImpulseTarget = null; _advised.Clear(); _scanned.Clear(); _scanStartAt.Clear(); _visitedPoints.Clear(); _stoppedAt.Clear(); _trackKey = null; _goalAnnounced = null; _arrivedAt = null; _selected = null; _trackCount = -1;
         }
 
         /// <summary>Lobby: einmal melden, danach selten ein Kalauer.</summary>
@@ -374,6 +375,7 @@ namespace STBCVoiceCrew.Captain
                     Id = "warp:" + sys, St = Station.Helm, LineKey = "warp", Arg = sys, Prep = () => CaptainSense.SetWarpTarget(target),
                     Bot = () =>
                     {
+                        if (_crew.Jumping || Time.time - _crew.LastJumpAt < 20f) return;   // der Sprungablauf läuft noch: nicht dazwischenfunken
                         if (_warpTriesFor != sys) { _warpTriesFor = sys; _warpTries = 0; }   // Zähler gilt je Zielsystem, nicht über Missionen hinweg
                         _warpTries++;
                         CaptainSense.DesiredWarpTarget = target;
@@ -398,7 +400,7 @@ namespace STBCVoiceCrew.Captain
                             return;
                         }
                         _crew.Nav.Stop("Warp");   // Ausweichmanöver beenden, die Steuer richtet sich selbst auf den Warpkurs aus
-                        _crew.Run(Intent.Warp);
+                        _crew.Run(Intent.Warp, null, null, true);
                     },
                     Done = () => { bool there = CaptainSense.CurrentSystem == target; if (there) { _warpTries = 0; CaptainSense.DesiredWarpTarget = null; } return there; }, Remind = 60f
                 });
@@ -412,6 +414,12 @@ namespace STBCVoiceCrew.Captain
                 var next = NextUnscanned(contacts, g);
                 if (next != null) g.Target = next.Transform;
             }
+            // Reise-/Rettungsziele nennen ihren Ort oft nur im Text ("Location: RYBURN, Anomaly"): einen Kontakt gleichen Namens auf den Sensoren anfliegen
+            if (g.Target == null && (kind == GoalKind.Travel || kind == GoalKind.Rescue))
+            {
+                var named = NextUnscanned(contacts, g);
+                if (named != null) g.Target = named.Transform;
+            }
             // Angriff/Gebiet sichern ohne festes Ziel ("Eliminate Hostile Vessels"): der nächste echte Feind, egal wie weit
             if (g.Target == null && (kind == GoalKind.Attack || kind == GoalKind.Defend))
             {
@@ -420,12 +428,21 @@ namespace STBCVoiceCrew.Captain
             }
             Contact c = Find(contacts, g.Target);
             // Schon gescannt (Scanner fertig oder Zeit abgelaufen) und das Ziel steht trotzdem noch offen: weitersuchen, nicht denselben Scan wiederholen
-            if (c != null && kind == GoalKind.Scan && c.Transform != null && _scanned.Contains(c.Transform)) c = null;
+            if (c != null && kind == GoalKind.Scan && c.Transform != null && _scanned.Contains(c.Transform)) { if (Time.time - _scannedLogAt > 30f) { _scannedLogAt = Time.time; Plugin.Log.LogInfo("First Officer: " + c.Name + " ist schon gescannt – suche weiter"); } c = null; }
+            else if (c != null && kind == GoalKind.Scan && Time.time - _scannedLogAt > 30f && _scanned.Count > 0) { _scannedLogAt = Time.time; Plugin.Log.LogInfo("First Officer: Scan-Ziel " + c.Name + " Transform " + (c.Transform != null ? c.Transform.GetHashCode().ToString() : "null") + " nicht unter den " + _scanned.Count + " gemerkten"); }
             if (c == null)
             {
                 Status = Loc.T("Ziel noch nicht in Sensorreichweite: ", "objective not yet on sensors: ") + Clean(g.Text);
                 // Die markierten Punkte der Impulskarte nacheinander anfliegen (Signalquelle, Suchgebiet, Treffpunkt)
                 var poi = NextMapPoint(g);
+                // Alle Orte einmal besucht und das Ziel ist immer noch nirgends zu sehen: die Runde von vorn beginnen (Sensorreichweite ist klein)
+                if (poi == null && _visitedPoints.Count > 0 && Time.time - _visitedResetAt > 120f && !_crew.Jumping)
+                {
+                    _visitedResetAt = Time.time;
+                    Plugin.Log.LogInfo("First Officer: alle Orte besucht, Ziel nicht gefunden – neue Runde (" + _visitedPoints.Count + " Orte)");
+                    _visitedPoints.Clear();
+                    poi = NextMapPoint(g);
+                }
                 if (Time.time - _searchLogged > 30f)
                 {
                     _searchLogged = Time.time;
@@ -433,7 +450,7 @@ namespace STBCVoiceCrew.Captain
                     var pn2 = new List<string>(); foreach (var b in pts) pn2.Add(CaptainSense.DisplayName(b) + " " + DistanceKm(b).ToString("0") + "km");
                     var cn = new List<string>(); foreach (var x in contacts) cn.Add(x.Name + " " + x.DistanceKm.ToString("0") + "km");
                     Plugin.Log.LogInfo("First Officer Suche: Kartenpunkte " + pts.Count + " [" + string.Join(", ", pn2.ToArray()) + "] Kontakte [" + string.Join(", ", cn.ToArray()) +
-                                       "] Teilziele [" + string.Join(" | ", g.SubTexts.ToArray()) + "] gewählt " + (poi != null ? CaptainSense.DisplayName(poi) : "-") + " " + CaptainSense.MapDiag);
+                                       "] Teilziele [" + string.Join(" | ", g.SubTexts.ToArray()) + "] gewählt " + (poi != null ? CaptainSense.DisplayName(poi) : "-") + " " + CaptainSense.MapDiag + " " + PoiDiag);
                 }
                 if (poi != null)
                 {
@@ -441,8 +458,8 @@ namespace STBCVoiceCrew.Captain
                     var p = poi;
                     Status = Loc.T("Impuls zum Kartenpunkt ", "impulse to map point ") + pn;
                     steps.Add(new Step { Id = "poi:" + CaptainSense.IdOf(p), St = Station.Helm, LineKey = "impulse", Arg = pn, Prep = () => CaptainSense.SetImpulseTarget(p),
-                                         Bot = () => { _visitedPoints.Add(CaptainSense.IdOf(p)); _crew.Run(Intent.Impulse); },
-                                         Done = () => GoalMoved() || DistanceKm(p) < 8, Remind = 45f });
+                                         Bot = () => { _visitedPoints.Add(CaptainSense.IdOf(p)); CaptainSense.DesiredImpulseTarget = p; CaptainSense.SetImpulseTarget(p); _crew.Run(Intent.Impulse, null, null, true); },
+                                         Done = () => { bool d = GoalMoved() || DistanceKm(p) < 8; if (d) CaptainSense.DesiredImpulseTarget = null; return d; }, Remind = 45f });
                     return steps;
                 }
                 if (g.Target != null) steps.Add(new Step { Id = "search:" + g.Key, St = Station.Helm, LineKey = "search", Arg = Clean(g.Text) });
@@ -452,7 +469,12 @@ namespace STBCVoiceCrew.Captain
             string name = c.Name;
             double d = c.DistanceKm;
             Status = Clean(g.Text) + " – " + name + " " + d.ToString("0.0") + " km";
-            Action select = () => { if (_selected != key) { _crew.Select(c); _selected = key; } };   // nur bei neuem Ziel, sonst überschreibt er die Auswahl des Spielers
+            // Gleichnamige Kontakte ("Anomaly" x31): Befehle über den Namen träfen den nächsten statt des gemeinten. Dann gezielt anwählen und ohne Namen befehlen.
+            int sameName = 0;
+            foreach (var x in contacts) if (string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase)) sameName++;
+            string cmd = sameName > 1 ? null : name;
+            string selKey = key + "#" + (c.Transform != null ? System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(c.Transform) : 0);
+            Action select = () => { if (_selected != selKey) { _crew.Select(c); _selected = selKey; } };   // nur bei neuem Ziel, sonst überschreibt er die Auswahl des Spielers
 
             double reach = g.Reach > 0 ? g.Reach : Reach(kind);
             if (kind == GoalKind.Scan)
@@ -468,20 +490,20 @@ namespace STBCVoiceCrew.Captain
                 double min = g.MinDistance;
                 if (d < min)
                     steps.Add(new Step { Id = "keep_distance:" + name, St = Station.Helm, LineKey = "keep_distance", Arg = min.ToString("0"), Prep = select,
-                                         Bot = () => _crew.Run(Intent.MoveAway, name), Done = () => { var x = Find(_crew.ContactsNow, g.Target); return x == null || x.DistanceKm >= min; }, Remind = 20f });
+                                         Bot = () => _crew.Run(Intent.MoveAway, cmd), Done = () => { var x = Find(_crew.ContactsNow, g.Target); return x == null || x.DistanceKm >= min; }, Remind = 20f });
             }
             // Teilchen sammeln: mitten hindurch, volle Fahrt
             if (kind == GoalKind.Gather)
             {
                 steps.Add(new Step { Id = "gather:" + name, St = Station.Helm, LineKey = "gather", Arg = name, Prep = select,
-                                     Bot = () => { _crew.Run(Intent.MoveToTarget, name); _crew.Run(Intent.SpeedFull); }, Done = GoalMoved, Remind = 30f });
+                                     Bot = () => { _crew.Run(Intent.MoveToTarget, cmd); _crew.Run(Intent.SpeedFull); }, Done = GoalMoved, Remind = 30f });
                 return steps;
             }
             if (d > reach)
             {
                 bool far = d > 60;
                 steps.Add(new Step { Id = (far ? "impulse:" : "course:") + name, St = Station.Helm, LineKey = far ? "impulse" : "course", Arg = name, Prep = select,
-                                     Bot = () => _crew.Run(far ? Intent.Impulse : Intent.MoveToTarget, name),
+                                     Bot = () => _crew.Run(far ? Intent.Impulse : Intent.MoveToTarget, cmd),
                                      Done = () => { var x = Find(_crew.ContactsNow, g.Target); return x == null || x.DistanceKm <= reach; }, Remind = far ? 40f : 90f });
                 return steps;
             }
@@ -505,7 +527,7 @@ namespace STBCVoiceCrew.Captain
                         // Beginn dieses Scans je Ziel merken: der Schritt wird jeden Takt neu gebaut, ein lokaler Zeitstempel würde nie ablaufen
                         if (!_scanStartAt.ContainsKey(name)) _scanStartAt[name] = Time.time;
                         bool seenProgress = false;
-                        steps.Add(new Step { Id = "scan:" + name, St = Station.Tactical, LineKey = "scan", Arg = name, Prep = select, Bot = () => { since = Time.time; _crew.Run(Intent.Scan, name); },
+                        steps.Add(new Step { Id = "scan:" + name, St = Station.Tactical, LineKey = "scan", Arg = name, Prep = select, Bot = () => { since = Time.time; _crew.Run(Intent.Scan, cmd); },
                                              Done = () =>
                                              {
                                                  // Rückmeldung der Taktik-Konsole auswerten: schon gescannt = fertig, außer Reichweite = näher ran
@@ -519,6 +541,7 @@ namespace STBCVoiceCrew.Captain
                                                  bool timedOut = Time.time - _scanStartAt[name] > 90f;
                                                  bool done = GoalMoved() || already || finished || timedOut;
                                                  if (done) Plugin.Log.LogInfo("First Officer: Scan " + name + " fertig (" + (finished ? "Scanner" : already ? "schon gescannt" : GoalMoved() ? "Ziel weiter" : "Zeit") + ")");
+                                                 if (done) Plugin.Log.LogInfo("First Officer: Scan gemerkt " + name + " Transform " + (scanned != null ? scanned.GetHashCode().ToString() : "null") + ", gemerkt gesamt " + (_scanned.Count + (scanned != null ? 1 : 0)));
                                                  if (done && scanned != null) { _scanned.Add(scanned); _scanStartAt.Remove(name); }
                                                  return done;
                                              }, Remind = 60f });   // Scan nicht neu starten, solange er läuft
@@ -527,24 +550,24 @@ namespace STBCVoiceCrew.Captain
                 case GoalKind.Attack:
                     // Mit Mindestabstand: Torpedos (Phaser reichen nicht so weit)
                     if (g.MinDistance > 0)
-                        steps.Add(new Step { Id = "torpedo:" + name, St = Station.Tactical, LineKey = "torpedo", Arg = name, Prep = select, Bot = () => _crew.Run(Intent.FireTorpedoes, name), Done = GoalMoved, Remind = 30f });
+                        steps.Add(new Step { Id = "torpedo:" + name, St = Station.Tactical, LineKey = "torpedo", Arg = name, Prep = select, Bot = () => _crew.Run(Intent.FireTorpedoes, cmd), Done = GoalMoved, Remind = 30f });
                     else
-                        steps.Add(new Step { Id = "attack:" + name, St = Station.Tactical, LineKey = "attack", Arg = name, Prep = select, Bot = () => _crew.Run(Intent.FirePhasers, name), Done = GoalMoved, Remind = 30f });
+                        steps.Add(new Step { Id = "attack:" + name, St = Station.Tactical, LineKey = "attack", Arg = name, Prep = select, Bot = () => _crew.Run(Intent.FirePhasers, cmd), Done = GoalMoved, Remind = 30f });
                     break;
                 case GoalKind.Disable:
                     // Kommt das Stören nicht voran (manche Schiffe können nicht hacken), mit Phasern auf den Antrieb
                     string sub = g.Subsystem ?? "engines";
                     if (sub == "engines" && Time.time - _goalSince > 75f)
-                        steps.Add(new Step { Id = "disable_fire:" + name, St = Station.Tactical, LineKey = "disable_fire", Arg = name, Prep = select, Bot = () => _crew.Run(Intent.FirePhasers, name), Done = GoalMoved, Remind = 30f });
+                        steps.Add(new Step { Id = "disable_fire:" + name, St = Station.Tactical, LineKey = "disable_fire", Arg = name, Prep = select, Bot = () => _crew.Run(Intent.FirePhasers, cmd), Done = GoalMoved, Remind = 30f });
                     else
                         steps.Add(new Step { Id = "disable:" + name + ":" + sub, St = Station.Tactical, LineKey = sub == "engines" ? "disable" : "disable_" + sub, Arg = name, Prep = select,
-                                             Bot = () => _crew.Run(Intent.Hack, name, sub), Done = GoalMoved, Remind = 30f });
+                                             Bot = () => _crew.Run(Intent.Hack, cmd, sub), Done = GoalMoved, Remind = 30f });
                     break;
                 case GoalKind.Rescue:
                     // Schiffe, die ihre Schilde nicht senken: erst die Schilde runterschießen
                     if (g.Note == "note_shields_then_beam")
                         steps.Add(new Step { Id = "shields_off:" + name, St = Station.Tactical, LineKey = "attack_shields", Arg = name, Prep = select,
-                                             Bot = () => { _crew.Run(Intent.TargetShields); _crew.Run(Intent.FirePhasers, name); }, Done = GoalMoved, Remind = 30f });
+                                             Bot = () => { _crew.Run(Intent.TargetShields); _crew.Run(Intent.FirePhasers, cmd); }, Done = GoalMoved, Remind = 30f });
                     steps.Add(new Step { Id = "stop:" + name, St = Station.Helm, LineKey = "stop", Prep = select, Bot = () => _crew.Run(Intent.SpeedStop),
                                          Done = () => { var s = ShipStatus.Read(); return GoalMoved() || (s != null && (s.FullStop || !s.Moving)); }, Remind = 30f });
                     steps.Add(new Step { Id = "beam:" + name, St = Station.Engineering, LineKey = "beam", Arg = name, Bot = () => _crew.Run(Intent.Transport, name), Done = GoalMoved });
@@ -966,19 +989,21 @@ namespace STBCVoiceCrew.Captain
             Sector.HOLJLCLENCA best = null;
             int bestScore = int.MinValue;
             double bestDist = double.MaxValue;
+            int cVisited = 0, cJunk = 0, cNear = 0;
+            var junkNames = new List<string>();
             foreach (var b in points)
             {
                 int id = CaptainSense.IdOf(b);
-                if (_visitedPoints.Contains(id)) continue;
+                if (_visitedPoints.Contains(id)) { cVisited++; continue; }
                 string name = CaptainSense.DisplayName(b) ?? "";
                 string raw = GameBridge.StripLocId(b.AKDKEDEMFDJ) ?? "";   // interner Objektname ("Star000", "Prop_…")
                 bool junk = false;
                 foreach (var n in new[] { name, raw })
                     if (Hazard(n) || n.StartsWith("Prop", StringComparison.OrdinalIgnoreCase) || n.Contains("_") ||
-                        System.Text.RegularExpressions.Regex.IsMatch(n, @"\bstar|sun|nolight", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) junk = true;
-                if (!marked && junk) continue;   // keine Minen, Trümmer, Deko, Sterne, interne Objekte
+                        System.Text.RegularExpressions.Regex.IsMatch(n, @"star(?!base|fleet)|sun|nolight", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) junk = true;
+                if (!marked && junk) { cJunk++; if (junkNames.Count < 6) junkNames.Add(raw); continue; }   // keine Minen, Trümmer, Deko, Sterne, interne Objekte
                 double d = DistanceKm(b);
-                if (d >= 0 && d < 8) { _visitedPoints.Add(id); continue; }   // schon da
+                if (d >= 0 && d < 8) { _visitedPoints.Add(id); cNear++; continue; }   // schon da
                 int score = (marked ? 10 : 0) + (CaptainSense.IsObjectivePoint(b) ? 5 : 0);
                 string lower = name.ToLowerInvariant();
                 if (name.Length >= 3 && lower != sysName && saidFull.Contains(lower)) score += 20;
@@ -986,8 +1011,10 @@ namespace STBCVoiceCrew.Captain
                         if (w.Length >= 3 && said.Contains(w)) { score += 8; break; }
                 if (score > bestScore || (score == bestScore && d < bestDist)) { best = b; bestScore = score; bestDist = d; }
             }
+            PoiDiag = "Kandidaten " + points.Count + ", besucht " + cVisited + ", aussortiert " + cJunk + " [" + string.Join(",", junkNames.ToArray()) + "], schon da " + cNear + ", besuchte gesamt " + _visitedPoints.Count;
             return best;
         }
+        string PoiDiag = "";
         static double DistanceKm(Sector.HOLJLCLENCA b)
         {
             try

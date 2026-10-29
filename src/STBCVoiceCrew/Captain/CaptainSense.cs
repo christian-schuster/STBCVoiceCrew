@@ -313,6 +313,18 @@ namespace STBCVoiceCrew.Captain
             return false;
         }
 
+        /// <summary>Impulsziel, das der First Officer gerade anfliegt; der Sprungablauf trägt es erneut ein, falls das Spiel es löscht.</summary>
+        public static Sector.HOLJLCLENCA DesiredImpulseTarget;
+
+        public static Sector.HOLJLCLENCA ImpulseTarget
+        {
+            get
+            {
+                try { var ship = GameBridge.PlayerShip; var helm = ship != null ? ship.GetComponent<Crew.ConsoleHelmShipInterface>() : null; return helm != null ? helm.INBICICINJG : null; }
+                catch { return null; }
+            }
+        }
+
         /// <summary>Impulsziel der Steuer setzen (wie ein Klick auf die Impulskarte).</summary>
         public static bool SetImpulseTarget(Sector.HOLJLCLENCA body)
         {

@@ -70,16 +70,20 @@ namespace STBCVoiceCrew
         /// Befehl im Namen des Captains ausführen, mit allen Abläufen (Warp, Impuls, Beamen mit Schilden, Zielwahl …),
         /// genau wie ein gesprochener Befehl. target = Kontaktname oder null (gewähltes Ziel).
         /// </summary>
-        public void Run(Intent intent, string target = null, string subsystem = null)
+        public void Run(Intent intent, string target = null, string subsystem = null, bool keepTargets = false)
         {
             var r = new ParseResult();
             r.Commands.Add(new ParsedCommand { Intent = intent, Name = target, Resolved = target, Subsystem = subsystem, Clause = "" });
             var prev = _speaker;
             _speaker = Station.Captain;
+            _keepTargets = keepTargets;
             try { Execute(r); }
             catch (Exception e) { Plugin.Log.LogWarning("Captain-Befehl " + intent + ": " + e.Message); }
-            finally { _speaker = prev; }
+            finally { _speaker = prev; _keepTargets = false; }
         }
+
+        /// <summary>Warp-/Impulssprünge zu Karten- und Systemzielen: das Kontaktziel der Captain-Konsole nicht auf die Steuer kopieren (es löscht deren Sprungziel).</summary>
+        bool _keepTargets;
 
         /// <summary>Kontakt auf allen Konsolen als Ziel wählen (genau dieses Objekt, auch bei gleichen Namen).</summary>
         public bool Select(Contact c) => c != null && c.Detectable is DIENHALJFIO && SetAll((DIENHALJFIO)c.Detectable, c.Name);
@@ -258,7 +262,7 @@ namespace STBCVoiceCrew
         {
             // Wer befiehlt, zeigt auf sein Ziel: das an seiner Konsole markierte Objekt gilt für alle Stationen
             // (sonst nähmen Taktik und Steuer ihr altes Ziel), außer der Befehl nennt selbst eines.
-            if (_speaker != Station.Tactical && _speaker != Station.Helm && !r.Commands.Exists(c => c.Resolved != null))
+            if (!_keepTargets && _speaker != Station.Tactical && _speaker != Station.Helm && !r.Commands.Exists(c => c.Resolved != null))
             {
                 var mine = ConsoleTarget(_speaker);
                 if (mine != null && (ConsoleTarget(Station.Tactical) != mine || ConsoleTarget(Station.Helm) != mine))
@@ -528,8 +532,24 @@ namespace STBCVoiceCrew
 
         // ---------------- Abläufe ----------------
 
+        /// <summary>Sprünge brauchen Antriebsenergie: nach "Energie auf Schilde" (Gefecht) vorher wieder auf den Antrieb legen.</summary>
+        void EnginePowerForJump()
+        {
+            try
+            {
+                var st = ShipStatus.Read();
+                if (st != null && st.PowerEngines >= 0 && st.PowerEngines < 4)
+                {
+                    Plugin.Log.LogInfo("Sprung: Antriebsenergie " + st.PowerEngines + " zu niedrig – Energie auf den Antrieb");
+                    Exec(Station.Engineering, "PowerToEngines", force: true);
+                }
+            }
+            catch (Exception e) { Plugin.Log.LogDebug("Antriebsenergie nicht gelesen: " + e.Message); }
+        }
+
         void WarpSequence()
         {
+            EnginePowerForJump();
             if (Orders.Blocks("SetSpeedFull") == null) Exec(Station.Helm, "SetSpeedFull");
             Exec(Station.Engineering, "PrepareWarp", force: true);
             JumpSequence("Warp", AI.IAHDEGHOPAK.PrepareWarp, "EngageWarp", 10f, Loc.T("Kein Warp – ist ein Warpziel auf der Karte gewählt?", "No warp – is a warp destination selected on the map?"));
@@ -537,6 +557,7 @@ namespace STBCVoiceCrew
 
         void ImpulseSequence()
         {
+            EnginePowerForJump();
             if (Orders.Blocks("SetSpeedFull") == null) Exec(Station.Helm, "SetSpeedFull");
             Exec(Station.Helm, "PrepareImpulse", force: true);
             JumpSequence(Loc.T("Impuls", "Impulse"), AI.IAHDEGHOPAK.PrepareImpulse, "EngageImpulse", 4f, Loc.T("Kein Impulssprung – ist ein Impulsziel auf der Karte markiert?", "No impulse jump – is an impulse destination marked on the map?"));
@@ -554,8 +575,9 @@ namespace STBCVoiceCrew
             float t0 = Time.time, lastEngage = 0f;
             bool seenPreparing = false;
             int engages = 0, recharges = 0;
-            float chargedAt = -1f;
-            Repeat(0.5f, 60f, 0.5f, what, () =>   // 60 s: Warp wartet ggf. bis zu 40 s auf die Ausrichtung
+            float chargedAt = -1f, lastPrepare = Time.time;
+            bool lastFlag = false;
+            Repeat(0.5f, 160f, 0.5f, what, () =>   // 60 s: Warp wartet ggf. bis zu 40 s auf die Ausrichtung
             {
                 bool jumped = what == "Warp" && startSystem != null ? Captain.CaptainSense.CurrentSystem != startSystem : Jumped(start);
                 if (jumped) { LastJumpAt = Time.time; Note(what + Loc.T(": Sprung ausgeführt", ": jump done")); return true; }
@@ -565,11 +587,42 @@ namespace STBCVoiceCrew
                     Plugin.Log.LogInfo("Warpziel war gelöscht – neu gesetzt: " + Captain.CaptainSense.NameOf(Captain.CaptainSense.DesiredWarpTarget));
                     Captain.CaptainSense.SetWarpTarget(Captain.CaptainSense.DesiredWarpTarget);
                 }
+                if (what != "Warp" && Captain.CaptainSense.DesiredImpulseTarget != null && (object)Captain.CaptainSense.ImpulseTarget != (object)Captain.CaptainSense.DesiredImpulseTarget)
+                {
+                    Plugin.Log.LogInfo("Impulsziel war gelöscht – neu gesetzt: " + Captain.CaptainSense.DisplayName(Captain.CaptainSense.DesiredImpulseTarget));
+                    Captain.CaptainSense.SetImpulseTarget(Captain.CaptainSense.DesiredImpulseTarget);
+                }
                 if (what == "Warp" && Time.time - _warpDiagAt > 5f)
                 {
                     _warpDiagAt = Time.time;
                     var fwd = Contacts.OwnForward;
                     Plugin.Log.LogInfo("Warp-Ausrichtung: " + Captain.CaptainSense.WarpAlignment + ", Eigenkurs " + Mathf.RoundToInt((Mathf.Atan2((float)fwd.x, (float)fwd.z) * Mathf.Rad2Deg + 360f) % 360f) + "°, " + BlackboardDiag() + ", seit Start " + (Time.time - t0).ToString("0") + " s");
+                }
+                if (what == "Warp")
+                {
+                    // Zyklus: laden, rund 12 s warten (die Spulen brauchen Zeit; zu frühes Auslösen bleibt wirkungslos), bei passender Ausrichtung auslösen,
+                    // 8 s auf den Sprung warten, sonst neu laden und wiederholen (höchstens 3 Zyklen).
+                    if (preparing != lastFlag) { lastFlag = preparing; Plugin.Log.LogInfo("Warp-Flag Vorbereitung " + preparing + " nach " + (Time.time - lastPrepare).ToString("0.0") + " s seit Laden"); }
+                    var al = Captain.CaptainSense.WarpAlignment;
+                    bool aligned = !al.HasValue || al.Value >= 0.97f || Time.time - t0 > 45f;
+                    if (!aligned) return false;
+                    if (engages == 0 && Time.time - lastPrepare < 12f) return false;
+                    if (engages > 0 && Time.time - lastEngage <= 8f) return false;
+                    if (engages > 0)
+                    {
+                        if (recharges >= 3) { Note(failHint); Beep(false); return true; }
+                        recharges++;
+                        engages = 0;
+                        lastPrepare = Time.time;
+                        Exec(Station.Engineering, "PrepareWarp", force: true);
+                        Note(Loc.T("Warpspulen neu laden", "Recharging warp coils"));
+                        return false;
+                    }
+                    Plugin.Log.LogInfo("Sprungablauf Warp: Engage nach " + (Time.time - lastPrepare).ToString("0.0") + " s Ladezeit, Zyklus " + (recharges + 1) + ", Ausrichtung " + al + ", Spulen-Flag " + preparing + ", " + ShipDiag());
+                    Exec(Station.Helm, engage, force: true);
+                    engages = 1;
+                    lastEngage = Time.time;
+                    return false;
                 }
                 if (preparing) seenPreparing = true;
                 bool ready = (seenPreparing && !preparing) || Time.time - t0 > fallback + (seenPreparing ? 8f : 0f);
@@ -592,7 +645,7 @@ namespace STBCVoiceCrew
                 if (!ready) return false;
                 if (engages < 2 && (engages == 0 || Time.time - lastEngage > 8f))
                 {
-                    Plugin.Log.LogInfo("Sprungablauf " + what + ": Engage " + (engages + 1) + " nach " + (Time.time - t0).ToString("0.0") + " s, Ausrichtung " + Captain.CaptainSense.WarpAlignment + ", Vorbereitung " + preparing + ", Spulen neu geladen " + recharges + "x");
+                    Plugin.Log.LogInfo("Sprungablauf " + what + ": Engage " + (engages + 1) + " nach " + (Time.time - t0).ToString("0.0") + " s, Ausrichtung " + Captain.CaptainSense.WarpAlignment + ", Vorbereitung " + preparing + ", Spulen neu geladen " + recharges + "x, " + ShipDiag());
                     Exec(Station.Helm, engage, force: true);
                     engages++;
                     lastEngage = Time.time;
@@ -604,6 +657,18 @@ namespace STBCVoiceCrew
         }
 
         float _warpDiagAt;
+
+        static string ShipDiag()
+        {
+            try
+            {
+                var st = ShipStatus.Read();
+                if (st == null) return "kein Schiffsstatus";
+                return "Antrieb " + st.Engines.ToString("0") + " %, Warpkern " + st.WarpCore.ToString("0") + " %, Energie Antrieb/Schilde/Phaser " + st.PowerEngines + "/" + st.PowerShields + "/" + st.PowerPhasers +
+                       ", Tempo " + st.Speed.ToString("0.0") + ", Warp vorbereitet " + st.WarpPreparing + ", Warp aktiv " + st.WarpEngaged + ", Impuls vorbereitet " + st.ImpulsePreparing + ", Stillstand " + st.FullStop + ", Ausweichen " + st.Evading;
+            }
+            catch (Exception e) { return "Schiffsstatus: " + e.Message; }
+        }
 
         static string BlackboardDiag()
         {
